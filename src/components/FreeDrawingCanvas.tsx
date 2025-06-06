@@ -245,15 +245,15 @@ export const FreeDrawingCanvas = () => {
       ctx.stroke();
     }
 
-    // ENHANCED ALIGNMENT GUIDES - Now supports multiple extension lines simultaneously
+    // ENHANCED ALIGNMENT GUIDES - Now displays ALL guides simultaneously with different colors
     alignmentGuides.forEach((guide, index) => {
       ctx.save();
       
       if (guide.lineType === 'extension') {
-        // EXTENSION LINES - Very prominent blue dashed lines like in CAD software
-        ctx.strokeStyle = '#3b82f6'; // Blue for extension lines
+        // EXTENSION LINES - Blue dashed lines for line extensions
+        ctx.strokeStyle = '#3b82f6'; 
         ctx.lineWidth = 2;
-        ctx.setLineDash([10, 5]); // Clear dashed pattern
+        ctx.setLineDash([10, 5]);
         ctx.globalAlpha = 0.8;
         
         console.log(`Drawing extension guide ${index}:`, guide);
@@ -263,8 +263,8 @@ export const FreeDrawingCanvas = () => {
         ctx.lineTo(guide.endPoint.x, guide.endPoint.y);
         ctx.stroke();
         
-        // Target point indicator - blue circle at the alignment point
-        ctx.setLineDash([]); // Solid for the circle
+        // Target point indicator - blue circle
+        ctx.setLineDash([]);
         ctx.fillStyle = '#3b82f6';
         ctx.strokeStyle = '#1d4ed8';
         ctx.lineWidth = 2;
@@ -274,21 +274,12 @@ export const FreeDrawingCanvas = () => {
         ctx.fill();
         ctx.stroke();
         
-        // Add a subtle pulse effect for the alignment point
-        ctx.globalAlpha = 0.3;
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 3]);
-        ctx.beginPath();
-        ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 10, 0, 2 * Math.PI);
-        ctx.stroke();
-        
       } else if (guide.lineType === 'point-alignment') {
-        // POINT ALIGNMENT - Green like before
-        ctx.strokeStyle = '#22c55e';
+        // POINT ALIGNMENT - Orange dashed lines for point alignments (changed from green to orange for better distinction)
+        ctx.strokeStyle = '#f97316'; // Orange for point alignment
         ctx.lineWidth = 2;
         ctx.setLineDash([8, 8]);
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = 0.9;
         
         console.log(`Drawing point alignment guide ${index}:`, guide);
         
@@ -297,10 +288,10 @@ export const FreeDrawingCanvas = () => {
         ctx.lineTo(guide.endPoint.x, guide.endPoint.y);
         ctx.stroke();
         
-        // Target point indicator - green circle
+        // Target point indicator - orange circle
         ctx.setLineDash([]);
-        ctx.fillStyle = '#22c55e';
-        ctx.strokeStyle = '#16a34a';
+        ctx.fillStyle = '#f97316';
+        ctx.strokeStyle = '#ea580c';
         ctx.lineWidth = 2;
         
         ctx.beginPath();
@@ -310,7 +301,7 @@ export const FreeDrawingCanvas = () => {
         
         // Add a small pulse effect
         ctx.globalAlpha = 0.4;
-        ctx.strokeStyle = '#22c55e';
+        ctx.strokeStyle = '#f97316';
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
@@ -321,19 +312,31 @@ export const FreeDrawingCanvas = () => {
       ctx.restore();
     });
 
-    // ENHANCED INTERSECTION POINT INDICATOR - Special visualization for intersections
+    // ENHANCED INTERSECTION POINT INDICATOR - Special visualization for ANY type of intersections
     if (alignmentSnapPoint && alignmentGuides.length >= 2) {
-      const extensionGuides = alignmentGuides.filter(g => g.lineType === 'extension');
-      const hasVertical = extensionGuides.some(g => g.type === 'vertical');
-      const hasHorizontal = extensionGuides.some(g => g.type === 'horizontal');
+      const verticalGuides = alignmentGuides.filter(g => g.type === 'vertical');
+      const horizontalGuides = alignmentGuides.filter(g => g.type === 'horizontal');
       
-      if (hasVertical && hasHorizontal) {
+      if (verticalGuides.length >= 1 && horizontalGuides.length >= 1) {
         ctx.save();
         
+        // Determine intersection type and color
+        const hasExtensionVertical = verticalGuides.some(g => g.lineType === 'extension');
+        const hasExtensionHorizontal = horizontalGuides.some(g => g.lineType === 'extension');
+        const hasPointAlignmentVertical = verticalGuides.some(g => g.lineType === 'point-alignment');
+        const hasPointAlignmentHorizontal = horizontalGuides.some(g => g.lineType === 'point-alignment');
+        
+        let snapColor = '#10b981'; // Default green for mixed intersections
+        
+        if (hasExtensionVertical && hasExtensionHorizontal) {
+          snapColor = '#3b82f6'; // Blue for extension intersections
+        } else if (hasPointAlignmentVertical && hasPointAlignmentHorizontal) {
+          snapColor = '#f97316'; // Orange for point alignment intersections
+        }
+        
         // Special intersection indicator - larger circle with cross pattern
-        const snapColor = '#3b82f6';
         ctx.strokeStyle = snapColor;
-        ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+        ctx.fillStyle = snapColor + '40'; // Add transparency
         ctx.lineWidth = 3;
         ctx.shadowColor = snapColor;
         ctx.shadowBlur = 12;
@@ -517,12 +520,11 @@ export const FreeDrawingCanvas = () => {
 
     // ENHANCED ALIGNMENT SNAP POINT - Different visualization for intersection vs single alignment
     if (alignmentSnapPoint) {
-      const extensionGuides = alignmentGuides.filter(g => g.lineType === 'extension');
-      const hasVertical = extensionGuides.some(g => g.type === 'vertical');
-      const hasHorizontal = extensionGuides.some(g => g.type === 'horizontal');
+      const verticalGuides = alignmentGuides.filter(g => g.type === 'vertical');
+      const horizontalGuides = alignmentGuides.filter(g => g.type === 'horizontal');
       
       // Skip drawing here if we already drew the intersection indicator above
-      if (!(hasVertical && hasHorizontal)) {
+      if (!(verticalGuides.length >= 1 && horizontalGuides.length >= 1)) {
         ctx.save();
         
         // Determine color based on the type of alignment
@@ -532,7 +534,7 @@ export const FreeDrawingCanvas = () => {
         if (activeGuide?.lineType === 'extension') {
           snapColor = '#3b82f6'; // Blue for extension alignment
         } else if (activeGuide?.lineType === 'point-alignment') {
-          snapColor = '#22c55e'; // Green for point alignment
+          snapColor = '#f97316'; // Orange for point alignment
         }
         
         ctx.strokeStyle = snapColor;
@@ -666,7 +668,7 @@ export const FreeDrawingCanvas = () => {
           if (activeGuide?.lineType === 'extension') {
             lineColor = '#3b82f6'; // Blue for extension
           } else {
-            lineColor = '#22c55e'; // Green for point alignment
+            lineColor = '#f97316'; // Orange for point alignment
           }
           lineWidth = 2;
           lineDash = [5, 5];
@@ -964,7 +966,7 @@ export const FreeDrawingCanvas = () => {
         </div>
         
         <div className="p-4 bg-muted rounded-lg">
-          <h4 className="font-semibold mb-2">סטטistikות</h4>
+          <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
           <div className="text-sm space-y-1">
             <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
             <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
@@ -1017,8 +1019,9 @@ export const FreeDrawingCanvas = () => {
             <p><strong>הוראות:</strong></p>
             <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
             <p>• <span className="text-blue-600">Extension Lines:</span> קווי עזר כחולים מקווקווים עבור יישור עם קווים קיימים</p>
-            <p>• <span className="text-green-600">יישור נקודות:</span> קווי עזר ירוקים מקווקווים עבור יישור מדויק עם נקודות קיימות</p>
+            <p>• <span className="text-orange-600">יישור נקודות:</span> קווי עזר כתומים מקווקווים עבור יישור מדויק עם נקודות קיימות</p>
             <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
+            <p>• <strong>צמתים מרובים:</strong> כאשר מתקיימים תנאי יישור אופקיים ואנכיים יחד - יופיעו שני קווי עזר בו-זמנית</p>
             <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
             <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
             <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
