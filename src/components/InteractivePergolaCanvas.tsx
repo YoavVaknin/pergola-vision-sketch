@@ -99,7 +99,7 @@ export const InteractivePergolaCanvas = ({ config }: InteractivePergolaCanvasPro
     }
 
     console.log(`Drawing pergola: ${config.width}x${config.length} cm, scale: ${scale.toFixed(2)}, beams: ${config.beamSpacing}cm spacing, direction: ${config.beamDirection}°`);
-  }, [config.width, config.length, config.beamSpacing]);
+  }, [config.width, config.length, config.beamSpacing, config.beamDirection]);
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-white rounded-lg border">
