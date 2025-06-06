@@ -318,14 +318,14 @@ export const usePergolaDrawing = () => {
         if (shadingConfig.enabled) {
           const shadingBeams = generateShadingBeams(drawingState.tempPoints, shadingConfig);
           console.log('Adding shading beams:', shadingBeams);
-          newElements.push(...shadingBeams);
+          newElements.push(...(shadingBeams as PergolaElementType[]));
         }
         
         // הוספת קורות החלוקה
         if (shadingConfig.divisionEnabled) {
           const divisionBeams = generateDivisionBeams(drawingState.tempPoints, shadingConfig);
           console.log('Adding division beams:', divisionBeams);
-          newElements.push(...divisionBeams);
+          newElements.push(...(divisionBeams as PergolaElementType[]));
         }
         
         // הוספת עמודים בפינות
@@ -359,13 +359,13 @@ export const usePergolaDrawing = () => {
           // הוספת קורות הצללה חדשות
           if (updated.enabled) {
             const shadingBeams = generateShadingBeams(frameElement.points, updated);
-            newElements.push(...shadingBeams);
+            newElements.push(...(shadingBeams as PergolaElementType[]));
           }
           
           // הוספת קורות החלוקה חדשות
           if (updated.divisionEnabled) {
             const divisionBeams = generateDivisionBeams(frameElement.points, updated);
-            newElements.push(...divisionBeams);
+            newElements.push(...(divisionBeams as PergolaElementType[]));
           }
           
           return newElements;
