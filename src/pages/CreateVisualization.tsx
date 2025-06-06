@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Home, Save } from "lucide-react";
+import { ArrowRight, Home, Save, Download, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PergolaForm } from "@/components/PergolaForm";
 import { InteractivePergolaCanvas } from "@/components/InteractivePergolaCanvas";
 import { usePergola } from "@/hooks/usePergola";
+import { exportCanvasAsPNG, exportAsPDF } from "@/utils/exportUtils";
 
 export interface PergolaConfig {
   width: number;
@@ -29,6 +30,8 @@ export interface PergolaConfig {
 const CreateVisualization = () => {
   const navigate = useNavigate();
   const { saveDesign } = usePergola();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
   const [config, setConfig] = useState<PergolaConfig>({
     width: 400,
     length: 300,
@@ -69,6 +72,14 @@ const CreateVisualization = () => {
       wall_left: config.wall_left,
       wall_right: config.wall_right
     });
+  };
+
+  const handleExportPNG = () => {
+    exportCanvasAsPNG(canvasRef, `pergola-${config.width}x${config.length}`);
+  };
+
+  const handleExportPDF = () => {
+    exportAsPDF(canvasRef, config, `pergola-${config.width}x${config.length}`);
   };
 
   return (
@@ -124,12 +135,34 @@ const CreateVisualization = () => {
           <div className="lg:col-span-2">
             <Card className="p-6 h-full">
               <div className="mb-6">
-                <h2 className="text-xl font-semibold mb-2">תצוגה מקדימה אינטראקטיבית</h2>
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-xl font-semibold">תצוגה מקדימה אינטראקטיבית</h2>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExportPNG}
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      PNG
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExportPDF}
+                      className="flex items-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      PDF
+                    </Button>
+                  </div>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   הדמיה חיה של הפרגולה בהתאם לפרמטרים שהוזנו - מתעדכנת בזמן אמת
                 </p>
               </div>
-              <InteractivePergolaCanvas config={config} />
+              <InteractivePergolaCanvas ref={canvasRef} config={config} />
             </Card>
           </div>
         </div>
