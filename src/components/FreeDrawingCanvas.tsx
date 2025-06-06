@@ -245,80 +245,45 @@ export const FreeDrawingCanvas = () => {
       ctx.stroke();
     }
 
-    // Enhanced alignment guides drawing with much better visibility
+    // ENHANCED ALIGNMENT GUIDES - Very prominent and clear
     alignmentGuides.forEach(guide => {
-      ctx.save(); // Save current context
-      
-      if (guide.lineType === 'point-alignment') {
-        // Point alignment - very prominent orange with glow effect
-        ctx.strokeStyle = '#f97316';
-        ctx.lineWidth = 3;
-        ctx.setLineDash([6, 8]);
-        ctx.shadowColor = '#f97316';
-        ctx.shadowBlur = 4;
-        ctx.globalAlpha = 0.9;
-      } else if (guide.lineType === 'extension') {
-        // Extension guides - bright blue
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([8, 4]);
-        ctx.shadowColor = '#3b82f6';
-        ctx.shadowBlur = 2;
-        ctx.globalAlpha = 0.8;
-      } else {
-        // Parallel guides - bright green
-        ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([10, 3]);
-        ctx.shadowColor = '#10b981';
-        ctx.shadowBlur = 2;
-        ctx.globalAlpha = 0.8;
-      }
-      
-      ctx.beginPath();
-      ctx.moveTo(guide.startPoint.x, guide.startPoint.y);
-      ctx.lineTo(guide.endPoint.x, guide.endPoint.y);
-      ctx.stroke();
-      
-      ctx.restore(); // Restore context
-      
-      // Enhanced target point indicator with different styles for each type
       ctx.save();
+      
       if (guide.lineType === 'point-alignment') {
-        // Very prominent indicator for point alignment
-        ctx.fillStyle = '#f97316';
-        ctx.strokeStyle = '#ea580c';
-        ctx.lineWidth = 3;
-        ctx.shadowColor = '#f97316';
-        ctx.shadowBlur = 6;
+        // VERY PROMINENT POINT ALIGNMENT - exactly like in the reference image
+        ctx.strokeStyle = '#22c55e'; // Bright green like in the image
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 8]); // Clear dashed pattern
+        ctx.globalAlpha = 1; // Full opacity
         
-        // Main circle
+        console.log('Drawing alignment guide:', guide);
+        
+        ctx.beginPath();
+        ctx.moveTo(guide.startPoint.x, guide.startPoint.y);
+        ctx.lineTo(guide.endPoint.x, guide.endPoint.y);
+        ctx.stroke();
+        
+        // Target point indicator - bright green circle
+        ctx.setLineDash([]); // Solid for the circle
+        ctx.fillStyle = '#22c55e';
+        ctx.strokeStyle = '#16a34a';
+        ctx.lineWidth = 2;
+        
         ctx.beginPath();
         ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 6, 0, 2 * Math.PI);
         ctx.fill();
         ctx.stroke();
         
-        // Pulsing rings for better visibility
-        ctx.strokeStyle = '#f97316';
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.6;
+        // Add a small pulse effect
+        ctx.globalAlpha = 0.4;
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
         ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 12, 0, 2 * Math.PI);
         ctx.stroke();
-        
-        ctx.globalAlpha = 0.4;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([2, 6]);
-        ctx.beginPath();
-        ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 18, 0, 2 * Math.PI);
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = guide.lineType === 'extension' ? '#3b82f6' : '#10b981';
-        ctx.beginPath();
-        ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 4, 0, 2 * Math.PI);
-        ctx.fill();
       }
+      
       ctx.restore();
     });
 
@@ -457,55 +422,32 @@ export const FreeDrawingCanvas = () => {
       }
     });
 
-    // Enhanced alignment snap point indicator with improved visibility
+    // ENHANCED ALIGNMENT SNAP POINT - Very prominent like in reference image
     if (alignmentSnapPoint) {
       ctx.save();
       
-      // Determine the color and size based on the type of guide that created this snap point
-      const activeGuide = alignmentGuides.find(guide => 
-        (guide.type === 'vertical' && Math.abs(guide.position - alignmentSnapPoint.x) < 2) ||
-        (guide.type === 'horizontal' && Math.abs(guide.position - alignmentSnapPoint.y) < 2)
-      );
+      // Orange/yellow color like in the reference image for the current point
+      const snapColor = '#f97316'; // Orange for current point being aligned
       
-      let snapColor = '#3b82f6'; // default blue
-      let snapSize = 8;
-      
-      if (activeGuide?.lineType === 'point-alignment') {
-        snapColor = '#f97316'; // orange for point alignment
-        snapSize = 10; // larger for point alignment
-      } else if (activeGuide?.lineType === 'parallel') {
-        snapColor = '#10b981'; // green for parallel
-      }
-      
-      // Main snap indicator
       ctx.strokeStyle = snapColor;
-      ctx.fillStyle = snapColor + '40'; // Add transparency
+      ctx.fillStyle = snapColor + '60'; // Add transparency
       ctx.lineWidth = 3;
       ctx.shadowColor = snapColor;
       ctx.shadowBlur = 8;
       
       ctx.beginPath();
-      ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, snapSize, 0, 2 * Math.PI);
+      ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 8, 0, 2 * Math.PI);
       ctx.fill();
       ctx.stroke();
       
-      // Enhanced pulsing effect for point alignment
-      if (activeGuide?.lineType === 'point-alignment') {
-        ctx.strokeStyle = snapColor;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.7;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, snapSize + 6, 0, 2 * Math.PI);
-        ctx.stroke();
-        
-        ctx.globalAlpha = 0.5;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([2, 6]);
-        ctx.beginPath();
-        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, snapSize + 12, 0, 2 * Math.PI);
-        ctx.stroke();
-      }
+      // Pulsing effect
+      ctx.strokeStyle = snapColor;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.7;
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 14, 0, 2 * Math.PI);
+      ctx.stroke();
       
       ctx.restore();
     }
@@ -582,7 +524,7 @@ export const FreeDrawingCanvas = () => {
       if (mousePosition && drawingState.tempPoints.length > 0) {
         const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
         let targetPoint = alignmentSnapPoint || snapPoint || mousePosition;
-        let lineColor = alignmentSnapPoint ? '#3b82f6' : (snapPoint ? '#22c55e' : '#94a3b8');
+        let lineColor = alignmentSnapPoint ? '#f97316' : (snapPoint ? '#22c55e' : '#94a3b8');
         let lineWidth = (alignmentSnapPoint || snapPoint) ? 2 : 1;
         let lineDash: number[] = [3, 3];
         
@@ -669,14 +611,18 @@ export const FreeDrawingCanvas = () => {
     const foundSnapPoint = findSnapPoint(point);
     setSnapPoint(foundSnapPoint);
 
-    // Smart alignment detection
+    // ENHANCED SMART ALIGNMENT DETECTION
     if (drawingState.mode === 'frame' && drawingState.tempPoints.length > 0) {
       const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
-      const guides = findAlignmentGuides(point, lastPoint, elements, 15);
+      console.log('Detecting alignment for point:', point, 'from last point:', lastPoint);
+      
+      const guides = findAlignmentGuides(point, lastPoint, elements, 10); // Reduced tolerance for precision
       setAlignmentGuides(guides);
       
       const alignSnap = getSnapPoint(point, guides);
       setAlignmentSnapPoint(alignSnap);
+      
+      console.log('Found guides:', guides.length, 'Snap point:', alignSnap);
     } else {
       setAlignmentGuides([]);
       setAlignmentSnapPoint(null);
@@ -852,7 +798,7 @@ export const FreeDrawingCanvas = () => {
         </div>
         
         <div className="p-4 bg-muted rounded-lg">
-          <h4 className="font-semibold mb-2">סטטistikות</h4>
+          <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
           <div className="text-sm space-y-1">
             <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
             <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
@@ -904,9 +850,8 @@ export const FreeDrawingCanvas = () => {
           <div className="mt-4 text-sm text-muted-foreground">
             <p><strong>הוראות:</strong></p>
             <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
+            <p>• <span className="text-green-600">יישור חכם:</span> קווי עזר ירוקים מקווקווים מופיעים בעת יישור מדויק עם נקודות קיימות</p>
             <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
-            <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
-            <p>• <span className="text-green-600">ישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
             <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
             <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
             <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
