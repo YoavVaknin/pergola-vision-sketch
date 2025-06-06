@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { Point, PergolaElementType, DrawingState, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement, ShadingConfig } from '@/types/pergola';
 
@@ -50,37 +49,47 @@ export const usePergolaDrawing = () => {
     const maxY = Math.max(...framePoints.map(p => p.y));
 
     console.log('Frame bounds:', { minX, maxX, minY, maxY });
+    console.log('Shading config:', config);
 
     if (config.direction === 0) {
       // קורות אנכיות - מעבר על ציר X
       for (let x = minX + config.spacing; x < maxX; x += config.spacing) {
-        // חיפוש החתך עם המסגרת מלמעלה למטה
-        let intersections = [];
+        const intersections: number[] = [];
         
+        // חיפוש החתכים עם צלעות המסגרת
         for (let i = 0; i < framePoints.length; i++) {
           const p1 = framePoints[i];
           const p2 = framePoints[(i + 1) % framePoints.length];
           
-          // בדיקה אם הקו האנכי חותך את צלע המסגרת
-          if ((p1.x <= x && x <= p2.x) || (p2.x <= x && x <= p1.x)) {
-            if (p1.x !== p2.x) { // לא קו אנכי
-              const y = p1.y + (x - p1.x) * (p2.y - p1.y) / (p2.x - p1.x);
-              if (y >= minY && y <= maxY) {
-                intersections.push(y);
-              }
+          // בדיקה אם הקו האנכי חותך את הצלע
+          const minEdgeX = Math.min(p1.x, p2.x);
+          const maxEdgeX = Math.max(p1.x, p2.x);
+          
+          if (x > minEdgeX && x < maxEdgeX && p1.x !== p2.x) {
+            // חישוב נקודת החתך
+            const t = (x - p1.x) / (p2.x - p1.x);
+            const y = p1.y + t * (p2.y - p1.y);
+            
+            if (y >= minY && y <= maxY) {
+              intersections.push(y);
             }
           }
         }
         
-        // מיון החתכים ויצירת קורות
+        // מיון החתכים ויצירת קורות בזוגות
         intersections.sort((a, b) => a - b);
+        console.log(`Vertical line at x=${x}, intersections:`, intersections);
+        
         for (let i = 0; i < intersections.length - 1; i += 2) {
           if (i + 1 < intersections.length) {
+            const start = { x, y: intersections[i] };
+            const end = { x, y: intersections[i + 1] };
+            
             beams.push({
               id: generateId(),
               type: 'shading',
-              start: { x, y: intersections[i] },
-              end: { x, y: intersections[i + 1] },
+              start,
+              end,
               spacing: config.spacing,
               direction: config.direction,
               color: config.color
@@ -91,32 +100,42 @@ export const usePergolaDrawing = () => {
     } else {
       // קורות אופקיות - מעבר על ציר Y
       for (let y = minY + config.spacing; y < maxY; y += config.spacing) {
-        let intersections = [];
+        const intersections: number[] = [];
         
+        // חיפוש החתכים עם צלעות המסגרת
         for (let i = 0; i < framePoints.length; i++) {
           const p1 = framePoints[i];
           const p2 = framePoints[(i + 1) % framePoints.length];
           
-          // בדיקה אם הקו האופקי חותך את צלע המסגרת
-          if ((p1.y <= y && y <= p2.y) || (p2.y <= y && y <= p1.y)) {
-            if (p1.y !== p2.y) { // לא קו אופקי
-              const x = p1.x + (y - p1.y) * (p2.x - p1.x) / (p2.y - p1.y);
-              if (x >= minX && x <= maxX) {
-                intersections.push(x);
-              }
+          // בדיקה אם הקו האופקי חותך את הצלע
+          const minEdgeY = Math.min(p1.y, p2.y);
+          const maxEdgeY = Math.max(p1.y, p2.y);
+          
+          if (y > minEdgeY && y < maxEdgeY && p1.y !== p2.y) {
+            // חישוב נקודת החתך
+            const t = (y - p1.y) / (p2.y - p1.y);
+            const x = p1.x + t * (p2.x - p1.x);
+            
+            if (x >= minX && x <= maxX) {
+              intersections.push(x);
             }
           }
         }
         
-        // מיון החתכים ויצירת קורות
+        // מיון החתכים ויצירת קורות בזוגות
         intersections.sort((a, b) => a - b);
+        console.log(`Horizontal line at y=${y}, intersections:`, intersections);
+        
         for (let i = 0; i < intersections.length - 1; i += 2) {
           if (i + 1 < intersections.length) {
+            const start = { x: intersections[i], y };
+            const end = { x: intersections[i + 1], y };
+            
             beams.push({
               id: generateId(),
               type: 'shading',
-              start: { x: intersections[i], y },
-              end: { x: intersections[i + 1], y },
+              start,
+              end,
               spacing: config.spacing,
               direction: config.direction,
               color: config.color
@@ -126,21 +145,9 @@ export const usePergolaDrawing = () => {
       }
     }
 
-    console.log('Generated shading beams:', beams.length);
+    console.log('Generated shading beams:', beams.length, beams);
     return beams;
   }, []);
-
-  // פונקציה לבדיקה אם נקודה נמצאת בתוך פוליגון
-  const isPointInPolygon = (point: Point, polygon: Point[]): boolean => {
-    let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      if (((polygon[i].y > point.y) !== (polygon[j].y > point.y)) &&
-          (point.x < (polygon[j].x - polygon[i].x) * (point.y - polygon[i].y) / (polygon[j].y - polygon[i].y) + polygon[i].x)) {
-        inside = !inside;
-      }
-    }
-    return inside;
-  };
 
   // פונקציה להוספת עמודים אוטומטית בפינות המסגרת
   const generateCornerColumns = useCallback((framePoints: Point[]): ColumnElement[] => {
