@@ -1,4 +1,3 @@
-
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Point, PergolaElementType, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement, DivisionElement } from '@/types/pergola';
 import { usePergolaDrawing } from '@/hooks/usePergolaDrawing';
@@ -11,6 +10,7 @@ export const FreeDrawingCanvas = () => {
   const [dragStart, setDragStart] = useState<Point | null>(null);
   const [mousePosition, setMousePosition] = useState<Point | null>(null);
   const [isNearFirstPoint, setIsNearFirstPoint] = useState(false);
+  const [snapPoint, setSnapPoint] = useState<Point | null>(null);
   
   const {
     elements,
@@ -45,6 +45,37 @@ export const FreeDrawingCanvas = () => {
     const dy = point1.y - point2.y;
     return Math.sqrt(dx * dx + dy * dy);
   }, []);
+
+  // פונקציה למציאת נקודה קרובה לסנאפ
+  const findSnapPoint = useCallback((mousePos: Point): Point | null => {
+    if (drawingState.mode !== 'frame') return null;
+    
+    const SNAP_DISTANCE = 10;
+    
+    // בדיקה מול הנקודה הראשונה (לסגירה אוטומטית)
+    if (drawingState.tempPoints.length >= 3) {
+      const firstPoint = drawingState.tempPoints[0];
+      const distance = calculateDistance(mousePos, firstPoint);
+      if (distance <= SNAP_DISTANCE) {
+        return firstPoint;
+      }
+    }
+    
+    // בדיקה מול נקודות קיימות במסגרות אחרות
+    for (const element of elements) {
+      if (element.type === 'frame') {
+        const frameElement = element as FrameElement;
+        for (const point of frameElement.points) {
+          const distance = calculateDistance(mousePos, point);
+          if (distance <= SNAP_DISTANCE) {
+            return point;
+          }
+        }
+      }
+    }
+    
+    return null;
+  }, [drawingState.mode, drawingState.tempPoints, elements, calculateDistance]);
 
   // בדיקה אם העכבר קרוב לנקודה הראשונה
   const checkNearFirstPoint = useCallback((mousePos: Point): boolean => {
@@ -164,6 +195,28 @@ export const FreeDrawingCanvas = () => {
       }
     });
 
+    // Draw snap point indicator
+    if (snapPoint && drawingState.mode === 'frame') {
+      ctx.strokeStyle = '#22c55e';
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.2)';
+      ctx.lineWidth = 2;
+      
+      // עיגול פנימי מלא
+      ctx.beginPath();
+      ctx.arc(snapPoint.x, snapPoint.y, 8, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
+      
+      // עיגול חיצוני מהבהב
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.arc(snapPoint.x, snapPoint.y, 12, 0, 2 * Math.PI);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     // Draw temporary points for frame drawing
     if (drawingState.mode === 'frame' && drawingState.tempPoints.length > 0) {
       ctx.strokeStyle = '#10b981';
@@ -214,20 +267,22 @@ export const FreeDrawingCanvas = () => {
         }
       });
       
-      // קו זמני מהנקודה האחרונה לעמדת העכבר
+      // קו זמני מהנקודה האחרונה לעמדת העכבר (או לנקודת הסנאפ)
       if (mousePosition && drawingState.tempPoints.length > 0) {
         const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
-        ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 1;
+        const targetPoint = snapPoint || mousePosition;
+        
+        ctx.strokeStyle = snapPoint ? '#22c55e' : '#94a3b8';
+        ctx.lineWidth = snapPoint ? 2 : 1;
         ctx.setLineDash([3, 3]);
         ctx.beginPath();
         ctx.moveTo(lastPoint.x, lastPoint.y);
-        ctx.lineTo(mousePosition.x, mousePosition.y);
+        ctx.lineTo(targetPoint.x, targetPoint.y);
         ctx.stroke();
         ctx.setLineDash([]);
       }
     }
-  }, [elements, drawingState, mousePosition, isNearFirstPoint]);
+  }, [elements, drawingState, mousePosition, isNearFirstPoint, snapPoint]);
 
   useEffect(() => {
     drawElements();
@@ -240,6 +295,10 @@ export const FreeDrawingCanvas = () => {
     // בדיקה אם העכבר קרוב לנקודה הראשונה
     const nearFirst = checkNearFirstPoint(point);
     setIsNearFirstPoint(nearFirst);
+    
+    // בדיקה למציאת נקודת סנאפ
+    const foundSnapPoint = findSnapPoint(point);
+    setSnapPoint(foundSnapPoint);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -247,12 +306,16 @@ export const FreeDrawingCanvas = () => {
     
     switch (drawingState.mode) {
       case 'frame':
+        // שימוש בנקודת הסנאפ אם קיימת
+        const pointToAdd = snapPoint || point;
+        
         // בדיקה לסגירה אוטומטית
-        if (drawingState.tempPoints.length >= 3 && checkNearFirstPoint(point)) {
-          console.log('Auto-closing frame - clicked near first point');
+        if (drawingState.tempPoints.length >= 3 && snapPoint && 
+            snapPoint === drawingState.tempPoints[0]) {
+          console.log('Auto-closing frame - snapped to first point');
           finishFrame();
         } else {
-          addPoint(point);
+          addPoint(pointToAdd);
         }
         break;
         
@@ -338,7 +401,7 @@ export const FreeDrawingCanvas = () => {
           
           <div className="mt-4 text-sm text-muted-foreground">
             <p><strong>הוראות:</strong></p>
-            <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה הראשונה לסגירה אוטומטית</p>
+            <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
             <p>• הצללה וחלוקה יתווספו אוטומטית בתוך המסגרת לפי ההגדרות</p>
             <p>• עמודים יתווספו אוטומטית בפינות המסגרת</p>
             <p>• קורה/קיר: לחץ והחזק, גרור ושחרר</p>
