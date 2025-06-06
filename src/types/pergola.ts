@@ -6,7 +6,7 @@ export interface Point {
 
 export interface PergolaElement {
   id: string;
-  type: 'frame' | 'beam' | 'column' | 'wall';
+  type: 'frame' | 'beam' | 'column' | 'wall' | 'shading';
   color?: string;
   profile?: string;
 }
@@ -37,11 +37,26 @@ export interface WallElement extends PergolaElement {
   height: number;
 }
 
-export type PergolaElementType = FrameElement | BeamElement | ColumnElement | WallElement;
+export interface ShadingElement extends PergolaElement {
+  type: 'shading';
+  start: Point;
+  end: Point;
+  spacing: number;
+  direction: number;
+}
+
+export type PergolaElementType = FrameElement | BeamElement | ColumnElement | WallElement | ShadingElement;
 
 export interface DrawingState {
   mode: 'frame' | 'beam' | 'column' | 'wall' | 'select';
   activeElement: string | null;
   isDrawing: boolean;
   tempPoints: Point[];
+}
+
+export interface ShadingConfig {
+  spacing: number;
+  direction: number; // 0 = אנכי, 90 = אופקי
+  color: string;
+  enabled: boolean;
 }
