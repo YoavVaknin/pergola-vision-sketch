@@ -1,6 +1,6 @@
-
 import { useState, useCallback } from 'react';
-import { Point, PergolaElementType, DrawingState, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement, DivisionElement, ShadingConfig } from '@/types/pergola';
+import { Point, PergolaElementType, DrawingState, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement, DivisionElement, ShadingConfig, MeasurementConfig } from '@/types/pergola';
+import { calculateRealDistance, calculatePolygonArea, calculatePolygonAngles } from '@/utils/measurementUtils';
 
 export const usePergolaDrawing = () => {
   const [elements, setElements] = useState<PergolaElementType[]>([]);
@@ -21,7 +21,13 @@ export const usePergolaDrawing = () => {
     divisionEnabled: true
   });
 
-  const generateId = () => Math.random().toString(36).substr(2, 9);
+  const [measurementConfig, setMeasurementConfig] = useState<MeasurementConfig>({
+    pixelsPerCm: 2, // 2 pixels = 1 cm (can be adjusted based on scale)
+    showLengths: true,
+    showArea: true,
+    showAngles: true,
+    unit: 'cm'
+  });
 
   // פונקציה לבדיקה אם נקודה נמצאת בתוך פוליגון
   const isPointInPolygon = (point: Point, polygon: Point[]): boolean => {
@@ -36,6 +42,37 @@ export const usePergolaDrawing = () => {
     }
     return inside;
   };
+
+  // Function to calculate measurements for a frame
+  const calculateFrameMeasurements = useCallback((points: Point[]) => {
+    if (points.length < 2) return undefined;
+
+    const segmentLengths: number[] = [];
+    
+    // Calculate segment lengths
+    for (let i = 0; i < points.length; i++) {
+      const nextIndex = (i + 1) % points.length;
+      if (i === points.length - 1 && points.length < 3) break; // Don't close if less than 3 points
+      
+      const length = calculateRealDistance(points[i], points[nextIndex], measurementConfig.pixelsPerCm);
+      segmentLengths.push(length);
+    }
+
+    let area: number | undefined;
+    let angles: number[] | undefined;
+
+    // Calculate area and angles only for closed shapes with 3+ points
+    if (points.length >= 3) {
+      area = calculatePolygonArea(points, measurementConfig.pixelsPerCm);
+      angles = calculatePolygonAngles(points);
+    }
+
+    return {
+      segmentLengths,
+      area,
+      angles
+    };
+  }, [measurementConfig.pixelsPerCm]);
 
   // פונקציה לחישוב קורות הצללה
   const generateShadingBeams = useCallback((framePoints: Point[], config: ShadingConfig): ShadingElement[] => {
@@ -298,15 +335,19 @@ export const usePergolaDrawing = () => {
 
   const finishFrame = useCallback(() => {
     if (drawingState.tempPoints.length >= 3) {
+      const measurements = calculateFrameMeasurements(drawingState.tempPoints);
+      
       const newFrame: FrameElement = {
         id: generateId(),
         type: 'frame',
         points: drawingState.tempPoints,
         closed: true,
-        color: '#1f2937'
+        color: '#1f2937',
+        measurements
       };
       
       console.log('Creating frame with points:', drawingState.tempPoints);
+      console.log('Frame measurements:', measurements);
       
       setElements(prev => {
         // הסרת קורות הצללה, החלוקה והעמודים הקיימים
@@ -342,7 +383,7 @@ export const usePergolaDrawing = () => {
         tempPoints: []
       }));
     }
-  }, [drawingState.tempPoints, shadingConfig, generateShadingBeams, generateDivisionBeams, generateCornerColumns]);
+  }, [drawingState.tempPoints, shadingConfig, generateShadingBeams, generateDivisionBeams, generateCornerColumns, calculateFrameMeasurements]);
 
   const updateShadingConfig = useCallback((newConfig: Partial<ShadingConfig>) => {
     setShadingConfig(prev => {
@@ -376,6 +417,29 @@ export const usePergolaDrawing = () => {
       return updated;
     });
   }, [elements, generateShadingBeams, generateDivisionBeams]);
+
+  const updateMeasurementConfig = useCallback((newConfig: Partial<MeasurementConfig>) => {
+    setMeasurementConfig(prev => {
+      const updated = { ...prev, ...newConfig };
+      
+      // Update measurements for existing frames
+      setElements(prevElements => {
+        return prevElements.map(element => {
+          if (element.type === 'frame') {
+            const frameElement = element as FrameElement;
+            const measurements = calculateFrameMeasurements(frameElement.points);
+            return {
+              ...frameElement,
+              measurements
+            } as FrameElement;
+          }
+          return element;
+        });
+      });
+      
+      return updated;
+    });
+  }, [calculateFrameMeasurements]);
 
   const addBeam = useCallback((start: Point, end: Point) => {
     const newBeam: BeamElement = {
@@ -450,6 +514,7 @@ export const usePergolaDrawing = () => {
     elements,
     drawingState,
     shadingConfig,
+    measurementConfig,
     addPoint,
     finishFrame,
     addBeam,
@@ -459,6 +524,7 @@ export const usePergolaDrawing = () => {
     setMode,
     selectElement,
     clearAll,
-    updateShadingConfig
+    updateShadingConfig,
+    updateMeasurementConfig
   };
 };

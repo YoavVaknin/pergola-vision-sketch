@@ -3,6 +3,7 @@ import { Point, PergolaElementType, FrameElement, BeamElement, ColumnElement, Wa
 import { usePergolaDrawing } from '@/hooks/usePergolaDrawing';
 import { DrawingToolbar } from './DrawingToolbar';
 import { ShadingConfigComponent } from './ShadingConfig';
+import { getMidpoint, getPolygonCentroid, formatMeasurement, formatArea } from '@/utils/measurementUtils';
 
 export const FreeDrawingCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -18,6 +19,7 @@ export const FreeDrawingCanvas = () => {
     elements,
     drawingState,
     shadingConfig,
+    measurementConfig,
     addPoint,
     finishFrame,
     addBeam,
@@ -27,7 +29,8 @@ export const FreeDrawingCanvas = () => {
     setMode,
     selectElement,
     clearAll,
-    updateShadingConfig
+    updateShadingConfig,
+    updateMeasurementConfig
   } = usePergolaDrawing();
 
   const getCanvasPoint = useCallback((clientX: number, clientY: number): Point => {
@@ -127,6 +130,42 @@ export const FreeDrawingCanvas = () => {
     return distance <= 10; // מרחק של 10 פיקסלים
   }, [drawingState.mode, drawingState.tempPoints, calculateDistance]);
 
+  // Function to draw measurement text
+  const drawMeasurementText = useCallback((ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: {
+    fontSize?: number;
+    color?: string;
+    background?: boolean;
+    align?: 'center' | 'left' | 'right';
+  } = {}) => {
+    const {
+      fontSize = 12,
+      color = '#374151',
+      background = true,
+      align = 'center'
+    } = options;
+
+    ctx.font = `${fontSize}px Arial`;
+    ctx.textAlign = align;
+    ctx.textBaseline = 'middle';
+
+    if (background) {
+      const metrics = ctx.measureText(text);
+      const padding = 4;
+      const bgWidth = metrics.width + padding * 2;
+      const bgHeight = fontSize + padding * 2;
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.fillRect(x - bgWidth / 2, y - bgHeight / 2, bgWidth, bgHeight);
+      
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - bgWidth / 2, y - bgHeight / 2, bgWidth, bgHeight);
+    }
+
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  }, []);
+
   const drawElements = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -171,6 +210,52 @@ export const FreeDrawingCanvas = () => {
               ctx.closePath();
             }
             ctx.stroke();
+
+            // Draw measurements
+            if (measurementConfig.showLengths && frame.measurements) {
+              frame.measurements.segmentLengths.forEach((length, index) => {
+                const point1 = frame.points[index];
+                const point2 = frame.points[(index + 1) % frame.points.length];
+                
+                // Skip the last segment if frame is not closed
+                if (!frame.closed && index === frame.points.length - 1) return;
+                
+                const midpoint = getMidpoint(point1, point2);
+                const lengthText = formatMeasurement(length, measurementConfig.unit);
+                
+                drawMeasurementText(ctx, lengthText, midpoint.x, midpoint.y, {
+                  fontSize: 11,
+                  color: '#6b7280'
+                });
+              });
+            }
+
+            // Draw angles
+            if (measurementConfig.showAngles && frame.measurements && frame.measurements.angles && frame.closed) {
+              frame.measurements.angles.forEach((angle, index) => {
+                const point = frame.points[index];
+                const angleText = `${angle.toFixed(0)}°`;
+                
+                // Offset angle text slightly from the vertex
+                const offset = 15;
+                drawMeasurementText(ctx, angleText, point.x + offset, point.y - offset, {
+                  fontSize: 10,
+                  color: '#059669'
+                });
+              });
+            }
+
+            // Draw area
+            if (measurementConfig.showArea && frame.measurements && frame.measurements.area && frame.closed) {
+              const centroid = getPolygonCentroid(frame.points);
+              const areaText = `שטח: ${formatArea(frame.measurements.area)}`;
+              
+              drawMeasurementText(ctx, areaText, centroid.x, centroid.y, {
+                fontSize: 14,
+                color: '#dc2626',
+                background: true
+              });
+            }
           }
           // Draw points
           frame.points.forEach(point => {
@@ -354,7 +439,7 @@ export const FreeDrawingCanvas = () => {
         }
       }
     }
-  }, [elements, drawingState, mousePosition, isNearFirstPoint, snapPoint, angleSnapPoint, isAngleSnapped, calculateSnappedAnglePoint]);
+  }, [elements, drawingState, mousePosition, isNearFirstPoint, snapPoint, angleSnapPoint, isAngleSnapped, calculateSnappedAnglePoint, measurementConfig, drawMeasurementText]);
 
   useEffect(() => {
     drawElements();
@@ -451,6 +536,62 @@ export const FreeDrawingCanvas = () => {
           config={shadingConfig}
           onConfigChange={updateShadingConfig}
         />
+
+        <div className="p-4 bg-muted rounded-lg">
+          <h4 className="font-semibold mb-2">הגדרות מדידה</h4>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm">הצג אורכים</label>
+              <input
+                type="checkbox"
+                checked={measurementConfig.showLengths}
+                onChange={(e) => updateMeasurementConfig({ showLengths: e.target.checked })}
+                className="rounded"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="text-sm">הצג שטח</label>
+              <input
+                type="checkbox"
+                checked={measurementConfig.showArea}
+                onChange={(e) => updateMeasurementConfig({ showArea: e.target.checked })}
+                className="rounded"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="text-sm">הצג זוויות</label>
+              <input
+                type="checkbox"
+                checked={measurementConfig.showAngles}
+                onChange={(e) => updateMeasurementConfig({ showAngles: e.target.checked })}
+                className="rounded"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="text-sm">יחידת מדידה</label>
+              <select
+                value={measurementConfig.unit}
+                onChange={(e) => updateMeasurementConfig({ unit: e.target.value as any })}
+                className="text-sm border rounded px-2 py-1"
+              >
+                <option value="cm">ס״מ</option>
+                <option value="mm">מ״מ</option>
+                <option value="m">מטר</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="text-sm">סקלה (פיקסלים/ס״מ)</label>
+              <input
+                type="number"
+                value={measurementConfig.pixelsPerCm}
+                onChange={(e) => updateMeasurementConfig({ pixelsPerCm: parseFloat(e.target.value) || 2 })}
+                className="text-sm border rounded px-2 py-1 w-16"
+                min="0.1"
+                step="0.1"
+              />
+            </div>
+          </div>
+        </div>
         
         <div className="p-4 bg-muted rounded-lg">
           <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
@@ -467,7 +608,7 @@ export const FreeDrawingCanvas = () => {
       
       <div className="lg:col-span-3">
         <div className="border rounded-lg shadow-sm bg-white p-4">
-          <h3 className="text-lg font-semibold mb-4">שרטוט חופשי עם הצללה וחלוקה</h3>
+          <h3 className="text-lg font-semibold mb-4">שרטוט חופשי עם מדידות</h3>
           <canvas
             ref={canvasRef}
             width={800}
@@ -483,6 +624,7 @@ export const FreeDrawingCanvas = () => {
             <p><strong>הוראות:</strong></p>
             <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
             <p>• <span className="text-amber-600">יישור חכם:</span> זווית נעולה (0°, 45°, 90°) מוצגת בכתום מקווקו מהקו הראשון</p>
+            <p>• <span className="text-blue-600">מדידות:</span> אורכים, שטח וזוויות מוצגים אוטומטית</p>
             <p>• הצללה וחלוקה יתווספו אוטומטית בתוך המסגרת לפי ההגדרות</p>
             <p>• עמודים יתווספו אוטומטית בפינות המסגרת</p>
             <p>• קורה/קיר: לחץ והחזק, גרור ושחרר</p>

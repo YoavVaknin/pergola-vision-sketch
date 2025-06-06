@@ -1,4 +1,3 @@
-
 export interface Point {
   x: number;
   y: number;
@@ -15,6 +14,11 @@ export interface FrameElement extends PergolaElement {
   type: 'frame';
   points: Point[];
   closed: boolean;
+  measurements?: {
+    segmentLengths: number[]; // Length of each segment in cm
+    area?: number; // Area in square meters (if closed)
+    angles?: number[]; // Angles between adjacent segments in degrees
+  };
 }
 
 export interface BeamElement extends PergolaElement {
@@ -72,4 +76,12 @@ export interface ShadingConfig {
   divisionSpacing: number; // מרחק בין קורות החלוקה
   divisionColor: string;
   divisionEnabled: boolean;
+}
+
+export interface MeasurementConfig {
+  pixelsPerCm: number; // Scale factor for converting pixels to cm
+  showLengths: boolean;
+  showArea: boolean;
+  showAngles: boolean;
+  unit: 'cm' | 'mm' | 'm';
 }
