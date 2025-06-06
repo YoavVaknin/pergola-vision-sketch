@@ -9,6 +9,8 @@ export const FreeDrawingCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<Point | null>(null);
+  const [mousePosition, setMousePosition] = useState<Point | null>(null);
+  const [isNearFirstPoint, setIsNearFirstPoint] = useState(false);
   
   const {
     elements,
@@ -36,6 +38,24 @@ export const FreeDrawingCanvas = () => {
       y: clientY - rect.top
     };
   }, []);
+
+  // פונקציה לחישוב מרחק בין שתי נקודות
+  const calculateDistance = useCallback((point1: Point, point2: Point): number => {
+    const dx = point1.x - point2.x;
+    const dy = point1.y - point2.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }, []);
+
+  // בדיקה אם העכבר קרוב לנקודה הראשונה
+  const checkNearFirstPoint = useCallback((mousePos: Point): boolean => {
+    if (drawingState.mode !== 'frame' || drawingState.tempPoints.length < 3) {
+      return false;
+    }
+    
+    const firstPoint = drawingState.tempPoints[0];
+    const distance = calculateDistance(mousePos, firstPoint);
+    return distance <= 10; // מרחק של 10 פיקסלים
+  }, [drawingState.mode, drawingState.tempPoints, calculateDistance]);
 
   const drawElements = useCallback(() => {
     const canvas = canvasRef.current;
@@ -160,25 +180,80 @@ export const FreeDrawingCanvas = () => {
       }
       
       ctx.setLineDash([]);
-      drawingState.tempPoints.forEach(point => {
-        ctx.fillStyle = '#10b981';
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, 6, 0, 2 * Math.PI);
-        ctx.fill();
+      drawingState.tempPoints.forEach((point, index) => {
+        if (index === 0) {
+          // הדגשה של הנקודה הראשונה כאשר העכבר קרוב אליה
+          if (isNearFirstPoint) {
+            ctx.fillStyle = '#22c55e';
+            ctx.strokeStyle = '#16a34a';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 8, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+            
+            // הוספת עיגול חיצוני מהבהב
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 12, 0, 2 * Math.PI);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          } else {
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 6, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+        } else {
+          ctx.fillStyle = '#10b981';
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, 6, 0, 2 * Math.PI);
+          ctx.fill();
+        }
       });
+      
+      // קו זמני מהנקודה האחרונה לעמדת העכבר
+      if (mousePosition && drawingState.tempPoints.length > 0) {
+        const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(lastPoint.x, lastPoint.y);
+        ctx.lineTo(mousePosition.x, mousePosition.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
     }
-  }, [elements, drawingState]);
+  }, [elements, drawingState, mousePosition, isNearFirstPoint]);
 
   useEffect(() => {
     drawElements();
   }, [drawElements]);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const point = getCanvasPoint(e.clientX, e.clientY);
+    setMousePosition(point);
+    
+    // בדיקה אם העכבר קרוב לנקודה הראשונה
+    const nearFirst = checkNearFirstPoint(point);
+    setIsNearFirstPoint(nearFirst);
+  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const point = getCanvasPoint(e.clientX, e.clientY);
     
     switch (drawingState.mode) {
       case 'frame':
-        addPoint(point);
+        // בדיקה לסגירה אוטומטית
+        if (drawingState.tempPoints.length >= 3 && checkNearFirstPoint(point)) {
+          console.log('Auto-closing frame - clicked near first point');
+          finishFrame();
+        } else {
+          addPoint(point);
+        }
         break;
         
       case 'beam':
@@ -257,16 +332,18 @@ export const FreeDrawingCanvas = () => {
             className="border rounded cursor-crosshair bg-white"
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
+            onMouseMove={handleMouseMove}
             onDoubleClick={handleDoubleClick}
           />
           
           <div className="mt-4 text-sm text-muted-foreground">
             <p><strong>הוראות:</strong></p>
-            <p>• מסגרת: לחץ לסימון נקודות, דאבל-קליק או "סיום מסגרת" לסגירה</p>
+            <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה הראשונה לסגירה אוטומטית</p>
             <p>• הצללה וחלוקה יתווספו אוטומטית בתוך המסגרת לפי ההגדרות</p>
             <p>• עמודים יתווספו אוטומטית בפינות המסגרת</p>
             <p>• קורה/קיר: לחץ והחזק, גרור ושחרר</p>
             <p>• עמוד נוסף: לחיצה פשוטה</p>
+            <p>• דאבל-קליק או כפתור "סיום מסגרת" לסגירה ידנית</p>
           </div>
         </div>
       </div>
