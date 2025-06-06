@@ -634,10 +634,9 @@ export const FreeDrawingCanvas = () => {
     const foundSnapPoint = findSnapPoint(point);
     setSnapPoint(foundSnapPoint);
 
-    // Smart alignment detection - now includes temp points
+    // Smart alignment detection - now includes tempPoints for better alignment during shape closing
     if (drawingState.mode === 'frame' && drawingState.tempPoints.length > 0) {
       const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
-      // Pass the temp points to the alignment guide calculation
       const guides = findAlignmentGuides(point, lastPoint, elements, drawingState.tempPoints, 15);
       setAlignmentGuides(guides);
       

@@ -16,15 +16,14 @@ export const useSmartAlignment = () => {
     currentPoint: Point,
     previousPoint: Point,
     elements: PergolaElementType[],
-    tempPoints: Point[] = [], // Add temp points for current drawing
+    tempPoints: Point[] = [], // Add tempPoints parameter
     tolerance: number = 15
   ): AlignmentGuide[] => {
     const guides: AlignmentGuide[] = [];
     
-    // Collect all points from existing elements AND current temp points
+    // Collect all points from existing elements
     const allPoints: Point[] = [];
     
-    // Add points from existing elements
     elements.forEach(element => {
       if (element.type === 'frame') {
         const frame = element as FrameElement;
@@ -42,10 +41,8 @@ export const useSmartAlignment = () => {
       }
     });
 
-    // Add temporary points from current drawing (excluding the last one which is being drawn)
-    if (tempPoints.length > 0) {
-      allPoints.push(...tempPoints);
-    }
+    // Add temp points from current drawing session
+    allPoints.push(...tempPoints);
 
     // Check for point alignment (vertical and horizontal guides)
     allPoints.forEach(point => {
@@ -74,10 +71,9 @@ export const useSmartAlignment = () => {
       }
     });
 
-    // Find all line segments from existing frames, other elements, AND temp points for extension guides
+    // Find all line segments from existing frames and other elements for extension guides
     const lineSegments: { start: Point; end: Point; type: string }[] = [];
     
-    // Add segments from existing elements
     elements.forEach(element => {
       if (element.type === 'frame') {
         const frame = element as FrameElement;
@@ -103,15 +99,13 @@ export const useSmartAlignment = () => {
       }
     });
 
-    // Add segments from current temp points (this is the key addition)
-    if (tempPoints.length >= 2) {
-      for (let i = 0; i < tempPoints.length - 1; i++) {
-        lineSegments.push({
-          start: tempPoints[i],
-          end: tempPoints[i + 1],
-          type: 'temp-frame'
-        });
-      }
+    // Add line segments from temp points
+    for (let i = 0; i < tempPoints.length - 1; i++) {
+      lineSegments.push({
+        start: tempPoints[i],
+        end: tempPoints[i + 1],
+        type: 'temp'
+      });
     }
 
     // Calculate current drawing direction
