@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { Point, FrameElement, PergolaElementType } from '@/types/pergola';
 
@@ -7,7 +8,7 @@ export interface AlignmentGuide {
   startPoint: Point;
   endPoint: Point;
   targetPoint: Point; // The point we're aligning to
-  lineType: 'extension' | 'parallel' | 'point-alignment-vertical' | 'point-alignment-horizontal'; // Enhanced line types
+  lineType: 'extension' | 'parallel' | 'point-alignment'; // Type of alignment guide
 }
 
 export const useSmartAlignment = () => {
@@ -15,303 +16,224 @@ export const useSmartAlignment = () => {
     currentPoint: Point,
     previousPoint: Point,
     elements: PergolaElementType[],
-    tempPoints: Point[] = [],
-    tolerance: number = 10
+    tolerance: number = 15
   ): AlignmentGuide[] => {
     const guides: AlignmentGuide[] = [];
     
     // Collect all points from existing elements
-    const allPoints: { point: Point; elementType: string; elementId: string }[] = [];
+    const allPoints: { point: Point; elementType: string }[] = [];
     
     elements.forEach(element => {
       if (element.type === 'frame') {
         const frame = element as FrameElement;
-        frame.points.forEach((point, index) => {
-          allPoints.push({ 
-            point, 
-            elementType: 'frame', 
-            elementId: `${element.id}-${index}` 
-          });
+        frame.points.forEach(point => {
+          allPoints.push({ point, elementType: 'frame' });
         });
       } else if (element.type === 'shading' || element.type === 'division' || element.type === 'beam') {
         const lineElement = element as any;
         if (lineElement.start && lineElement.end) {
-          allPoints.push({ 
-            point: lineElement.start, 
-            elementType: element.type, 
-            elementId: `${element.id}-start` 
-          });
-          allPoints.push({ 
-            point: lineElement.end, 
-            elementType: element.type, 
-            elementId: `${element.id}-end` 
-          });
+          allPoints.push({ point: lineElement.start, elementType: element.type });
+          allPoints.push({ point: lineElement.end, elementType: element.type });
         }
       } else if (element.type === 'column') {
         const columnElement = element as any;
         if (columnElement.position) {
-          allPoints.push({ 
-            point: columnElement.position, 
-            elementType: element.type, 
-            elementId: element.id 
+          allPoints.push({ point: columnElement.position, elementType: element.type });
+        }
+      }
+    });
+
+    // Check for point alignment (vertical and horizontal alignment with existing points)
+    allPoints.forEach(({ point: targetPoint, elementType }) => {
+      // Skip if it's too close to the previous point (avoid self-alignment)
+      const distanceToPrevious = Math.sqrt(
+        Math.pow(targetPoint.x - previousPoint.x, 2) + Math.pow(targetPoint.y - previousPoint.y, 2)
+      );
+      if (distanceToPrevious < 10) return;
+
+      // Vertical alignment (same X coordinate)
+      if (Math.abs(currentPoint.x - targetPoint.x) <= tolerance) {
+        const canvasHeight = 600; // Canvas height
+        guides.push({
+          type: 'vertical',
+          position: targetPoint.x,
+          startPoint: { x: targetPoint.x, y: 0 },
+          endPoint: { x: targetPoint.x, y: canvasHeight },
+          targetPoint: targetPoint,
+          lineType: 'point-alignment'
+        });
+      }
+
+      // Horizontal alignment (same Y coordinate)
+      if (Math.abs(currentPoint.y - targetPoint.y) <= tolerance) {
+        const canvasWidth = 800; // Canvas width
+        guides.push({
+          type: 'horizontal',
+          position: targetPoint.y,
+          startPoint: { x: 0, y: targetPoint.y },
+          endPoint: { x: canvasWidth, y: targetPoint.y },
+          targetPoint: targetPoint,
+          lineType: 'point-alignment'
+        });
+      }
+    });
+
+    // Find all line segments from existing frames and other elements
+    const lineSegments: { start: Point; end: Point; type: string }[] = [];
+    
+    elements.forEach(element => {
+      if (element.type === 'frame') {
+        const frame = element as FrameElement;
+        for (let i = 0; i < frame.points.length; i++) {
+          const nextIndex = (i + 1) % frame.points.length;
+          if (frame.closed || i < frame.points.length - 1) {
+            lineSegments.push({
+              start: frame.points[i],
+              end: frame.points[nextIndex],
+              type: 'frame'
+            });
+          }
+        }
+      } else if (element.type === 'shading' || element.type === 'division' || element.type === 'beam') {
+        const lineElement = element as any;
+        if (lineElement.start && lineElement.end) {
+          lineSegments.push({
+            start: lineElement.start,
+            end: lineElement.end,
+            type: element.type
           });
         }
       }
     });
 
-    // Add temporary points to alignment detection
-    tempPoints.forEach((point, index) => {
-      if (index < tempPoints.length - 1) {
-        allPoints.push({
-          point,
-          elementType: 'temp',
-          elementId: `temp-${index}`
-        });
-      }
-    });
-
-    console.log('All points for alignment (including temp):', allPoints);
-    console.log('Current point:', currentPoint);
-
-    // SEPARATE COLLECTION: Vertical and horizontal point alignments
-    const verticalPointAlignments: { point: Point; elementType: string }[] = [];
-    const horizontalPointAlignments: { point: Point; elementType: string }[] = [];
-
-    // Primary alignment detection - check each existing point for vertical/horizontal alignment
-    allPoints.forEach(({ point: targetPoint, elementType }) => {
-      const distanceToPrevious = Math.sqrt(
-        Math.pow(targetPoint.x - previousPoint.x, 2) + Math.pow(targetPoint.y - previousPoint.y, 2)
-      );
-      if (distanceToPrevious < 20) return; // Skip points too close to avoid self-alignment
-
-      // VERTICAL POINT ALIGNMENT: Check if current point X is close to target point X
-      const xDiff = Math.abs(currentPoint.x - targetPoint.x);
-      console.log(`Checking vertical point alignment: current X=${currentPoint.x}, target X=${targetPoint.x}, diff=${xDiff}`);
-      
-      if (xDiff <= tolerance) {
-        console.log('VERTICAL POINT ALIGNMENT DETECTED!');
-        verticalPointAlignments.push({ point: targetPoint, elementType });
-      }
-
-      // HORIZONTAL POINT ALIGNMENT: Check if current point Y is close to target point Y
-      const yDiff = Math.abs(currentPoint.y - targetPoint.y);
-      console.log(`Checking horizontal point alignment: current Y=${currentPoint.y}, target Y=${targetPoint.y}, diff=${yDiff}`);
-      
-      if (yDiff <= tolerance) {
-        console.log('HORIZONTAL POINT ALIGNMENT DETECTED!');
-        horizontalPointAlignments.push({ point: targetPoint, elementType });
-      }
-    });
-
-    // Create BLUE vertical guides for vertical point alignments (X-axis alignment)
-    verticalPointAlignments.forEach(({ point: targetPoint }) => {
-      const canvasHeight = 600;
-      const extensionLength = 200;
-      
-      const minY = Math.min(currentPoint.y, targetPoint.y) - extensionLength;
-      const maxY = Math.max(currentPoint.y, targetPoint.y) + extensionLength;
-      
-      guides.push({
-        type: 'vertical',
-        position: targetPoint.x,
-        startPoint: { x: targetPoint.x, y: Math.max(0, minY) },
-        endPoint: { x: targetPoint.x, y: Math.min(canvasHeight, maxY) },
-        targetPoint: targetPoint,
-        lineType: 'point-alignment-vertical' // BLUE vertical line
-      });
-    });
-
-    // Create ORANGE horizontal guides for horizontal point alignments (Y-axis alignment)
-    horizontalPointAlignments.forEach(({ point: targetPoint }) => {
-      const canvasWidth = 800;
-      const extensionLength = 200;
-      
-      const minX = Math.min(currentPoint.x, targetPoint.x) - extensionLength;
-      const maxX = Math.max(currentPoint.x, targetPoint.x) + extensionLength;
-      
-      guides.push({
-        type: 'horizontal',
-        position: targetPoint.y,
-        startPoint: { x: Math.max(0, minX), y: targetPoint.y },
-        endPoint: { x: Math.min(canvasWidth, maxX), y: targetPoint.y },
-        targetPoint: targetPoint,
-        lineType: 'point-alignment-horizontal' // ORANGE horizontal line
-      });
-    });
-
-    // Check for line extensions from existing lines AND temporary lines
-    const allLinesToCheck: { points: Point[]; isClosed: boolean; elementType: string }[] = [];
+    // Calculate current drawing direction
+    const currentVector = {
+      x: currentPoint.x - previousPoint.x,
+      y: currentPoint.y - previousPoint.y
+    };
     
-    // Add existing frame lines
-    elements.forEach(element => {
-      if (element.type === 'frame') {
-        const frame = element as FrameElement;
-        allLinesToCheck.push({
-          points: frame.points,
-          isClosed: frame.closed,
-          elementType: 'frame'
-        });
-      }
-    });
+    const currentLength = Math.sqrt(currentVector.x * currentVector.x + currentVector.y * currentVector.y);
+    if (currentLength === 0) return guides;
     
-    // Add temporary lines
-    if (tempPoints.length >= 2) {
-      allLinesToCheck.push({
-        points: tempPoints,
-        isClosed: false,
-        elementType: 'temp'
-      });
-    }
+    const normalizedCurrent = {
+      x: currentVector.x / currentLength,
+      y: currentVector.y / currentLength
+    };
 
-    // SEPARATE COLLECTION: Line extensions
-    const verticalLineExtensions: { lineX: number; elementType: string }[] = [];
-    const horizontalLineExtensions: { lineY: number; elementType: string }[] = [];
+    // Check for parallel alignment and extensions
+    lineSegments.forEach(segment => {
+      const segmentVector = {
+        x: segment.end.x - segment.start.x,
+        y: segment.end.y - segment.start.y
+      };
+      
+      const segmentLength = Math.sqrt(segmentVector.x * segmentVector.x + segmentVector.y * segmentVector.y);
+      if (segmentLength === 0) return;
+      
+      const normalizedSegment = {
+        x: segmentVector.x / segmentLength,
+        y: segmentVector.y / segmentLength
+      };
 
-    allLinesToCheck.forEach(({ points, isClosed, elementType }) => {
-      for (let i = 0; i < points.length; i++) {
-        const p1 = points[i];
-        const p2 = points[(i + 1) % points.length];
-        
-        if (!isClosed && i === points.length - 1) continue;
-        
-        // Check for vertical line extension
-        if (Math.abs(p1.x - p2.x) < 5) {
-          const lineX = (p1.x + p2.x) / 2;
-          const xDiff = Math.abs(currentPoint.x - lineX);
+      // Check if lines are parallel (dot product close to 1 or -1)
+      const dotProduct = Math.abs(normalizedCurrent.x * normalizedSegment.x + normalizedCurrent.y * normalizedSegment.y);
+      const isParallel = dotProduct > 0.9;
+
+      if (isParallel) {
+        // Determine if it's more horizontal or vertical
+        const isHorizontal = Math.abs(normalizedSegment.y) < 0.3;
+        const isVertical = Math.abs(normalizedSegment.x) < 0.3;
+
+        if (isHorizontal) {
+          // Check alignment with segment endpoints for vertical guides
+          [segment.start, segment.end].forEach(point => {
+            if (Math.abs(currentPoint.x - point.x) <= tolerance) {
+              guides.push({
+                type: 'vertical',
+                position: point.x,
+                startPoint: { x: point.x, y: Math.min(currentPoint.y, point.y, previousPoint.y) - 50 },
+                endPoint: { x: point.x, y: Math.max(currentPoint.y, point.y, previousPoint.y) + 50 },
+                targetPoint: point,
+                lineType: 'extension'
+              });
+            }
+          });
           
-          if (xDiff <= tolerance) {
-            console.log(`VERTICAL LINE EXTENSION DETECTED from ${elementType}!`);
-            verticalLineExtensions.push({ lineX, elementType });
+          // Check for parallel line alignment (same Y level)
+          const segmentY = (segment.start.y + segment.end.y) / 2;
+          if (Math.abs(currentPoint.y - segmentY) <= tolerance) {
+            guides.push({
+              type: 'horizontal',
+              position: segmentY,
+              startPoint: { x: Math.min(currentPoint.x, segment.start.x, segment.end.x) - 50, y: segmentY },
+              endPoint: { x: Math.max(currentPoint.x, segment.start.x, segment.end.x) + 50, y: segmentY },
+              targetPoint: { x: segmentY, y: segmentY },
+              lineType: 'parallel'
+            });
           }
         }
-        
-        // Check for horizontal line extension
-        if (Math.abs(p1.y - p2.y) < 5) {
-          const lineY = (p1.y + p2.y) / 2;
-          const yDiff = Math.abs(currentPoint.y - lineY);
+
+        if (isVertical) {
+          // Check alignment with segment endpoints for horizontal guides
+          [segment.start, segment.end].forEach(point => {
+            if (Math.abs(currentPoint.y - point.y) <= tolerance) {
+              guides.push({
+                type: 'horizontal',
+                position: point.y,
+                startPoint: { x: Math.min(currentPoint.x, point.x, previousPoint.x) - 50, y: point.y },
+                endPoint: { x: Math.max(currentPoint.x, point.x, previousPoint.x) + 50, y: point.y },
+                targetPoint: point,
+                lineType: 'extension'
+              });
+            }
+          });
           
-          if (yDiff <= tolerance) {
-            console.log(`HORIZONTAL LINE EXTENSION DETECTED from ${elementType}!`);
-            horizontalLineExtensions.push({ lineY, elementType });
+          // Check for parallel line alignment (same X level)
+          const segmentX = (segment.start.x + segment.end.x) / 2;
+          if (Math.abs(currentPoint.x - segmentX) <= tolerance) {
+            guides.push({
+              type: 'vertical',
+              position: segmentX,
+              startPoint: { x: segmentX, y: Math.min(currentPoint.y, segment.start.y, segment.end.y) - 50 },
+              endPoint: { x: segmentX, y: Math.max(currentPoint.y, segment.start.y, segment.end.y) + 50 },
+              targetPoint: { x: segmentX, y: segmentX },
+              lineType: 'parallel'
+            });
           }
         }
       }
     });
 
-    // Create vertical extension guides for all vertical line extensions
-    verticalLineExtensions.forEach(({ lineX }) => {
-      const canvasHeight = 600;
-      const extendedMinY = currentPoint.y - 100;
-      const extendedMaxY = currentPoint.y + 100;
-      
-      guides.push({
-        type: 'vertical',
-        position: lineX,
-        startPoint: { x: lineX, y: Math.max(0, extendedMinY) },
-        endPoint: { x: lineX, y: Math.min(canvasHeight, extendedMaxY) },
-        targetPoint: { x: lineX, y: currentPoint.y },
-        lineType: 'extension'
-      });
-    });
-
-    // Create horizontal extension guides for all horizontal line extensions
-    horizontalLineExtensions.forEach(({ lineY }) => {
-      const canvasWidth = 800;
-      const extendedMinX = currentPoint.x - 100;
-      const extendedMaxX = currentPoint.x + 100;
-      
-      guides.push({
-        type: 'horizontal',
-        position: lineY,
-        startPoint: { x: Math.max(0, extendedMinX), y: lineY },
-        endPoint: { x: Math.min(canvasWidth, extendedMaxX), y: lineY },
-        targetPoint: { x: currentPoint.x, y: lineY },
-        lineType: 'extension'
-      });
-    });
-
-    console.log('Generated alignment guides:', guides);
-
-    // Remove duplicate guides but keep all different types
+    // Remove duplicate guides (same type and position)
     const uniqueGuides = guides.filter((guide, index, array) => {
       return index === array.findIndex(g => 
         g.type === guide.type && 
-        Math.abs(g.position - guide.position) < 3 &&
+        Math.abs(g.position - guide.position) < 2 &&
         g.lineType === guide.lineType
       );
     });
 
-    // Sort guides by priority: extension first, then point-alignment
-    return uniqueGuides.sort((a, b) => {
-      const priority = { 
-        'extension': 0, 
-        'point-alignment-vertical': 1, 
-        'point-alignment-horizontal': 2, 
-        'parallel': 3 
-      };
-      return priority[a.lineType] - priority[b.lineType];
-    });
+    return uniqueGuides;
   }, []);
 
   const getSnapPoint = useCallback((
     currentPoint: Point,
     guides: AlignmentGuide[]
   ): Point | null => {
-    // Support multi-dimensional snapping for intersection points
+    // Prioritize point alignment, then extension guides, then parallel guides
+    const pointAlignmentGuides = guides.filter(g => g.lineType === 'point-alignment');
     const extensionGuides = guides.filter(g => g.lineType === 'extension');
-    const verticalPointGuides = guides.filter(g => g.lineType === 'point-alignment-vertical');
-    const horizontalPointGuides = guides.filter(g => g.lineType === 'point-alignment-horizontal');
+    const parallelGuides = guides.filter(g => g.lineType === 'parallel');
     
-    // First priority: Extension line intersections
-    if (extensionGuides.length >= 2) {
-      const verticalGuide = extensionGuides.find(g => g.type === 'vertical');
-      const horizontalGuide = extensionGuides.find(g => g.type === 'horizontal');
-      
-      if (verticalGuide && horizontalGuide) {
-        console.log('EXTENSION INTERSECTION POINT DETECTED!');
-        return { 
-          x: verticalGuide.position, 
-          y: horizontalGuide.position 
-        };
-      }
-    }
+    const prioritizedGuides = [...pointAlignmentGuides, ...extensionGuides, ...parallelGuides];
     
-    // Second priority: Point alignment intersections (VERTICAL + HORIZONTAL)
-    if (verticalPointGuides.length >= 1 && horizontalPointGuides.length >= 1) {
-      const verticalGuide = verticalPointGuides[0];
-      const horizontalGuide = horizontalPointGuides[0];
-      
-      console.log('POINT ALIGNMENT INTERSECTION DETECTED!');
-      return { 
-        x: verticalGuide.position, 
-        y: horizontalGuide.position 
-      };
-    }
-    
-    // Third priority: Mixed intersection (extension + point alignment)
-    if (extensionGuides.length >= 1 && (verticalPointGuides.length >= 1 || horizontalPointGuides.length >= 1)) {
-      const verticalGuide = extensionGuides.find(g => g.type === 'vertical') || verticalPointGuides[0];
-      const horizontalGuide = extensionGuides.find(g => g.type === 'horizontal') || horizontalPointGuides[0];
-      
-      if (verticalGuide && horizontalGuide) {
-        console.log('MIXED INTERSECTION DETECTED!');
-        return { 
-          x: verticalGuide.position, 
-          y: horizontalGuide.position 
-        };
-      }
-    }
-    
-    // Fallback to single guide snapping
-    if (guides.length > 0) {
-      const guide = guides[0];
+    for (const guide of prioritizedGuides) {
       if (guide.type === 'vertical') {
         return { x: guide.position, y: currentPoint.y };
       } else if (guide.type === 'horizontal') {
         return { x: currentPoint.x, y: guide.position };
       }
     }
-    
     return null;
   }, []);
 
