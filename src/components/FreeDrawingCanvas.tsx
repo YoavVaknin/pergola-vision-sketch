@@ -1,3 +1,4 @@
+
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Point, PergolaElementType, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement, DivisionElement } from '@/types/pergola';
 import { usePergolaDrawing } from '@/hooks/usePergolaDrawing';
@@ -102,7 +103,7 @@ export const FreeDrawingCanvas = () => {
         case 'shading':
           const shading = element as ShadingElement;
           ctx.strokeStyle = shading.color || '#8b4513';
-          ctx.lineWidth = 2;
+          ctx.lineWidth = shading.width || 2;
           ctx.setLineDash([]);
           ctx.beginPath();
           ctx.moveTo(shading.start.x, shading.start.y);
@@ -113,7 +114,7 @@ export const FreeDrawingCanvas = () => {
         case 'division':
           const division = element as DivisionElement;
           ctx.strokeStyle = division.color || '#f97316';
-          ctx.lineWidth = 3;
+          ctx.lineWidth = division.width || 3;
           ctx.setLineDash([]);
           ctx.beginPath();
           ctx.moveTo(division.start.x, division.start.y);
@@ -263,7 +264,7 @@ export const FreeDrawingCanvas = () => {
             <p><strong>הוראות:</strong></p>
             <p>• מסגרת: לחץ לסימון נקודות, דאבל-קליק או "סיום מסגרת" לסגירה</p>
             <p>• הצללה וחלוקה יתווספו אוטומטית בתוך המסגרת לפי ההגדרות</p>
-            <p>• עמודים יתווספו אוטומatically בפינות המסגרת</p>
+            <p>• עמודים יתווספו אוטומטית בפינות המסגרת</p>
             <p>• קורה/קיר: לחץ והחזק, גרור ושחרר</p>
             <p>• עמוד נוסף: לחיצה פשוטה</p>
           </div>

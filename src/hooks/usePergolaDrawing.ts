@@ -93,6 +93,7 @@ export const usePergolaDrawing = () => {
               type: 'shading',
               start,
               end,
+              width: 2,
               spacing: config.spacing,
               direction: config.direction,
               color: config.color
@@ -139,6 +140,7 @@ export const usePergolaDrawing = () => {
               type: 'shading',
               start,
               end,
+              width: 2,
               spacing: config.spacing,
               direction: config.direction,
               color: config.color
@@ -211,6 +213,7 @@ export const usePergolaDrawing = () => {
               type: 'division',
               start,
               end,
+              width: 3,
               spacing: config.divisionSpacing,
               direction: divisionDirection,
               color: config.divisionColor
@@ -257,6 +260,7 @@ export const usePergolaDrawing = () => {
               type: 'division',
               start,
               end,
+              width: 3,
               spacing: config.divisionSpacing,
               direction: divisionDirection,
               color: config.divisionColor

@@ -41,6 +41,7 @@ export interface ShadingElement extends PergolaElement {
   type: 'shading';
   start: Point;
   end: Point;
+  width: number;
   spacing: number;
   direction: number;
 }
@@ -49,6 +50,7 @@ export interface DivisionElement extends PergolaElement {
   type: 'division';
   start: Point;
   end: Point;
+  width: number;
   spacing: number;
   direction: number;
 }
