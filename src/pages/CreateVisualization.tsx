@@ -102,6 +102,15 @@ const CreateVisualization = () => {
               <h1 className="text-2xl font-bold text-foreground">
                 יצירת הדמיה חדשה
               </h1>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/free-drawing')}
+                className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white border-none hover:from-purple-600 hover:to-pink-600"
+              >
+                <ArrowRight className="w-4 h-4" />
+                שרטוט חופשי
+              </Button>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">שלב 1 מתוך 3</span>
