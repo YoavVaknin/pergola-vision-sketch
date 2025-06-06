@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Home, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PergolaForm } from "@/components/PergolaForm";
-import { PergolaCanvas } from "@/components/PergolaCanvas";
+import { InteractivePergolaCanvas } from "@/components/InteractivePergolaCanvas";
 import { usePergola } from "@/hooks/usePergola";
 
 export interface PergolaConfig {
@@ -98,12 +98,12 @@ const CreateVisualization = () => {
           <div className="lg:col-span-2">
             <Card className="p-6 h-full">
               <div className="mb-6">
-                <h2 className="text-xl font-semibold mb-2">תצוגה מקדימה</h2>
+                <h2 className="text-xl font-semibold mb-2">תצוגה מקדימה אינטראקטיבית</h2>
                 <p className="text-sm text-muted-foreground">
-                  הדמיה חיה של הפרגולה בהתאם לפרמטרים שהוזנו
+                  הדמיה חיה של הפרגולה בהתאם לפרמטרים שהוזנו - מתעדכנת בזמן אמת
                 </p>
               </div>
-              <PergolaCanvas config={config} />
+              <InteractivePergolaCanvas config={config} />
             </Card>
           </div>
         </div>
