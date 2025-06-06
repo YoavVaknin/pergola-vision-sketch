@@ -1,6 +1,12 @@
+
 import { useState, useCallback } from 'react';
 import { Point, PergolaElementType, DrawingState, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement, DivisionElement, ShadingConfig, MeasurementConfig } from '@/types/pergola';
 import { calculateRealDistance, calculatePolygonArea, calculatePolygonAngles } from '@/utils/measurementUtils';
+
+// Generate unique ID for elements
+const generateId = (): string => {
+  return `pergola_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
 
 export const usePergolaDrawing = () => {
   const [elements, setElements] = useState<PergolaElementType[]>([]);
