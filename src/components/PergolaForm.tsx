@@ -12,12 +12,19 @@ interface PergolaFormProps {
 }
 
 export const PergolaForm = ({ config, onConfigChange }: PergolaFormProps) => {
-  const profileOptions = [
+  const frameProfileOptions = [
+    { value: "10/5", label: "10/5 ס״מ" },
+    { value: "12/4", label: "12/4 ס״מ" },
+    { value: "15/5", label: "15/5 ס״מ" },
+    { value: "17.5/7.5", label: "17.5/7.5 ס״מ" }
+  ];
+
+  const divisionAndShadingProfileOptions = [
     { value: "4/2", label: "4/2 ס״מ" },
     { value: "5/2.5", label: "5/2.5 ס״מ" },
     { value: "6/3", label: "6/3 ס״מ" },
-    { value: "8/4", label: "8/4 ס״מ" },
-    { value: "10/5", label: "10/5 ס״מ" }
+    { value: "7/2", label: "7/2 ס״מ" },
+    { value: "10/2.5", label: "10/2.5 ס״מ" }
   ];
 
   return (
@@ -56,15 +63,6 @@ export const PergolaForm = ({ config, onConfigChange }: PergolaFormProps) => {
               step="10"
             />
           </div>
-        </div>
-      </div>
-
-      <Separator />
-
-      {/* קורות צללה */}
-      <div>
-        <h3 className="font-medium mb-4 text-foreground">קורות צללה</h3>
-        <div className="space-y-4">
           <div>
             <Label htmlFor="spacing" className="text-sm font-medium">
               מרווח בין קורות (ס״מ)
@@ -80,19 +78,70 @@ export const PergolaForm = ({ config, onConfigChange }: PergolaFormProps) => {
               step="5"
             />
           </div>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* פרופילים */}
+      <div>
+        <h3 className="font-medium mb-4 text-foreground">פרופילים</h3>
+        <div className="space-y-4">
           <div>
-            <Label htmlFor="profile" className="text-sm font-medium">
-              סוג פרופיל הצללה
+            <Label htmlFor="profile_frame" className="text-sm font-medium">
+              פרופיל מסגרת
             </Label>
             <Select 
-              value={config.profileType} 
-              onValueChange={(value) => onConfigChange({ profileType: value })}
+              value={config.profile_frame} 
+              onValueChange={(value) => onConfigChange({ profile_frame: value })}
             >
               <SelectTrigger className="mt-1">
-                <SelectValue placeholder="בחר פרופיל" />
+                <SelectValue placeholder="בחר פרופיל מסגרת" />
               </SelectTrigger>
               <SelectContent>
-                {profileOptions.map((option) => (
+                {frameProfileOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label htmlFor="profile_division" className="text-sm font-medium">
+              פרופיל חלוקה
+            </Label>
+            <Select 
+              value={config.profile_division} 
+              onValueChange={(value) => onConfigChange({ profile_division: value })}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="בחר פרופיל חלוקה" />
+              </SelectTrigger>
+              <SelectContent>
+                {divisionAndShadingProfileOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="profile_shading" className="text-sm font-medium">
+              פרופיל הצללה
+            </Label>
+            <Select 
+              value={config.profile_shading} 
+              onValueChange={(value) => onConfigChange({ profile_shading: value })}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="בחר פרופיל הצללה" />
+              </SelectTrigger>
+              <SelectContent>
+                {divisionAndShadingProfileOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -121,6 +170,18 @@ export const PergolaForm = ({ config, onConfigChange }: PergolaFormProps) => {
             <div className="flex justify-between">
               <span className="text-muted-foreground">אורך קורה בודדת:</span>
               <span className="font-medium">{config.length} ס״מ</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">פרופיל מסגרת:</span>
+              <span className="font-medium">{config.profile_frame} ס״מ</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">פרופיל חלוקה:</span>
+              <span className="font-medium">{config.profile_division} ס״מ</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">פרופיל הצללה:</span>
+              <span className="font-medium">{config.profile_shading} ס״מ</span>
             </div>
           </div>
         </CardContent>

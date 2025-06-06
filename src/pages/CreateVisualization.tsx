@@ -11,7 +11,9 @@ export interface PergolaConfig {
   width: number;
   length: number;
   beamSpacing: number;
-  profileType: string;
+  profile_frame: string;
+  profile_division: string;
+  profile_shading: string;
 }
 
 const CreateVisualization = () => {
@@ -20,7 +22,9 @@ const CreateVisualization = () => {
     width: 400,
     length: 300,
     beamSpacing: 50,
-    profileType: "4/2"
+    profile_frame: "10/5",
+    profile_division: "4/2",
+    profile_shading: "4/2"
   });
 
   const handleConfigChange = (newConfig: Partial<PergolaConfig>) => {
