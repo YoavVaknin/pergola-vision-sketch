@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { Point, PergolaElementType, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement } from '@/types/pergola';
+import { Point, PergolaElementType, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement, DivisionElement } from '@/types/pergola';
 import { usePergolaDrawing } from '@/hooks/usePergolaDrawing';
 import { DrawingToolbar } from './DrawingToolbar';
 import { ShadingConfigComponent } from './ShadingConfig';
@@ -107,6 +107,17 @@ export const FreeDrawingCanvas = () => {
           ctx.beginPath();
           ctx.moveTo(shading.start.x, shading.start.y);
           ctx.lineTo(shading.end.x, shading.end.y);
+          ctx.stroke();
+          break;
+
+        case 'division':
+          const division = element as DivisionElement;
+          ctx.strokeStyle = division.color || '#f97316';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(division.start.x, division.start.y);
+          ctx.lineTo(division.end.x, division.end.y);
           ctx.stroke();
           break;
           
@@ -228,6 +239,7 @@ export const FreeDrawingCanvas = () => {
             <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
             <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
             <p>הצללה: {elements.filter(e => e.type === 'shading').length}</p>
+            <p>חלוקה: {elements.filter(e => e.type === 'division').length}</p>
             <p>עמודים: {elements.filter(e => e.type === 'column').length}</p>
             <p>קירות: {elements.filter(e => e.type === 'wall').length}</p>
           </div>
@@ -236,7 +248,7 @@ export const FreeDrawingCanvas = () => {
       
       <div className="lg:col-span-3">
         <div className="border rounded-lg shadow-sm bg-white p-4">
-          <h3 className="text-lg font-semibold mb-4">שרטוט חופשי עם הצללה אוטומטית</h3>
+          <h3 className="text-lg font-semibold mb-4">שרטוט חופשי עם הצללה וחלוקה</h3>
           <canvas
             ref={canvasRef}
             width={800}
@@ -250,8 +262,8 @@ export const FreeDrawingCanvas = () => {
           <div className="mt-4 text-sm text-muted-foreground">
             <p><strong>הוראות:</strong></p>
             <p>• מסגרת: לחץ לסימון נקודות, דאבל-קליק או "סיום מסגרת" לסגירה</p>
-            <p>• הצללה תתווסף אוטומטית בתוך המסגרת לפי ההגדרות</p>
-            <p>• עמודים יתווספו אוטומטית בפינות המסגרת</p>
+            <p>• הצללה וחלוקה יתווספו אוטומטית בתוך המסגרת לפי ההגדרות</p>
+            <p>• עמודים יתווספו אוטומatically בפינות המסגרת</p>
             <p>• קורה/קיר: לחץ והחזק, גרור ושחרר</p>
             <p>• עמוד נוסף: לחיצה פשוטה</p>
           </div>
