@@ -21,6 +21,47 @@ export const InteractivePergolaCanvas = ({ config }: InteractivePergolaCanvasPro
     return colorMap[colorName] || "#1f2937";
   };
 
+  // פונקציה לחישוב מיקומי עמודים
+  const getColumnPositions = () => {
+    const positions = [];
+    const columnSize = 8; // גודל העמוד בפיקסלים
+
+    if (config.column_placement === "corners") {
+      // 4 עמודים בפינות
+      positions.push(
+        { x: 0, y: 0 },
+        { x: config.width, y: 0 },
+        { x: 0, y: config.length },
+        { x: config.width, y: config.length }
+      );
+    } else if (config.column_placement === "perimeter") {
+      // עמודים לאורך היקף - כל 200 ס״מ
+      const spacing = 200;
+      
+      // עמודים לאורך הרוחב העליון
+      for (let x = 0; x <= config.width; x += spacing) {
+        positions.push({ x: Math.min(x, config.width), y: 0 });
+      }
+      
+      // עמודים לאורך הרוחב התחתון
+      for (let x = 0; x <= config.width; x += spacing) {
+        positions.push({ x: Math.min(x, config.width), y: config.length });
+      }
+      
+      // עמודים לאורך האורך השמאלי (ללא פינות)
+      for (let y = spacing; y < config.length; y += spacing) {
+        positions.push({ x: 0, y });
+      }
+      
+      // עמודים לאורך האורך הימני (ללא פינות)
+      for (let y = spacing; y < config.length; y += spacing) {
+        positions.push({ x: config.width, y });
+      }
+    }
+
+    return positions;
+  };
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -111,8 +152,24 @@ export const InteractivePergolaCanvas = ({ config }: InteractivePergolaCanvasPro
       }
     }
 
-    console.log(`Drawing pergola: ${config.width}x${config.length} cm, scale: ${scale.toFixed(2)}, beams: ${config.beamSpacing}cm spacing, direction: ${config.beamDirection}°, frame color: ${config.color_frame}, shading color: ${config.color_shading}`);
-  }, [config.width, config.length, config.beamSpacing, config.beamDirection, config.color_frame, config.color_shading]);
+    // ציור עמודים
+    const columnPositions = getColumnPositions();
+    ctx.fillStyle = '#374151'; // אפור כהה לעמודים
+    ctx.strokeStyle = '#111827'; // מסגרת כהה יותר לעמודים
+    ctx.lineWidth = 1;
+
+    columnPositions.forEach(pos => {
+      const columnX = startX + (pos.x * scale) - 4; // מרכז העמוד
+      const columnY = startY + (pos.y * scale) - 4;
+      const columnSize = 8;
+
+      // ציור עמוד כמלבן קטן
+      ctx.fillRect(columnX, columnY, columnSize, columnSize);
+      ctx.strokeRect(columnX, columnY, columnSize, columnSize);
+    });
+
+    console.log(`Drawing pergola: ${config.width}x${config.length} cm, scale: ${scale.toFixed(2)}, beams: ${config.beamSpacing}cm spacing, direction: ${config.beamDirection}°, frame color: ${config.color_frame}, shading color: ${config.color_shading}, columns: ${columnPositions.length} (${config.column_placement})`);
+  }, [config.width, config.length, config.beamSpacing, config.beamDirection, config.color_frame, config.color_shading, config.columns, config.column_placement]);
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-white rounded-lg border">
@@ -122,7 +179,7 @@ export const InteractivePergolaCanvas = ({ config }: InteractivePergolaCanvasPro
           פרגולה {config.width}×{config.length} ס״מ
         </h3>
         <p className="text-sm text-muted-foreground">
-          מסגרת {config.profile_frame} ({config.color_frame}) | מרווח קורות {config.beamSpacing} ס״מ ({config.color_shading})
+          מסגרת {config.profile_frame} ({config.color_frame}) | מרווח קורות {config.beamSpacing} ס״מ ({config.color_shading}) | עמודים: {config.column_placement === "corners" ? "4 בפינות" : config.columns}
         </p>
       </div>
 

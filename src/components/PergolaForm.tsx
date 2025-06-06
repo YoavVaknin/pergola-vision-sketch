@@ -35,6 +35,12 @@ export const PergolaForm = ({ config, onConfigChange }: PergolaFormProps) => {
     { value: "שמנת", label: "שמנת" }
   ];
 
+  const columnPlacementOptions = [
+    { value: "corners", label: "בפינות (4 עמודים)" },
+    { value: "perimeter", label: "לאורך היקף" },
+    { value: "custom", label: "מיקום מותאם אישית" }
+  ];
+
   return (
     <div className="space-y-6">
       {/* ממדים כלליים */}
@@ -86,6 +92,53 @@ export const PergolaForm = ({ config, onConfigChange }: PergolaFormProps) => {
               step="5"
             />
           </div>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* עמודים */}
+      <div>
+        <h3 className="font-medium mb-4 text-foreground">עמודים</h3>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="column_placement" className="text-sm font-medium">
+              מיקום עמודים
+            </Label>
+            <Select 
+              value={config.column_placement} 
+              onValueChange={(value) => onConfigChange({ column_placement: value })}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="בחר מיקום עמודים" />
+              </SelectTrigger>
+              <SelectContent>
+                {columnPlacementOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {config.column_placement === "custom" && (
+            <div>
+              <Label htmlFor="columns" className="text-sm font-medium">
+                מספר עמודים
+              </Label>
+              <Input
+                id="columns"
+                type="number"
+                value={config.columns}
+                onChange={(e) => onConfigChange({ columns: parseInt(e.target.value) || 4 })}
+                className="mt-1"
+                min="2"
+                max="20"
+                step="1"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -245,6 +298,12 @@ export const PergolaForm = ({ config, onConfigChange }: PergolaFormProps) => {
             <div className="flex justify-between">
               <span className="text-muted-foreground">מספר קורות:</span>
               <span className="font-medium">{Math.floor(config.width / config.beamSpacing) + 1}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">מספר עמודים:</span>
+              <span className="font-medium">
+                {config.column_placement === "corners" ? "4" : config.columns}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">אורך קורה בודדת:</span>
