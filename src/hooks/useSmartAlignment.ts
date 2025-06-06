@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { Point, FrameElement, PergolaElementType } from '@/types/pergola';
 
@@ -51,7 +50,7 @@ export const useSmartAlignment = () => {
       );
       if (distanceToPrevious < 10) return;
 
-      // Vertical alignment (same X coordinate)
+      // Vertical alignment (same X coordinate) - Blue line
       if (Math.abs(currentPoint.x - targetPoint.x) <= tolerance) {
         const canvasHeight = 600; // Canvas height
         guides.push({
@@ -64,7 +63,7 @@ export const useSmartAlignment = () => {
         });
       }
 
-      // Horizontal alignment (same Y coordinate)
+      // Horizontal alignment (same Y coordinate) - Orange line
       if (Math.abs(currentPoint.y - targetPoint.y) <= tolerance) {
         const canvasWidth = 800; // Canvas width
         guides.push({
@@ -78,7 +77,7 @@ export const useSmartAlignment = () => {
       }
     });
 
-    // Find all line segments from existing frames and other elements
+    // Find all line segments from existing frames and other elements for extension guides
     const lineSegments: { start: Point; end: Point; type: string }[] = [];
     
     elements.forEach(element => {
@@ -106,103 +105,77 @@ export const useSmartAlignment = () => {
       }
     });
 
-    // Calculate current drawing direction
+    // Calculate current drawing direction for extension guides
     const currentVector = {
       x: currentPoint.x - previousPoint.x,
       y: currentPoint.y - previousPoint.y
     };
     
     const currentLength = Math.sqrt(currentVector.x * currentVector.x + currentVector.y * currentVector.y);
-    if (currentLength === 0) return guides;
-    
-    const normalizedCurrent = {
-      x: currentVector.x / currentLength,
-      y: currentVector.y / currentLength
-    };
-
-    // Check for parallel alignment and extensions
-    lineSegments.forEach(segment => {
-      const segmentVector = {
-        x: segment.end.x - segment.start.x,
-        y: segment.end.y - segment.start.y
-      };
-      
-      const segmentLength = Math.sqrt(segmentVector.x * segmentVector.x + segmentVector.y * segmentVector.y);
-      if (segmentLength === 0) return;
-      
-      const normalizedSegment = {
-        x: segmentVector.x / segmentLength,
-        y: segmentVector.y / segmentLength
+    if (currentLength > 0) {
+      const normalizedCurrent = {
+        x: currentVector.x / currentLength,
+        y: currentVector.y / currentLength
       };
 
-      // Check if lines are parallel (dot product close to 1 or -1)
-      const dotProduct = Math.abs(normalizedCurrent.x * normalizedSegment.x + normalizedCurrent.y * normalizedSegment.y);
-      const isParallel = dotProduct > 0.9;
+      // Check for extension alignment from line endpoints
+      lineSegments.forEach(segment => {
+        const segmentVector = {
+          x: segment.end.x - segment.start.x,
+          y: segment.end.y - segment.start.y
+        };
+        
+        const segmentLength = Math.sqrt(segmentVector.x * segmentVector.x + segmentVector.y * segmentVector.y);
+        if (segmentLength === 0) return;
+        
+        const normalizedSegment = {
+          x: segmentVector.x / segmentLength,
+          y: segmentVector.y / segmentLength
+        };
 
-      if (isParallel) {
-        // Determine if it's more horizontal or vertical
-        const isHorizontal = Math.abs(normalizedSegment.y) < 0.3;
-        const isVertical = Math.abs(normalizedSegment.x) < 0.3;
+        // Check if lines are parallel (dot product close to 1 or -1)
+        const dotProduct = Math.abs(normalizedCurrent.x * normalizedSegment.x + normalizedCurrent.y * normalizedSegment.y);
+        const isParallel = dotProduct > 0.9;
 
-        if (isHorizontal) {
-          // Check alignment with segment endpoints for vertical guides
-          [segment.start, segment.end].forEach(point => {
-            if (Math.abs(currentPoint.x - point.x) <= tolerance) {
-              guides.push({
-                type: 'vertical',
-                position: point.x,
-                startPoint: { x: point.x, y: Math.min(currentPoint.y, point.y, previousPoint.y) - 50 },
-                endPoint: { x: point.x, y: Math.max(currentPoint.y, point.y, previousPoint.y) + 50 },
-                targetPoint: point,
-                lineType: 'extension'
-              });
-            }
-          });
-          
-          // Check for parallel line alignment (same Y level)
-          const segmentY = (segment.start.y + segment.end.y) / 2;
-          if (Math.abs(currentPoint.y - segmentY) <= tolerance) {
-            guides.push({
-              type: 'horizontal',
-              position: segmentY,
-              startPoint: { x: Math.min(currentPoint.x, segment.start.x, segment.end.x) - 50, y: segmentY },
-              endPoint: { x: Math.max(currentPoint.x, segment.start.x, segment.end.x) + 50, y: segmentY },
-              targetPoint: { x: segmentY, y: segmentY },
-              lineType: 'parallel'
+        if (isParallel) {
+          // Determine if it's more horizontal or vertical
+          const isHorizontal = Math.abs(normalizedSegment.y) < 0.3;
+          const isVertical = Math.abs(normalizedSegment.x) < 0.3;
+
+          if (isHorizontal) {
+            // Check alignment with segment endpoints for vertical guides
+            [segment.start, segment.end].forEach(point => {
+              if (Math.abs(currentPoint.x - point.x) <= tolerance) {
+                guides.push({
+                  type: 'vertical',
+                  position: point.x,
+                  startPoint: { x: point.x, y: Math.min(currentPoint.y, point.y, previousPoint.y) - 50 },
+                  endPoint: { x: point.x, y: Math.max(currentPoint.y, point.y, previousPoint.y) + 50 },
+                  targetPoint: point,
+                  lineType: 'extension'
+                });
+              }
+            });
+          }
+
+          if (isVertical) {
+            // Check alignment with segment endpoints for horizontal guides
+            [segment.start, segment.end].forEach(point => {
+              if (Math.abs(currentPoint.y - point.y) <= tolerance) {
+                guides.push({
+                  type: 'horizontal',
+                  position: point.y,
+                  startPoint: { x: Math.min(currentPoint.x, point.x, previousPoint.x) - 50, y: point.y },
+                  endPoint: { x: Math.max(currentPoint.x, point.x, previousPoint.x) + 50, y: point.y },
+                  targetPoint: point,
+                  lineType: 'extension'
+                });
+              }
             });
           }
         }
-
-        if (isVertical) {
-          // Check alignment with segment endpoints for horizontal guides
-          [segment.start, segment.end].forEach(point => {
-            if (Math.abs(currentPoint.y - point.y) <= tolerance) {
-              guides.push({
-                type: 'horizontal',
-                position: point.y,
-                startPoint: { x: Math.min(currentPoint.x, point.x, previousPoint.x) - 50, y: point.y },
-                endPoint: { x: Math.max(currentPoint.x, point.x, previousPoint.x) + 50, y: point.y },
-                targetPoint: point,
-                lineType: 'extension'
-              });
-            }
-          });
-          
-          // Check for parallel line alignment (same X level)
-          const segmentX = (segment.start.x + segment.end.x) / 2;
-          if (Math.abs(currentPoint.x - segmentX) <= tolerance) {
-            guides.push({
-              type: 'vertical',
-              position: segmentX,
-              startPoint: { x: segmentX, y: Math.min(currentPoint.y, segment.start.y, segment.end.y) - 50 },
-              endPoint: { x: segmentX, y: Math.max(currentPoint.y, segment.start.y, segment.end.y) + 50 },
-              targetPoint: { x: segmentX, y: segmentX },
-              lineType: 'parallel'
-            });
-          }
-        }
-      }
-    });
+      });
+    }
 
     // Remove duplicate guides (same type and position)
     const uniqueGuides = guides.filter((guide, index, array) => {
@@ -220,12 +193,24 @@ export const useSmartAlignment = () => {
     currentPoint: Point,
     guides: AlignmentGuide[]
   ): Point | null => {
-    // Prioritize point alignment, then extension guides, then parallel guides
+    // Check if we have both vertical and horizontal guides for intersection snapping
+    const verticalGuides = guides.filter(g => g.type === 'vertical');
+    const horizontalGuides = guides.filter(g => g.type === 'horizontal');
+    
+    // If we have both vertical and horizontal guides, create intersection snap point
+    if (verticalGuides.length > 0 && horizontalGuides.length > 0) {
+      // Use the first guide of each type for intersection
+      const verticalPos = verticalGuides[0].position;
+      const horizontalPos = horizontalGuides[0].position;
+      
+      return { x: verticalPos, y: horizontalPos };
+    }
+    
+    // Otherwise, prioritize point alignment, then extension guides
     const pointAlignmentGuides = guides.filter(g => g.lineType === 'point-alignment');
     const extensionGuides = guides.filter(g => g.lineType === 'extension');
-    const parallelGuides = guides.filter(g => g.lineType === 'parallel');
     
-    const prioritizedGuides = [...pointAlignmentGuides, ...extensionGuides, ...parallelGuides];
+    const prioritizedGuides = [...pointAlignmentGuides, ...extensionGuides];
     
     for (const guide of prioritizedGuides) {
       if (guide.type === 'vertical') {
@@ -234,6 +219,7 @@ export const useSmartAlignment = () => {
         return { x: currentPoint.x, y: guide.position };
       }
     }
+    
     return null;
   }, []);
 
