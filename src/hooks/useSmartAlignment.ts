@@ -16,7 +16,6 @@ export const useSmartAlignment = () => {
     currentPoint: Point,
     previousPoint: Point,
     elements: PergolaElementType[],
-    tempPoints: Point[] = [], // Add tempPoints parameter
     tolerance: number = 15
   ): AlignmentGuide[] => {
     const guides: AlignmentGuide[] = [];
@@ -40,9 +39,6 @@ export const useSmartAlignment = () => {
         }
       }
     });
-
-    // Add temp points from current drawing session
-    allPoints.push(...tempPoints);
 
     // Check for point alignment (vertical and horizontal guides)
     allPoints.forEach(point => {
@@ -98,15 +94,6 @@ export const useSmartAlignment = () => {
         }
       }
     });
-
-    // Add line segments from temp points
-    for (let i = 0; i < tempPoints.length - 1; i++) {
-      lineSegments.push({
-        start: tempPoints[i],
-        end: tempPoints[i + 1],
-        type: 'temp'
-      });
-    }
 
     // Calculate current drawing direction
     const currentVector = {
