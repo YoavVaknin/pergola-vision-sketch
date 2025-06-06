@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { Point, PergolaElementType, DrawingState, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement, ShadingConfig } from '@/types/pergola';
 
@@ -19,9 +20,26 @@ export const usePergolaDrawing = () => {
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
-  // פונקציה לחישוב קורות הצללה בתוך מסגרת
+  // פונקציה לבדיקה אם נקודה נמצאת בתוך פוליגון - עם תיקון
+  const isPointInPolygon = (point: Point, polygon: Point[]): boolean => {
+    if (polygon.length < 3) return false;
+    
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      if (((polygon[i].y > point.y) !== (polygon[j].y > point.y)) &&
+          (point.x < (polygon[j].x - polygon[i].x) * (point.y - polygon[i].y) / (polygon[j].y - polygon[i].y) + polygon[i].x)) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  };
+
+  // פונקציה משופרת לחישוב קורות הצללה
   const generateShadingBeams = useCallback((framePoints: Point[], config: ShadingConfig): ShadingElement[] => {
-    if (!config.enabled || framePoints.length < 3) return [];
+    if (!config.enabled || framePoints.length < 3) {
+      console.log('Shading disabled or insufficient points:', config.enabled, framePoints.length);
+      return [];
+    }
 
     const beams: ShadingElement[] = [];
     
@@ -31,45 +49,84 @@ export const usePergolaDrawing = () => {
     const minY = Math.min(...framePoints.map(p => p.y));
     const maxY = Math.max(...framePoints.map(p => p.y));
 
+    console.log('Frame bounds:', { minX, maxX, minY, maxY });
+
     if (config.direction === 0) {
-      // קורות אנכיות
+      // קורות אנכיות - מעבר על ציר X
       for (let x = minX + config.spacing; x < maxX; x += config.spacing) {
-        // בדיקה שהקו נמצא בתוך המסגרת
-        const topPoint = { x, y: minY };
-        const bottomPoint = { x, y: maxY };
+        // חיפוש החתך עם המסגרת מלמעלה למטה
+        let intersections = [];
         
-        if (isPointInPolygon(topPoint, framePoints) && isPointInPolygon(bottomPoint, framePoints)) {
-          beams.push({
-            id: generateId(),
-            type: 'shading',
-            start: topPoint,
-            end: bottomPoint,
-            spacing: config.spacing,
-            direction: config.direction,
-            color: config.color
-          });
+        for (let i = 0; i < framePoints.length; i++) {
+          const p1 = framePoints[i];
+          const p2 = framePoints[(i + 1) % framePoints.length];
+          
+          // בדיקה אם הקו האנכי חותך את צלע המסגרת
+          if ((p1.x <= x && x <= p2.x) || (p2.x <= x && x <= p1.x)) {
+            if (p1.x !== p2.x) { // לא קו אנכי
+              const y = p1.y + (x - p1.x) * (p2.y - p1.y) / (p2.x - p1.x);
+              if (y >= minY && y <= maxY) {
+                intersections.push(y);
+              }
+            }
+          }
+        }
+        
+        // מיון החתכים ויצירת קורות
+        intersections.sort((a, b) => a - b);
+        for (let i = 0; i < intersections.length - 1; i += 2) {
+          if (i + 1 < intersections.length) {
+            beams.push({
+              id: generateId(),
+              type: 'shading',
+              start: { x, y: intersections[i] },
+              end: { x, y: intersections[i + 1] },
+              spacing: config.spacing,
+              direction: config.direction,
+              color: config.color
+            });
+          }
         }
       }
     } else {
-      // קורות אופקיות
+      // קורות אופקיות - מעבר על ציר Y
       for (let y = minY + config.spacing; y < maxY; y += config.spacing) {
-        const leftPoint = { x: minX, y };
-        const rightPoint = { x: maxX, y };
+        let intersections = [];
         
-        if (isPointInPolygon(leftPoint, framePoints) && isPointInPolygon(rightPoint, framePoints)) {
-          beams.push({
-            id: generateId(),
-            type: 'shading',
-            start: leftPoint,
-            end: rightPoint,
-            spacing: config.spacing,
-            direction: config.direction,
-            color: config.color
-          });
+        for (let i = 0; i < framePoints.length; i++) {
+          const p1 = framePoints[i];
+          const p2 = framePoints[(i + 1) % framePoints.length];
+          
+          // בדיקה אם הקו האופקי חותך את צלע המסגרת
+          if ((p1.y <= y && y <= p2.y) || (p2.y <= y && y <= p1.y)) {
+            if (p1.y !== p2.y) { // לא קו אופקי
+              const x = p1.x + (y - p1.y) * (p2.x - p1.x) / (p2.y - p1.y);
+              if (x >= minX && x <= maxX) {
+                intersections.push(x);
+              }
+            }
+          }
+        }
+        
+        // מיון החתכים ויצירת קורות
+        intersections.sort((a, b) => a - b);
+        for (let i = 0; i < intersections.length - 1; i += 2) {
+          if (i + 1 < intersections.length) {
+            beams.push({
+              id: generateId(),
+              type: 'shading',
+              start: { x: intersections[i], y },
+              end: { x: intersections[i + 1], y },
+              spacing: config.spacing,
+              direction: config.direction,
+              color: config.color
+            });
+          }
         }
       }
     }
 
+    console.log('Generated shading beams:', beams.length);
     return beams;
   }, []);
 
@@ -116,6 +173,8 @@ export const usePergolaDrawing = () => {
         color: '#1f2937'
       };
       
+      console.log('Creating frame with points:', drawingState.tempPoints);
+      
       setElements(prev => {
         // הסרת קורות הצללה והעמודים הקיימים
         const filteredElements = prev.filter(el => el.type !== 'shading' && el.type !== 'column');
@@ -126,6 +185,7 @@ export const usePergolaDrawing = () => {
         // הוספת קורות הצללה
         if (shadingConfig.enabled) {
           const shadingBeams = generateShadingBeams(drawingState.tempPoints, shadingConfig);
+          console.log('Adding shading beams:', shadingBeams);
           newElements.push(...shadingBeams);
         }
         
