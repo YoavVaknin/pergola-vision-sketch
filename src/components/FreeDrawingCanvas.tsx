@@ -245,72 +245,81 @@ export const FreeDrawingCanvas = () => {
       ctx.stroke();
     }
 
-    // Enhanced alignment guides drawing with better visibility
+    // Enhanced alignment guides drawing with much better visibility
     alignmentGuides.forEach(guide => {
+      ctx.save(); // Save current context
+      
       if (guide.lineType === 'point-alignment') {
-        // Point alignment - bright orange for exact point alignment with enhanced visibility
+        // Point alignment - very prominent orange with glow effect
         ctx.strokeStyle = '#f97316';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 6]);
+        ctx.lineWidth = 3;
+        ctx.setLineDash([6, 8]);
         ctx.shadowColor = '#f97316';
-        ctx.shadowBlur = 2;
+        ctx.shadowBlur = 4;
+        ctx.globalAlpha = 0.9;
       } else if (guide.lineType === 'extension') {
-        // Extension guides - bright blue for line extensions
+        // Extension guides - bright blue
         ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([6, 4]);
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
         ctx.shadowColor = '#3b82f6';
-        ctx.shadowBlur = 1;
+        ctx.shadowBlur = 2;
+        ctx.globalAlpha = 0.8;
       } else {
-        // Parallel guides - bright green for parallel alignment
+        // Parallel guides - bright green
         ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([8, 3]);
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 3]);
         ctx.shadowColor = '#10b981';
-        ctx.shadowBlur = 1;
+        ctx.shadowBlur = 2;
+        ctx.globalAlpha = 0.8;
       }
       
       ctx.beginPath();
       ctx.moveTo(guide.startPoint.x, guide.startPoint.y);
       ctx.lineTo(guide.endPoint.x, guide.endPoint.y);
       ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.shadowBlur = 0;
       
-      // Enhanced target point indicator with different colors and sizes
+      ctx.restore(); // Restore context
+      
+      // Enhanced target point indicator with different styles for each type
+      ctx.save();
       if (guide.lineType === 'point-alignment') {
-        // Larger, more prominent indicator for point alignment
+        // Very prominent indicator for point alignment
         ctx.fillStyle = '#f97316';
         ctx.strokeStyle = '#ea580c';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#f97316';
+        ctx.shadowBlur = 6;
+        
+        // Main circle
         ctx.beginPath();
-        ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 5, 0, 2 * Math.PI);
+        ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 6, 0, 2 * Math.PI);
         ctx.fill();
         ctx.stroke();
         
-        // Add animated ring effect for point alignment
+        // Pulsing rings for better visibility
         ctx.strokeStyle = '#f97316';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.6;
+        ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 10, 0, 2 * Math.PI);
+        ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 12, 0, 2 * Math.PI);
         ctx.stroke();
-        ctx.setLineDash([]);
         
-        // Add another larger ring for even better visibility
-        ctx.strokeStyle = '#f97316';
-        ctx.lineWidth = 0.5;
-        ctx.setLineDash([2, 4]);
+        ctx.globalAlpha = 0.4;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 6]);
         ctx.beginPath();
-        ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 15, 0, 2 * Math.PI);
+        ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 18, 0, 2 * Math.PI);
         ctx.stroke();
-        ctx.setLineDash([]);
       } else {
         ctx.fillStyle = guide.lineType === 'extension' ? '#3b82f6' : '#10b981';
         ctx.beginPath();
-        ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 3, 0, 2 * Math.PI);
+        ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 4, 0, 2 * Math.PI);
         ctx.fill();
       }
+      ctx.restore();
     });
 
     // Draw elements
@@ -450,25 +459,30 @@ export const FreeDrawingCanvas = () => {
 
     // Enhanced alignment snap point indicator with improved visibility
     if (alignmentSnapPoint) {
-      // Determine the color based on the type of guide that created this snap point
+      ctx.save();
+      
+      // Determine the color and size based on the type of guide that created this snap point
       const activeGuide = alignmentGuides.find(guide => 
         (guide.type === 'vertical' && Math.abs(guide.position - alignmentSnapPoint.x) < 2) ||
         (guide.type === 'horizontal' && Math.abs(guide.position - alignmentSnapPoint.y) < 2)
       );
       
       let snapColor = '#3b82f6'; // default blue
-      let snapSize = 6;
+      let snapSize = 8;
       
       if (activeGuide?.lineType === 'point-alignment') {
         snapColor = '#f97316'; // orange for point alignment
-        snapSize = 8; // larger for point alignment
+        snapSize = 10; // larger for point alignment
       } else if (activeGuide?.lineType === 'parallel') {
         snapColor = '#10b981'; // green for parallel
       }
       
+      // Main snap indicator
       ctx.strokeStyle = snapColor;
-      ctx.fillStyle = snapColor + '60'; // Add transparency
-      ctx.lineWidth = 2;
+      ctx.fillStyle = snapColor + '40'; // Add transparency
+      ctx.lineWidth = 3;
+      ctx.shadowColor = snapColor;
+      ctx.shadowBlur = 8;
       
       ctx.beginPath();
       ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, snapSize, 0, 2 * Math.PI);
@@ -478,21 +492,22 @@ export const FreeDrawingCanvas = () => {
       // Enhanced pulsing effect for point alignment
       if (activeGuide?.lineType === 'point-alignment') {
         ctx.strokeStyle = snapColor;
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.7;
+        ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, snapSize + 4, 0, 2 * Math.PI);
+        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, snapSize + 6, 0, 2 * Math.PI);
         ctx.stroke();
-        ctx.setLineDash([]);
         
-        ctx.strokeStyle = snapColor;
+        ctx.globalAlpha = 0.5;
         ctx.lineWidth = 1;
-        ctx.setLineDash([2, 4]);
+        ctx.setLineDash([2, 6]);
         ctx.beginPath();
-        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, snapSize + 8, 0, 2 * Math.PI);
+        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, snapSize + 12, 0, 2 * Math.PI);
         ctx.stroke();
-        ctx.setLineDash([]);
       }
+      
+      ctx.restore();
     }
 
     // Draw snap point indicator

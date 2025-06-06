@@ -20,44 +20,63 @@ export const useSmartAlignment = () => {
   ): AlignmentGuide[] => {
     const guides: AlignmentGuide[] = [];
     
-    // Collect all points from existing elements
-    const allPoints: { point: Point; elementType: string }[] = [];
+    // Collect all points from existing elements (enhanced collection)
+    const allPoints: { point: Point; elementType: string; elementId: string }[] = [];
     
     elements.forEach(element => {
       if (element.type === 'frame') {
         const frame = element as FrameElement;
-        frame.points.forEach(point => {
-          allPoints.push({ point, elementType: 'frame' });
+        frame.points.forEach((point, index) => {
+          allPoints.push({ 
+            point, 
+            elementType: 'frame', 
+            elementId: `${element.id}-${index}` 
+          });
         });
       } else if (element.type === 'shading' || element.type === 'division' || element.type === 'beam') {
         const lineElement = element as any;
         if (lineElement.start && lineElement.end) {
-          allPoints.push({ point: lineElement.start, elementType: element.type });
-          allPoints.push({ point: lineElement.end, elementType: element.type });
+          allPoints.push({ 
+            point: lineElement.start, 
+            elementType: element.type, 
+            elementId: `${element.id}-start` 
+          });
+          allPoints.push({ 
+            point: lineElement.end, 
+            elementType: element.type, 
+            elementId: `${element.id}-end` 
+          });
         }
       } else if (element.type === 'column') {
         const columnElement = element as any;
         if (columnElement.position) {
-          allPoints.push({ point: columnElement.position, elementType: element.type });
+          allPoints.push({ 
+            point: columnElement.position, 
+            elementType: element.type, 
+            elementId: element.id 
+          });
         }
       }
     });
 
-    // Enhanced point alignment detection - this is the key improvement
+    // Primary alignment detection - this is the core functionality
     allPoints.forEach(({ point: targetPoint, elementType }) => {
       // Skip if it's too close to the previous point (avoid self-alignment)
       const distanceToPrevious = Math.sqrt(
         Math.pow(targetPoint.x - previousPoint.x, 2) + Math.pow(targetPoint.y - previousPoint.y, 2)
       );
-      if (distanceToPrevious < 20) return; // Increased threshold to avoid self-alignment
+      if (distanceToPrevious < 30) return; // Increased threshold to avoid self-alignment
 
       // Enhanced vertical alignment detection (same X coordinate)
       const xDiff = Math.abs(currentPoint.x - targetPoint.x);
       if (xDiff <= tolerance) {
+        // Create a long vertical guide line that spans the canvas
         const canvasHeight = 600;
-        // Extend the guide line beyond both points for better visibility
-        const minY = Math.min(currentPoint.y, targetPoint.y) - 100;
-        const maxY = Math.max(currentPoint.y, targetPoint.y) + 100;
+        const extendLength = 200;
+        
+        // Calculate the guide line bounds
+        const minY = Math.min(currentPoint.y, targetPoint.y) - extendLength;
+        const maxY = Math.max(currentPoint.y, targetPoint.y) + extendLength;
         
         guides.push({
           type: 'vertical',
@@ -72,10 +91,13 @@ export const useSmartAlignment = () => {
       // Enhanced horizontal alignment detection (same Y coordinate)
       const yDiff = Math.abs(currentPoint.y - targetPoint.y);
       if (yDiff <= tolerance) {
+        // Create a long horizontal guide line that spans the canvas
         const canvasWidth = 800;
-        // Extend the guide line beyond both points for better visibility
-        const minX = Math.min(currentPoint.x, targetPoint.x) - 100;
-        const maxX = Math.max(currentPoint.x, targetPoint.x) + 100;
+        const extendLength = 200;
+        
+        // Calculate the guide line bounds
+        const minX = Math.min(currentPoint.x, targetPoint.x) - extendLength;
+        const maxX = Math.max(currentPoint.x, targetPoint.x) + extendLength;
         
         guides.push({
           type: 'horizontal',
@@ -130,7 +152,7 @@ export const useSmartAlignment = () => {
       y: currentVector.y / currentLength
     };
 
-    // Enhanced parallel alignment and extensions
+    // Enhanced extension and parallel alignment
     lineSegments.forEach(segment => {
       const segmentVector = {
         x: segment.end.x - segment.start.x,
@@ -147,7 +169,7 @@ export const useSmartAlignment = () => {
 
       // Check if lines are parallel (dot product close to 1 or -1)
       const dotProduct = Math.abs(normalizedCurrent.x * normalizedSegment.x + normalizedCurrent.y * normalizedSegment.y);
-      const isParallel = dotProduct > 0.85; // Slightly more lenient for better detection
+      const isParallel = dotProduct > 0.85;
 
       if (isParallel) {
         // Determine if it's more horizontal or vertical
@@ -169,26 +191,6 @@ export const useSmartAlignment = () => {
               });
             }
           });
-          
-          // Check for parallel line alignment (same Y level)
-          const avgSegmentY = (segment.start.y + segment.end.y) / 2;
-          if (Math.abs(currentPoint.y - avgSegmentY) <= tolerance) {
-            const extendLength = 150;
-            guides.push({
-              type: 'horizontal',
-              position: avgSegmentY,
-              startPoint: { 
-                x: Math.min(currentPoint.x, segment.start.x, segment.end.x) - extendLength, 
-                y: avgSegmentY 
-              },
-              endPoint: { 
-                x: Math.max(currentPoint.x, segment.start.x, segment.end.x) + extendLength, 
-                y: avgSegmentY 
-              },
-              targetPoint: { x: avgSegmentY, y: avgSegmentY },
-              lineType: 'parallel'
-            });
-          }
         }
 
         if (isMoreVertical) {
@@ -206,26 +208,6 @@ export const useSmartAlignment = () => {
               });
             }
           });
-          
-          // Check for parallel line alignment (same X level)
-          const avgSegmentX = (segment.start.x + segment.end.x) / 2;
-          if (Math.abs(currentPoint.x - avgSegmentX) <= tolerance) {
-            const extendLength = 150;
-            guides.push({
-              type: 'vertical',
-              position: avgSegmentX,
-              startPoint: { 
-                x: avgSegmentX, 
-                y: Math.min(currentPoint.y, segment.start.y, segment.end.y) - extendLength 
-              },
-              endPoint: { 
-                x: avgSegmentX, 
-                y: Math.max(currentPoint.y, segment.start.y, segment.end.y) + extendLength 
-              },
-              targetPoint: { x: avgSegmentX, y: avgSegmentX },
-              lineType: 'parallel'
-            });
-          }
         }
       }
     });
@@ -250,20 +232,29 @@ export const useSmartAlignment = () => {
     currentPoint: Point,
     guides: AlignmentGuide[]
   ): Point | null => {
-    // Prioritize point alignment, then extension guides, then parallel guides
+    // Prioritize point alignment guides first
     const pointAlignmentGuides = guides.filter(g => g.lineType === 'point-alignment');
-    const extensionGuides = guides.filter(g => g.lineType === 'extension');
-    const parallelGuides = guides.filter(g => g.lineType === 'parallel');
     
-    const prioritizedGuides = [...pointAlignmentGuides, ...extensionGuides, ...parallelGuides];
-    
-    for (const guide of prioritizedGuides) {
+    if (pointAlignmentGuides.length > 0) {
+      const guide = pointAlignmentGuides[0];
       if (guide.type === 'vertical') {
         return { x: guide.position, y: currentPoint.y };
       } else if (guide.type === 'horizontal') {
         return { x: currentPoint.x, y: guide.position };
       }
     }
+    
+    // Then try extension guides
+    const extensionGuides = guides.filter(g => g.lineType === 'extension');
+    if (extensionGuides.length > 0) {
+      const guide = extensionGuides[0];
+      if (guide.type === 'vertical') {
+        return { x: guide.position, y: currentPoint.y };
+      } else if (guide.type === 'horizontal') {
+        return { x: currentPoint.x, y: guide.position };
+      }
+    }
+    
     return null;
   }, []);
 
