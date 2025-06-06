@@ -47,6 +47,21 @@ export const usePergolaDrawing = () => {
     targetLength: 0
   });
 
+  // New state for dimension editing
+  const [dimensionEditState, setDimensionEditState] = useState<{
+    visible: boolean;
+    position: Point;
+    elementId: string | null;
+    segmentIndex: number | null;
+    currentLength: number;
+  }>({
+    visible: false,
+    position: { x: 0, y: 0 },
+    elementId: null,
+    segmentIndex: null,
+    currentLength: 0
+  });
+
   // פונקציה לחישוב נקודה חדשה על פי אורך ויישור
   const calculatePointByLength = useCallback((startPoint: Point, direction: Point, targetLength: number): Point => {
     const currentLength = calculateRealDistance(startPoint, direction, measurementConfig.pixelsPerCm);
@@ -258,7 +273,7 @@ export const usePergolaDrawing = () => {
     return beams;
   }, []);
 
-  // פונקציה חדשה לחישוב קורות חלוקה
+  // פונקציה לחישוב קורות חלוקה
   const generateDivisionBeams = useCallback((framePoints: Point[], config: ShadingConfig): DivisionElement[] => {
     if (!config.divisionEnabled || framePoints.length < 3) {
       console.log('Division disabled or insufficient points:', config.divisionEnabled, framePoints.length);
@@ -566,12 +581,102 @@ export const usePergolaDrawing = () => {
     });
   }, []);
 
+  // New function to show dimension editor
+  const showDimensionEditor = useCallback((elementId: string, segmentIndex: number, position: Point, currentLength: number) => {
+    setDimensionEditState({
+      visible: true,
+      position,
+      elementId,
+      segmentIndex,
+      currentLength
+    });
+  }, []);
+
+  // New function to hide dimension editor
+  const hideDimensionEditor = useCallback(() => {
+    setDimensionEditState(prev => ({ ...prev, visible: false }));
+  }, []);
+
+  // New function to handle dimension edit submission
+  const handleDimensionEdit = useCallback((newLength: number) => {
+    if (!dimensionEditState.elementId || dimensionEditState.segmentIndex === null) return;
+
+    setElements(prevElements => {
+      return prevElements.map(element => {
+        if (element.id === dimensionEditState.elementId && element.type === 'frame') {
+          const frame = element as FrameElement;
+          const newPoints = [...frame.points];
+          
+          const startIndex = dimensionEditState.segmentIndex!;
+          const endIndex = (startIndex + 1) % newPoints.length;
+          
+          if (!frame.closed && endIndex === 0) return element;
+          
+          const startPoint = newPoints[startIndex];
+          const endPoint = newPoints[endIndex];
+          
+          // Calculate new end point based on desired length
+          const currentVector = {
+            x: endPoint.x - startPoint.x,
+            y: endPoint.y - startPoint.y
+          };
+          
+          const currentLength = Math.sqrt(currentVector.x * currentVector.x + currentVector.y * currentVector.y);
+          if (currentLength === 0) return element;
+          
+          const scale = (newLength * measurementConfig.pixelsPerCm) / currentLength;
+          
+          newPoints[endIndex] = {
+            x: startPoint.x + currentVector.x * scale,
+            y: startPoint.y + currentVector.y * scale
+          };
+          
+          // Recalculate measurements
+          const measurements = calculateFrameMeasurements(newPoints);
+          
+          return {
+            ...frame,
+            points: newPoints,
+            measurements
+          } as FrameElement;
+        }
+        return element;
+      });
+    });
+    
+    hideDimensionEditor();
+  }, [dimensionEditState, measurementConfig.pixelsPerCm, calculateFrameMeasurements]);
+
+  // New function to update corner position
+  const updateCornerPosition = useCallback((elementId: string, cornerIndex: number, newPosition: Point) => {
+    setElements(prevElements => {
+      return prevElements.map(element => {
+        if (element.id === elementId && element.type === 'frame') {
+          const frame = element as FrameElement;
+          const newPoints = [...frame.points];
+          newPoints[cornerIndex] = newPosition;
+          
+          // Recalculate measurements
+          const measurements = calculateFrameMeasurements(newPoints);
+          
+          return {
+            ...frame,
+            points: newPoints,
+            measurements
+          } as FrameElement;
+        }
+        return element;
+      });
+    });
+  }, [calculateFrameMeasurements]);
+
   return {
     elements,
     drawingState,
     shadingConfig,
     measurementConfig,
     lengthInputState,
+    dimensionEditState,
     addPoint,
     finishFrame,
     addBeam,
@@ -586,6 +691,10 @@ export const usePergolaDrawing = () => {
     showLengthInput,
     hideLengthInput,
     handleLengthSubmit,
-    calculatePointByLength
+    calculatePointByLength,
+    showDimensionEditor,
+    hideDimensionEditor,
+    handleDimensionEdit,
+    updateCornerPosition
   };
 };

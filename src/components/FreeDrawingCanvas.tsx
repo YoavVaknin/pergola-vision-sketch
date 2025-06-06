@@ -2,9 +2,11 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { Point, PergolaElementType, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement, DivisionElement } from '@/types/pergola';
 import { usePergolaDrawing } from '@/hooks/usePergolaDrawing';
 import { useSmartAlignment, AlignmentGuide } from '@/hooks/useSmartAlignment';
+import { useCornerEditing } from '@/hooks/useCornerEditing';
 import { DrawingToolbar } from './DrawingToolbar';
 import { ShadingConfigComponent } from './ShadingConfig';
 import { LengthInput } from './LengthInput';
+import { DimensionEditor } from './DimensionEditor';
 import { getMidpoint, getPolygonCentroid, formatMeasurement, formatArea, calculateRealDistance } from '@/utils/measurementUtils';
 
 export const FreeDrawingCanvas = () => {
@@ -18,6 +20,7 @@ export const FreeDrawingCanvas = () => {
   const [isAngleSnapped, setIsAngleSnapped] = useState(false);
   const [alignmentGuides, setAlignmentGuides] = useState<AlignmentGuide[]>([]);
   const [alignmentSnapPoint, setAlignmentSnapPoint] = useState<Point | null>(null);
+  const [hoveredCorner, setHoveredCorner] = useState<{ elementId: string; cornerIndex: number } | null>(null);
   
   const {
     elements,
@@ -25,6 +28,7 @@ export const FreeDrawingCanvas = () => {
     shadingConfig,
     measurementConfig,
     lengthInputState,
+    dimensionEditState,
     addPoint,
     finishFrame,
     addBeam,
@@ -39,10 +43,21 @@ export const FreeDrawingCanvas = () => {
     showLengthInput,
     hideLengthInput,
     handleLengthSubmit,
-    calculatePointByLength
+    calculatePointByLength,
+    showDimensionEditor,
+    hideDimensionEditor,
+    handleDimensionEdit,
+    updateCornerPosition
   } = usePergolaDrawing();
 
   const { findAlignmentGuides, getSnapPoint } = useSmartAlignment();
+  const { 
+    editState, 
+    findNearestCorner, 
+    startCornerEdit, 
+    updateCornerPosition: getUpdatedCornerPosition, 
+    stopCornerEdit 
+  } = useCornerEditing();
 
   const getCanvasPoint = useCallback((clientX: number, clientY: number): Point => {
     const canvas = canvasRef.current;
@@ -132,18 +147,54 @@ export const FreeDrawingCanvas = () => {
     return distance <= 10;
   }, [drawingState.mode, drawingState.tempPoints, calculateDistance]);
 
-  // Function to draw measurement text
+  // Function to check if click is on a dimension text
+  const checkDimensionClick = useCallback((mousePos: Point): { elementId: string; segmentIndex: number; position: Point; length: number } | null => {
+    for (const element of elements) {
+      if (element.type === 'frame') {
+        const frame = element as FrameElement;
+        if (frame.measurements) {
+          for (let i = 0; i < frame.measurements.segmentLengths.length; i++) {
+            const point1 = frame.points[i];
+            const point2 = frame.points[(i + 1) % frame.points.length];
+            
+            if (!frame.closed && i === frame.points.length - 1) continue;
+            
+            const midpoint = getMidpoint(point1, point2);
+            
+            // Check if click is near the midpoint (dimension text area)
+            const distance = Math.sqrt(
+              Math.pow(mousePos.x - midpoint.x, 2) + Math.pow(mousePos.y - midpoint.y, 2)
+            );
+            
+            if (distance <= 20) { // 20px tolerance for clicking on dimension
+              return {
+                elementId: element.id,
+                segmentIndex: i,
+                position: midpoint,
+                length: frame.measurements.segmentLengths[i]
+              };
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }, [elements]);
+
+  // Enhanced drawMeasurementText function to handle clicks
   const drawMeasurementText = useCallback((ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: {
     fontSize?: number;
     color?: string;
     background?: boolean;
     align?: 'center' | 'left' | 'right';
+    clickable?: boolean;
   } = {}) => {
     const {
       fontSize = 12,
       color = '#374151',
       background = true,
-      align = 'center'
+      align = 'center',
+      clickable = false
     } = options;
 
     ctx.font = `${fontSize}px Arial`;
@@ -152,19 +203,19 @@ export const FreeDrawingCanvas = () => {
 
     if (background) {
       const metrics = ctx.measureText(text);
-      const padding = 4;
+      const padding = clickable ? 6 : 4;
       const bgWidth = metrics.width + padding * 2;
       const bgHeight = fontSize + padding * 2;
       
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.fillStyle = clickable ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255, 255, 255, 0.9)';
       ctx.fillRect(x - bgWidth / 2, y - bgHeight / 2, bgWidth, bgHeight);
       
-      ctx.strokeStyle = '#e5e7eb';
+      ctx.strokeStyle = clickable ? '#3b82f6' : '#e5e7eb';
       ctx.lineWidth = 1;
       ctx.strokeRect(x - bgWidth / 2, y - bgHeight / 2, bgWidth, bgHeight);
     }
 
-    ctx.fillStyle = color;
+    ctx.fillStyle = clickable ? '#3b82f6' : color;
     ctx.fillText(text, x, y);
   }, []);
 
@@ -194,11 +245,18 @@ export const FreeDrawingCanvas = () => {
       ctx.stroke();
     }
 
-    // Draw alignment guides
+    // Draw alignment guides with enhanced styling
     alignmentGuides.forEach(guide => {
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
+      if (guide.lineType === 'extension') {
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+      } else {
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 2]);
+      }
+      
       ctx.beginPath();
       ctx.moveTo(guide.startPoint.x, guide.startPoint.y);
       ctx.lineTo(guide.endPoint.x, guide.endPoint.y);
@@ -206,7 +264,7 @@ export const FreeDrawingCanvas = () => {
       ctx.setLineDash([]);
       
       // Draw small indicator at target point
-      ctx.fillStyle = '#3b82f6';
+      ctx.fillStyle = guide.lineType === 'extension' ? '#3b82f6' : '#10b981';
       ctx.beginPath();
       ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 3, 0, 2 * Math.PI);
       ctx.fill();
@@ -231,7 +289,7 @@ export const FreeDrawingCanvas = () => {
             }
             ctx.stroke();
 
-            // Draw measurements
+            // Draw measurements with click detection
             if (measurementConfig.showLengths && frame.measurements) {
               frame.measurements.segmentLengths.forEach((length, index) => {
                 const point1 = frame.points[index];
@@ -244,7 +302,8 @@ export const FreeDrawingCanvas = () => {
                 
                 drawMeasurementText(ctx, lengthText, midpoint.x, midpoint.y, {
                   fontSize: 11,
-                  color: '#6b7280'
+                  color: '#6b7280',
+                  clickable: true
                 });
               });
             }
@@ -275,12 +334,21 @@ export const FreeDrawingCanvas = () => {
               });
             }
           }
-          // Draw points
-          frame.points.forEach(point => {
-            ctx.fillStyle = '#ef4444';
+          // Draw corner points with hover effect
+          frame.points.forEach((point, index) => {
+            const isHovered = hoveredCorner?.elementId === frame.id && hoveredCorner?.cornerIndex === index;
+            const isBeingEdited = editState.isEditing && editState.elementId === frame.id && editState.cornerIndex === index;
+            
+            ctx.fillStyle = isBeingEdited ? '#f59e0b' : (isHovered ? '#10b981' : '#ef4444');
             ctx.beginPath();
-            ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
+            ctx.arc(point.x, point.y, isHovered || isBeingEdited ? 6 : 4, 0, 2 * Math.PI);
             ctx.fill();
+            
+            if (isHovered || isBeingEdited) {
+              ctx.strokeStyle = isBeingEdited ? '#d97706' : '#059669';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
           });
           break;
           
@@ -477,7 +545,7 @@ export const FreeDrawingCanvas = () => {
         }
       }
     }
-  }, [elements, drawingState, mousePosition, isNearFirstPoint, snapPoint, angleSnapPoint, isAngleSnapped, alignmentGuides, alignmentSnapPoint, calculateSnappedAnglePoint, measurementConfig, drawMeasurementText]);
+  }, [elements, drawingState, mousePosition, isNearFirstPoint, snapPoint, angleSnapPoint, isAngleSnapped, alignmentGuides, alignmentSnapPoint, hoveredCorner, editState, calculateSnappedAnglePoint, measurementConfig, drawMeasurementText]);
 
   useEffect(() => {
     drawElements();
@@ -486,6 +554,21 @@ export const FreeDrawingCanvas = () => {
   const handleMouseMove = (e: React.MouseEvent) => {
     const point = getCanvasPoint(e.clientX, e.clientY);
     setMousePosition(point);
+    
+    // Check for corner hover
+    if (!editState.isEditing && drawingState.mode === 'select') {
+      const nearestCorner = findNearestCorner(point, elements);
+      setHoveredCorner(nearestCorner);
+    }
+    
+    // Handle corner editing
+    if (editState.isEditing) {
+      const newPosition = getUpdatedCornerPosition(point);
+      if (newPosition && editState.elementId && editState.cornerIndex !== null) {
+        updateCornerPosition(editState.elementId, editState.cornerIndex, newPosition);
+      }
+      return;
+    }
     
     const nearFirst = checkNearFirstPoint(point);
     setIsNearFirstPoint(nearFirst);
@@ -509,6 +592,32 @@ export const FreeDrawingCanvas = () => {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const point = getCanvasPoint(e.clientX, e.clientY);
+    
+    // Check for dimension click first
+    const dimensionClick = checkDimensionClick(point);
+    if (dimensionClick) {
+      showDimensionEditor(
+        dimensionClick.elementId,
+        dimensionClick.segmentIndex,
+        dimensionClick.position,
+        dimensionClick.length
+      );
+      return;
+    }
+    
+    // Check for corner editing
+    if (drawingState.mode === 'select') {
+      const nearestCorner = findNearestCorner(point, elements);
+      if (nearestCorner) {
+        const element = elements.find(el => el.id === nearestCorner.elementId);
+        if (element && element.type === 'frame') {
+          const frame = element as FrameElement;
+          const cornerPoint = frame.points[nearestCorner.cornerIndex];
+          startCornerEdit(nearestCorner.elementId, nearestCorner.cornerIndex, point, cornerPoint);
+          return;
+        }
+      }
+    }
     
     switch (drawingState.mode) {
       case 'frame':
@@ -650,7 +759,7 @@ export const FreeDrawingCanvas = () => {
         </div>
         
         <div className="p-4 bg-muted rounded-lg">
-          <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
+          <h4 className="font-semibold mb-2">סטטistikות</h4>
           <div className="text-sm space-y-1">
             <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
             <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
@@ -675,6 +784,9 @@ export const FreeDrawingCanvas = () => {
               onMouseUp={handleMouseUp}
               onMouseMove={handleMouseMove}
               onDoubleClick={handleDoubleClick}
+              style={{ 
+                cursor: hoveredCorner ? 'move' : (editState.isEditing ? 'grabbing' : 'crosshair')
+              }}
             />
             
             <LengthInput
@@ -685,20 +797,26 @@ export const FreeDrawingCanvas = () => {
               onSubmit={handleLengthSubmit}
               onCancel={hideLengthInput}
             />
+            
+            <DimensionEditor
+              visible={dimensionEditState.visible}
+              position={dimensionEditState.position}
+              currentValue={dimensionEditState.currentLength}
+              unit={measurementConfig.unit}
+              onSubmit={handleDimensionEdit}
+              onCancel={hideDimensionEditor}
+            />
           </div>
           
           <div className="mt-4 text-sm text-muted-foreground">
             <p><strong>הוראות:</strong></p>
             <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
-            <p>• <span className="text-amber-600">יישור חכם:</span> זווית נעולה (0°, 45°, 90°) מוצגת בכתום מקווקו</p>
-            <p>• <span className="text-blue-600">יישור מקביל:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
-            <p>• <span className="text-green-600">מדידות חיות:</span> אורך הקו מוצג בזמן אמת בזמן השרטוט</p>
-            <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק (הקלד אורך + Enter)</p>
-            <p>• הצללה וחלוקה יתווספו אוטומטית בתוך המסגרת לפי ההגדרות</p>
-            <p>• עמודים יתווספו אוטומטית בפינות המסגרת</p>
-            <p>• קורה/קיר: לחץ והחזק, גרור ושחרר</p>
-            <p>• עמוד נוסף: לחיצה פשוטה</p>
-            <p>• דאבל-קליק או כפתור "סיום מסגרת" לסגירה ידנית</p>
+            <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
+            <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
+            <p>• <span className="text-green-600">ישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
+            <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
+            <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
+            <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
           </div>
         </div>
       </div>
