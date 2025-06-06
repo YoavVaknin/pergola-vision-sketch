@@ -20,7 +20,7 @@ export const usePergolaDrawing = () => {
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
-  // פונקציה לבדיקה אם נקודה נמצאת בתוך פוליגון - עם תיקון
+  // פונקציה לבדיקה אם נקודה נמצאת בתוך פוליגון
   const isPointInPolygon = (point: Point, polygon: Point[]): boolean => {
     if (polygon.length < 3) return false;
     
