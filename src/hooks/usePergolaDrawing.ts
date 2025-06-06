@@ -121,7 +121,7 @@ export const usePergolaDrawing = () => {
         const filteredElements = prev.filter(el => el.type !== 'shading' && el.type !== 'column');
         
         // הוספת המסגרת החדשה
-        const newElements = [...filteredElements, newFrame];
+        const newElements: PergolaElementType[] = [...filteredElements, newFrame];
         
         // הוספת קורות הצללה
         if (shadingConfig.enabled) {
