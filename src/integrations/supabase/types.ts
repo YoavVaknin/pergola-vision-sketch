@@ -20,6 +20,10 @@ export type Database = {
           profile_division: string
           profile_frame: string
           profile_shading: string
+          wall_back: boolean | null
+          wall_front: boolean | null
+          wall_left: boolean | null
+          wall_right: boolean | null
           width: number
         }
         Insert: {
@@ -32,6 +36,10 @@ export type Database = {
           profile_division: string
           profile_frame: string
           profile_shading: string
+          wall_back?: boolean | null
+          wall_front?: boolean | null
+          wall_left?: boolean | null
+          wall_right?: boolean | null
           width: number
         }
         Update: {
@@ -44,6 +52,10 @@ export type Database = {
           profile_division?: string
           profile_frame?: string
           profile_shading?: string
+          wall_back?: boolean | null
+          wall_front?: boolean | null
+          wall_left?: boolean | null
+          wall_right?: boolean | null
           width?: number
         }
         Relationships: []

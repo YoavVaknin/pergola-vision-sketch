@@ -126,6 +126,42 @@ export const InteractivePergolaCanvas = ({ config }: InteractivePergolaCanvasPro
     ctx.lineWidth = 4;
     ctx.strokeRect(startX, startY, displayWidth, displayHeight);
 
+    // ציור קירות
+    ctx.strokeStyle = '#374151'; // אפור כהה לקירות
+    ctx.lineWidth = 6;
+
+    if (config.wall_front) {
+      // קיר קדמי (עליון)
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(startX + displayWidth, startY);
+      ctx.stroke();
+    }
+
+    if (config.wall_back) {
+      // קיר אחורי (תחתון)
+      ctx.beginPath();
+      ctx.moveTo(startX, startY + displayHeight);
+      ctx.lineTo(startX + displayWidth, startY + displayHeight);
+      ctx.stroke();
+    }
+
+    if (config.wall_left) {
+      // קיר שמאלי
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(startX, startY + displayHeight);
+      ctx.stroke();
+    }
+
+    if (config.wall_right) {
+      // קיר ימני
+      ctx.beginPath();
+      ctx.moveTo(startX + displayWidth, startY);
+      ctx.lineTo(startX + displayWidth, startY + displayHeight);
+      ctx.stroke();
+    }
+
     // ציור קורות הצללה בצבע שנבחר
     ctx.strokeStyle = getColorCode(config.color_shading);
     ctx.lineWidth = 2;
@@ -168,8 +204,8 @@ export const InteractivePergolaCanvas = ({ config }: InteractivePergolaCanvasPro
       ctx.strokeRect(columnX, columnY, columnSize, columnSize);
     });
 
-    console.log(`Drawing pergola: ${config.width}x${config.length} cm, scale: ${scale.toFixed(2)}, beams: ${config.beamSpacing}cm spacing, direction: ${config.beamDirection}°, frame color: ${config.color_frame}, shading color: ${config.color_shading}, columns: ${columnPositions.length} (${config.column_placement})`);
-  }, [config.width, config.length, config.beamSpacing, config.beamDirection, config.color_frame, config.color_shading, config.columns, config.column_placement]);
+    console.log(`Drawing pergola: ${config.width}x${config.length} cm, scale: ${scale.toFixed(2)}, beams: ${config.beamSpacing}cm spacing, direction: ${config.beamDirection}°, frame color: ${config.color_frame}, shading color: ${config.color_shading}, columns: ${columnPositions.length} (${config.column_placement}), walls: front=${config.wall_front}, back=${config.wall_back}, left=${config.wall_left}, right=${config.wall_right}`);
+  }, [config.width, config.length, config.beamSpacing, config.beamDirection, config.color_frame, config.color_shading, config.columns, config.column_placement, config.wall_front, config.wall_back, config.wall_left, config.wall_right]);
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-white rounded-lg border">
@@ -179,7 +215,7 @@ export const InteractivePergolaCanvas = ({ config }: InteractivePergolaCanvasPro
           פרגולה {config.width}×{config.length} ס״מ
         </h3>
         <p className="text-sm text-muted-foreground">
-          מסגרת {config.profile_frame} ({config.color_frame}) | מרווח קורות {config.beamSpacing} ס״מ ({config.color_shading}) | עמודים: {config.column_placement === "corners" ? "4 בפינות" : config.columns}
+          מסגרת {config.profile_frame} ({config.color_frame}) | מרווח קורות {config.beamSpacing} ס״מ ({config.color_shading}) | עמודים: {config.column_placement === "corners" ? "4 בפינות" : config.columns} | קירות: {[config.wall_front, config.wall_back, config.wall_left, config.wall_right].filter(Boolean).length}
         </p>
       </div>
 

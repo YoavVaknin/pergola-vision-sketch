@@ -1,9 +1,9 @@
-
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PergolaConfig } from "@/pages/CreateVisualization";
 
 interface PergolaFormProps {
@@ -139,6 +139,60 @@ export const PergolaForm = ({ config, onConfigChange }: PergolaFormProps) => {
               />
             </div>
           )}
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* קירות */}
+      <div>
+        <h3 className="font-medium mb-4 text-foreground">קירות</h3>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="wall_front"
+                checked={config.wall_front}
+                onCheckedChange={(checked) => onConfigChange({ wall_front: !!checked })}
+              />
+              <Label htmlFor="wall_front" className="text-sm font-medium">
+                קיר קדמי
+              </Label>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="wall_back"
+                checked={config.wall_back}
+                onCheckedChange={(checked) => onConfigChange({ wall_back: !!checked })}
+              />
+              <Label htmlFor="wall_back" className="text-sm font-medium">
+                קיר אחורי
+              </Label>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="wall_left"
+                checked={config.wall_left}
+                onCheckedChange={(checked) => onConfigChange({ wall_left: !!checked })}
+              />
+              <Label htmlFor="wall_left" className="text-sm font-medium">
+                צד שמאל
+              </Label>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="wall_right"
+                checked={config.wall_right}
+                onCheckedChange={(checked) => onConfigChange({ wall_right: !!checked })}
+              />
+              <Label htmlFor="wall_right" className="text-sm font-medium">
+                צד ימין
+              </Label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -303,6 +357,12 @@ export const PergolaForm = ({ config, onConfigChange }: PergolaFormProps) => {
               <span className="text-muted-foreground">מספר עמודים:</span>
               <span className="font-medium">
                 {config.column_placement === "corners" ? "4" : config.columns}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">קירות סגורים:</span>
+              <span className="font-medium">
+                {[config.wall_front, config.wall_back, config.wall_left, config.wall_right].filter(Boolean).length} מתוך 4
               </span>
             </div>
             <div className="flex justify-between">

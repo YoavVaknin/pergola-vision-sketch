@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,10 @@ export interface PergolaConfig {
   color_shading: string;
   columns: number;
   column_placement: string;
+  wall_front: boolean;
+  wall_back: boolean;
+  wall_left: boolean;
+  wall_right: boolean;
 }
 
 const CreateVisualization = () => {
@@ -38,7 +41,11 @@ const CreateVisualization = () => {
     color_division: "אפור גרפיט",
     color_shading: "עץ כהה",
     columns: 4,
-    column_placement: "corners"
+    column_placement: "corners",
+    wall_front: false,
+    wall_back: false,
+    wall_left: false,
+    wall_right: false
   });
 
   const handleConfigChange = (newConfig: Partial<PergolaConfig>) => {
@@ -56,7 +63,11 @@ const CreateVisualization = () => {
       beam_direction: config.beamDirection,
       color_frame: config.color_frame,
       color_division: config.color_division,
-      color_shading: config.color_shading
+      color_shading: config.color_shading,
+      wall_front: config.wall_front,
+      wall_back: config.wall_back,
+      wall_left: config.wall_left,
+      wall_right: config.wall_right
     });
   };
 

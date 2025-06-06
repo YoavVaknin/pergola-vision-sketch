@@ -15,6 +15,10 @@ export interface PergolaDesign {
   color_frame?: string;
   color_division?: string;
   color_shading?: string;
+  wall_front?: boolean;
+  wall_back?: boolean;
+  wall_left?: boolean;
+  wall_right?: boolean;
   created_by?: string;
   created_at?: string;
 }
