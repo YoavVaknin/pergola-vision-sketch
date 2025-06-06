@@ -245,16 +245,37 @@ export const FreeDrawingCanvas = () => {
       ctx.stroke();
     }
 
-    // Draw alignment guides with enhanced styling
+    // Draw alignment guides with enhanced styling and colors
     alignmentGuides.forEach(guide => {
-      if (guide.lineType === 'extension') {
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 3]);
-      } else {
-        ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([5, 2]);
+      // Set colors based on guide type and line type
+      if (guide.type === 'vertical') {
+        if (guide.lineType === 'point-alignment') {
+          ctx.strokeStyle = '#3b82f6'; // Blue for vertical point alignment
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+        } else if (guide.lineType === 'extension') {
+          ctx.strokeStyle = '#3b82f6'; // Blue for vertical extensions
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+        } else {
+          ctx.strokeStyle = '#10b981'; // Green for parallel
+          ctx.lineWidth = 1;
+          ctx.setLineDash([5, 2]);
+        }
+      } else { // horizontal
+        if (guide.lineType === 'point-alignment') {
+          ctx.strokeStyle = '#f97316'; // Orange for horizontal point alignment
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+        } else if (guide.lineType === 'extension') {
+          ctx.strokeStyle = '#f97316'; // Orange for horizontal extensions
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+        } else {
+          ctx.strokeStyle = '#10b981'; // Green for parallel
+          ctx.lineWidth = 1;
+          ctx.setLineDash([5, 2]);
+        }
       }
       
       ctx.beginPath();
@@ -264,11 +285,48 @@ export const FreeDrawingCanvas = () => {
       ctx.setLineDash([]);
       
       // Draw small indicator at target point
-      ctx.fillStyle = guide.lineType === 'extension' ? '#3b82f6' : '#10b981';
-      ctx.beginPath();
-      ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 3, 0, 2 * Math.PI);
-      ctx.fill();
+      if (guide.lineType === 'point-alignment') {
+        ctx.fillStyle = guide.type === 'vertical' ? '#3b82f6' : '#f97316';
+        ctx.beginPath();
+        ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 4, 0, 2 * Math.PI);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = guide.lineType === 'extension' ? 
+          (guide.type === 'vertical' ? '#3b82f6' : '#f97316') : '#10b981';
+        ctx.beginPath();
+        ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 3, 0, 2 * Math.PI);
+        ctx.fill();
+      }
     });
+
+    // Check for intersection of alignment guides and draw special indicator
+    const verticalGuides = alignmentGuides.filter(g => g.type === 'vertical');
+    const horizontalGuides = alignmentGuides.filter(g => g.type === 'horizontal');
+    
+    if (verticalGuides.length > 0 && horizontalGuides.length > 0) {
+      const intersectionX = verticalGuides[0].position;
+      const intersectionY = horizontalGuides[0].position;
+      
+      // Draw intersection indicator
+      ctx.strokeStyle = '#dc2626';
+      ctx.fillStyle = 'rgba(220, 38, 38, 0.3)';
+      ctx.lineWidth = 2;
+      
+      ctx.beginPath();
+      ctx.arc(intersectionX, intersectionY, 8, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
+      
+      // Draw cross pattern at intersection
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(intersectionX - 6, intersectionY);
+      ctx.lineTo(intersectionX + 6, intersectionY);
+      ctx.moveTo(intersectionX, intersectionY - 6);
+      ctx.lineTo(intersectionX, intersectionY + 6);
+      ctx.stroke();
+    }
 
     // Draw elements
     elements.forEach(element => {
@@ -812,8 +870,10 @@ export const FreeDrawingCanvas = () => {
             <p><strong>הוראות:</strong></p>
             <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
             <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
-            <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
-            <p>• <span className="text-green-600">ישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
+            <p>• <span className="text-blue-600">יישור אנכי:</span> קווי עזר כחולים מיישרים לציר X של נקודות קיימות</p>
+            <p>• <span className="text-orange-600">יישור אופקי:</span> קווי עזר כתומים מיישרים לציר Y של נקודות קיימות</p>
+            <p>• <span className="text-red-600">צמתים:</span> כשיש יישור גם אנכי וגם אופקי - מופיע סימן אדום בצומת</p>
+            <p>• <span className="text-green-600">יישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
             <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
             <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
             <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>

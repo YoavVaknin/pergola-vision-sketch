@@ -8,7 +8,7 @@ export interface AlignmentGuide {
   startPoint: Point;
   endPoint: Point;
   targetPoint: Point; // The point we're aligning to
-  lineType: 'extension' | 'parallel'; // Type of alignment guide
+  lineType: 'extension' | 'parallel' | 'point-alignment'; // Type of alignment guide
 }
 
 export const useSmartAlignment = () => {
@@ -20,7 +20,54 @@ export const useSmartAlignment = () => {
   ): AlignmentGuide[] => {
     const guides: AlignmentGuide[] = [];
     
-    // Find all line segments from existing frames and other elements
+    // Collect all points from existing elements
+    const allPoints: Point[] = [];
+    
+    elements.forEach(element => {
+      if (element.type === 'frame') {
+        const frame = element as FrameElement;
+        allPoints.push(...frame.points);
+      } else if (element.type === 'shading' || element.type === 'division' || element.type === 'beam') {
+        const lineElement = element as any;
+        if (lineElement.start && lineElement.end) {
+          allPoints.push(lineElement.start, lineElement.end);
+        }
+      } else if (element.type === 'column') {
+        const columnElement = element as any;
+        if (columnElement.position) {
+          allPoints.push(columnElement.position);
+        }
+      }
+    });
+
+    // Check for point alignment (vertical and horizontal guides)
+    allPoints.forEach(point => {
+      // Vertical alignment (same X coordinate) - Blue line
+      if (Math.abs(currentPoint.x - point.x) <= tolerance) {
+        guides.push({
+          type: 'vertical',
+          position: point.x,
+          startPoint: { x: point.x, y: Math.min(currentPoint.y, point.y) - 50 },
+          endPoint: { x: point.x, y: Math.max(currentPoint.y, point.y) + 50 },
+          targetPoint: point,
+          lineType: 'point-alignment'
+        });
+      }
+      
+      // Horizontal alignment (same Y coordinate) - Orange line
+      if (Math.abs(currentPoint.y - point.y) <= tolerance) {
+        guides.push({
+          type: 'horizontal',
+          position: point.y,
+          startPoint: { x: Math.min(currentPoint.x, point.x) - 50, y: point.y },
+          endPoint: { x: Math.max(currentPoint.x, point.x) + 50, y: point.y },
+          targetPoint: point,
+          lineType: 'point-alignment'
+        });
+      }
+    });
+
+    // Find all line segments from existing frames and other elements for extension guides
     const lineSegments: { start: Point; end: Point; type: string }[] = [];
     
     elements.forEach(element => {
@@ -153,11 +200,23 @@ export const useSmartAlignment = () => {
     currentPoint: Point,
     guides: AlignmentGuide[]
   ): Point | null => {
-    // Prioritize extension guides over parallel guides
+    // Check for intersection of vertical and horizontal guides
+    const verticalGuides = guides.filter(g => g.type === 'vertical');
+    const horizontalGuides = guides.filter(g => g.type === 'horizontal');
+    
+    // If we have both vertical and horizontal guides, snap to intersection
+    if (verticalGuides.length > 0 && horizontalGuides.length > 0) {
+      const verticalX = verticalGuides[0].position;
+      const horizontalY = horizontalGuides[0].position;
+      return { x: verticalX, y: horizontalY };
+    }
+    
+    // Prioritize point-alignment guides over others
+    const pointAlignmentGuides = guides.filter(g => g.lineType === 'point-alignment');
     const extensionGuides = guides.filter(g => g.lineType === 'extension');
     const parallelGuides = guides.filter(g => g.lineType === 'parallel');
     
-    const prioritizedGuides = [...extensionGuides, ...parallelGuides];
+    const prioritizedGuides = [...pointAlignmentGuides, ...extensionGuides, ...parallelGuides];
     
     for (const guide of prioritizedGuides) {
       if (guide.type === 'vertical') {
