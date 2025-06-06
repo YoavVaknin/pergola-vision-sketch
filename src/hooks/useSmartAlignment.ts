@@ -8,7 +8,7 @@ export interface AlignmentGuide {
   startPoint: Point;
   endPoint: Point;
   targetPoint: Point; // The point we're aligning to
-  lineType: 'extension' | 'parallel'; // Type of alignment guide
+  lineType: 'extension' | 'parallel' | 'point-alignment'; // Type of alignment guide
 }
 
 export const useSmartAlignment = () => {
@@ -20,6 +20,64 @@ export const useSmartAlignment = () => {
   ): AlignmentGuide[] => {
     const guides: AlignmentGuide[] = [];
     
+    // Collect all points from existing elements
+    const allPoints: { point: Point; elementType: string }[] = [];
+    
+    elements.forEach(element => {
+      if (element.type === 'frame') {
+        const frame = element as FrameElement;
+        frame.points.forEach(point => {
+          allPoints.push({ point, elementType: 'frame' });
+        });
+      } else if (element.type === 'shading' || element.type === 'division' || element.type === 'beam') {
+        const lineElement = element as any;
+        if (lineElement.start && lineElement.end) {
+          allPoints.push({ point: lineElement.start, elementType: element.type });
+          allPoints.push({ point: lineElement.end, elementType: element.type });
+        }
+      } else if (element.type === 'column') {
+        const columnElement = element as any;
+        if (columnElement.position) {
+          allPoints.push({ point: columnElement.position, elementType: element.type });
+        }
+      }
+    });
+
+    // Check for point alignment (vertical and horizontal alignment with existing points)
+    allPoints.forEach(({ point: targetPoint, elementType }) => {
+      // Skip if it's too close to the previous point (avoid self-alignment)
+      const distanceToPrevious = Math.sqrt(
+        Math.pow(targetPoint.x - previousPoint.x, 2) + Math.pow(targetPoint.y - previousPoint.y, 2)
+      );
+      if (distanceToPrevious < 10) return;
+
+      // Vertical alignment (same X coordinate)
+      if (Math.abs(currentPoint.x - targetPoint.x) <= tolerance) {
+        const canvasHeight = 600; // Canvas height
+        guides.push({
+          type: 'vertical',
+          position: targetPoint.x,
+          startPoint: { x: targetPoint.x, y: 0 },
+          endPoint: { x: targetPoint.x, y: canvasHeight },
+          targetPoint: targetPoint,
+          lineType: 'point-alignment'
+        });
+      }
+
+      // Horizontal alignment (same Y coordinate)
+      if (Math.abs(currentPoint.y - targetPoint.y) <= tolerance) {
+        const canvasWidth = 800; // Canvas width
+        guides.push({
+          type: 'horizontal',
+          position: targetPoint.y,
+          startPoint: { x: 0, y: targetPoint.y },
+          endPoint: { x: canvasWidth, y: targetPoint.y },
+          targetPoint: targetPoint,
+          lineType: 'point-alignment'
+        });
+      }
+    });
+
     // Find all line segments from existing frames and other elements
     const lineSegments: { start: Point; end: Point; type: string }[] = [];
     
@@ -79,7 +137,7 @@ export const useSmartAlignment = () => {
 
       // Check if lines are parallel (dot product close to 1 or -1)
       const dotProduct = Math.abs(normalizedCurrent.x * normalizedSegment.x + normalizedCurrent.y * normalizedSegment.y);
-      const isParallel = dotProduct > 0.9; // More sensitive parallel detection
+      const isParallel = dotProduct > 0.9;
 
       if (isParallel) {
         // Determine if it's more horizontal or vertical
@@ -93,8 +151,8 @@ export const useSmartAlignment = () => {
               guides.push({
                 type: 'vertical',
                 position: point.x,
-                startPoint: { x: point.x, y: Math.min(currentPoint.y, point.y, previousPoint.y) - 30 },
-                endPoint: { x: point.x, y: Math.max(currentPoint.y, point.y, previousPoint.y) + 30 },
+                startPoint: { x: point.x, y: Math.min(currentPoint.y, point.y, previousPoint.y) - 50 },
+                endPoint: { x: point.x, y: Math.max(currentPoint.y, point.y, previousPoint.y) + 50 },
                 targetPoint: point,
                 lineType: 'extension'
               });
@@ -107,8 +165,8 @@ export const useSmartAlignment = () => {
             guides.push({
               type: 'horizontal',
               position: segmentY,
-              startPoint: { x: Math.min(currentPoint.x, segment.start.x, segment.end.x) - 30, y: segmentY },
-              endPoint: { x: Math.max(currentPoint.x, segment.start.x, segment.end.x) + 30, y: segmentY },
+              startPoint: { x: Math.min(currentPoint.x, segment.start.x, segment.end.x) - 50, y: segmentY },
+              endPoint: { x: Math.max(currentPoint.x, segment.start.x, segment.end.x) + 50, y: segmentY },
               targetPoint: { x: segmentY, y: segmentY },
               lineType: 'parallel'
             });
@@ -122,8 +180,8 @@ export const useSmartAlignment = () => {
               guides.push({
                 type: 'horizontal',
                 position: point.y,
-                startPoint: { x: Math.min(currentPoint.x, point.x, previousPoint.x) - 30, y: point.y },
-                endPoint: { x: Math.max(currentPoint.x, point.x, previousPoint.x) + 30, y: point.y },
+                startPoint: { x: Math.min(currentPoint.x, point.x, previousPoint.x) - 50, y: point.y },
+                endPoint: { x: Math.max(currentPoint.x, point.x, previousPoint.x) + 50, y: point.y },
                 targetPoint: point,
                 lineType: 'extension'
               });
@@ -136,8 +194,8 @@ export const useSmartAlignment = () => {
             guides.push({
               type: 'vertical',
               position: segmentX,
-              startPoint: { x: segmentX, y: Math.min(currentPoint.y, segment.start.y, segment.end.y) - 30 },
-              endPoint: { x: segmentX, y: Math.max(currentPoint.y, segment.start.y, segment.end.y) + 30 },
+              startPoint: { x: segmentX, y: Math.min(currentPoint.y, segment.start.y, segment.end.y) - 50 },
+              endPoint: { x: segmentX, y: Math.max(currentPoint.y, segment.start.y, segment.end.y) + 50 },
               targetPoint: { x: segmentX, y: segmentX },
               lineType: 'parallel'
             });
@@ -146,18 +204,28 @@ export const useSmartAlignment = () => {
       }
     });
 
-    return guides;
+    // Remove duplicate guides (same type and position)
+    const uniqueGuides = guides.filter((guide, index, array) => {
+      return index === array.findIndex(g => 
+        g.type === guide.type && 
+        Math.abs(g.position - guide.position) < 2 &&
+        g.lineType === guide.lineType
+      );
+    });
+
+    return uniqueGuides;
   }, []);
 
   const getSnapPoint = useCallback((
     currentPoint: Point,
     guides: AlignmentGuide[]
   ): Point | null => {
-    // Prioritize extension guides over parallel guides
+    // Prioritize point alignment, then extension guides, then parallel guides
+    const pointAlignmentGuides = guides.filter(g => g.lineType === 'point-alignment');
     const extensionGuides = guides.filter(g => g.lineType === 'extension');
     const parallelGuides = guides.filter(g => g.lineType === 'parallel');
     
-    const prioritizedGuides = [...extensionGuides, ...parallelGuides];
+    const prioritizedGuides = [...pointAlignmentGuides, ...extensionGuides, ...parallelGuides];
     
     for (const guide of prioritizedGuides) {
       if (guide.type === 'vertical') {
