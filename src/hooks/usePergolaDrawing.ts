@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { Point, PergolaElementType, DrawingState, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement, DivisionElement, ShadingConfig } from '@/types/pergola';
 
@@ -318,14 +319,14 @@ export const usePergolaDrawing = () => {
         if (shadingConfig.enabled) {
           const shadingBeams = generateShadingBeams(drawingState.tempPoints, shadingConfig);
           console.log('Adding shading beams:', shadingBeams);
-          newElements.push(...(shadingBeams as PergolaElementType[]));
+          newElements.push(...shadingBeams);
         }
         
         // הוספת קורות החלוקה
         if (shadingConfig.divisionEnabled) {
           const divisionBeams = generateDivisionBeams(drawingState.tempPoints, shadingConfig);
           console.log('Adding division beams:', divisionBeams);
-          newElements.push(...(divisionBeams as PergolaElementType[]));
+          newElements.push(...divisionBeams);
         }
         
         // הוספת עמודים בפינות
@@ -354,18 +355,18 @@ export const usePergolaDrawing = () => {
           // הסרת קורות הצללה והחלוקה קיימות
           const filteredElements = prevElements.filter(el => el.type !== 'shading' && el.type !== 'division');
           
-          let newElements = [...filteredElements];
+          const newElements: PergolaElementType[] = [...filteredElements];
           
           // הוספת קורות הצללה חדשות
           if (updated.enabled) {
             const shadingBeams = generateShadingBeams(frameElement.points, updated);
-            newElements.push(...(shadingBeams as PergolaElementType[]));
+            newElements.push(...shadingBeams);
           }
           
           // הוספת קורות החלוקה חדשות
           if (updated.divisionEnabled) {
             const divisionBeams = generateDivisionBeams(frameElement.points, updated);
-            newElements.push(...(divisionBeams as PergolaElementType[]));
+            newElements.push(...divisionBeams);
           }
           
           return newElements;
