@@ -223,7 +223,7 @@ export const useSmartAlignment = () => {
 
     console.log('Generated alignment guides:', guides);
 
-    // Remove duplicate guides
+    // ENHANCED: Remove duplicate guides but allow both vertical AND horizontal extension guides
     const uniqueGuides = guides.filter((guide, index, array) => {
       return index === array.findIndex(g => 
         g.type === guide.type && 
@@ -232,10 +232,17 @@ export const useSmartAlignment = () => {
       );
     });
 
-    // Sort guides by priority: extension lines first, then point alignment
+    // Sort guides by type to ensure consistent ordering: vertical first, then horizontal
     return uniqueGuides.sort((a, b) => {
-      const priority = { 'extension': 0, 'point-alignment': 1, 'parallel': 2 };
-      return priority[a.lineType] - priority[b.lineType];
+      if (a.lineType !== b.lineType) {
+        const priority = { 'extension': 0, 'point-alignment': 1, 'parallel': 2 };
+        return priority[a.lineType] - priority[b.lineType];
+      }
+      // Within the same line type, prefer vertical then horizontal
+      if (a.type !== b.type) {
+        return a.type === 'vertical' ? -1 : 1;
+      }
+      return 0;
     });
   }, []);
 
@@ -243,9 +250,25 @@ export const useSmartAlignment = () => {
     currentPoint: Point,
     guides: AlignmentGuide[]
   ): Point | null => {
-    // Prioritize extension guides first
+    // ENHANCED: Support multi-dimensional snapping for intersection points
     const extensionGuides = guides.filter(g => g.lineType === 'extension');
     
+    if (extensionGuides.length >= 2) {
+      // Check if we have both vertical and horizontal guides (intersection point)
+      const verticalGuide = extensionGuides.find(g => g.type === 'vertical');
+      const horizontalGuide = extensionGuides.find(g => g.type === 'horizontal');
+      
+      if (verticalGuide && horizontalGuide) {
+        console.log('INTERSECTION POINT DETECTED - both vertical and horizontal alignment!');
+        // Return the intersection point
+        return { 
+          x: verticalGuide.position, 
+          y: horizontalGuide.position 
+        };
+      }
+    }
+    
+    // Fallback to single guide snapping
     if (extensionGuides.length > 0) {
       const guide = extensionGuides[0];
       if (guide.type === 'vertical') {

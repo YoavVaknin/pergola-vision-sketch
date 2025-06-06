@@ -1,4 +1,3 @@
-
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Point, PergolaElementType, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement, DivisionElement } from '@/types/pergola';
 import { usePergolaDrawing } from '@/hooks/usePergolaDrawing';
@@ -246,8 +245,8 @@ export const FreeDrawingCanvas = () => {
       ctx.stroke();
     }
 
-    // ENHANCED ALIGNMENT GUIDES with improved extension line visualization
-    alignmentGuides.forEach(guide => {
+    // ENHANCED ALIGNMENT GUIDES - Now supports multiple extension lines simultaneously
+    alignmentGuides.forEach((guide, index) => {
       ctx.save();
       
       if (guide.lineType === 'extension') {
@@ -257,7 +256,7 @@ export const FreeDrawingCanvas = () => {
         ctx.setLineDash([10, 5]); // Clear dashed pattern
         ctx.globalAlpha = 0.8;
         
-        console.log('Drawing extension guide:', guide);
+        console.log(`Drawing extension guide ${index}:`, guide);
         
         ctx.beginPath();
         ctx.moveTo(guide.startPoint.x, guide.startPoint.y);
@@ -291,7 +290,7 @@ export const FreeDrawingCanvas = () => {
         ctx.setLineDash([8, 8]);
         ctx.globalAlpha = 1;
         
-        console.log('Drawing point alignment guide:', guide);
+        console.log(`Drawing point alignment guide ${index}:`, guide);
         
         ctx.beginPath();
         ctx.moveTo(guide.startPoint.x, guide.startPoint.y);
@@ -321,6 +320,65 @@ export const FreeDrawingCanvas = () => {
       
       ctx.restore();
     });
+
+    // ENHANCED INTERSECTION POINT INDICATOR - Special visualization for intersections
+    if (alignmentSnapPoint && alignmentGuides.length >= 2) {
+      const extensionGuides = alignmentGuides.filter(g => g.lineType === 'extension');
+      const hasVertical = extensionGuides.some(g => g.type === 'vertical');
+      const hasHorizontal = extensionGuides.some(g => g.type === 'horizontal');
+      
+      if (hasVertical && hasHorizontal) {
+        ctx.save();
+        
+        // Special intersection indicator - larger circle with cross pattern
+        const snapColor = '#3b82f6';
+        ctx.strokeStyle = snapColor;
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = snapColor;
+        ctx.shadowBlur = 12;
+        
+        // Outer circle
+        ctx.beginPath();
+        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 12, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+        
+        // Inner cross pattern
+        ctx.strokeStyle = snapColor;
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 0;
+        
+        // Vertical cross line
+        ctx.beginPath();
+        ctx.moveTo(alignmentSnapPoint.x, alignmentSnapPoint.y - 8);
+        ctx.lineTo(alignmentSnapPoint.x, alignmentSnapPoint.y + 8);
+        ctx.stroke();
+        
+        // Horizontal cross line
+        ctx.beginPath();
+        ctx.moveTo(alignmentSnapPoint.x - 8, alignmentSnapPoint.y);
+        ctx.lineTo(alignmentSnapPoint.x + 8, alignmentSnapPoint.y);
+        ctx.stroke();
+        
+        // Small center dot
+        ctx.fillStyle = snapColor;
+        ctx.beginPath();
+        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 2, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Pulsing outer ring
+        ctx.strokeStyle = snapColor;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.6;
+        ctx.setLineDash([8, 8]);
+        ctx.beginPath();
+        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 18, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        ctx.restore();
+      }
+    }
 
     // Draw elements
     elements.forEach(element => {
@@ -457,64 +515,71 @@ export const FreeDrawingCanvas = () => {
       }
     });
 
-    // ENHANCED ALIGNMENT SNAP POINT - Different colors for different types
+    // ENHANCED ALIGNMENT SNAP POINT - Different visualization for intersection vs single alignment
     if (alignmentSnapPoint) {
-      ctx.save();
+      const extensionGuides = alignmentGuides.filter(g => g.lineType === 'extension');
+      const hasVertical = extensionGuides.some(g => g.type === 'vertical');
+      const hasHorizontal = extensionGuides.some(g => g.type === 'horizontal');
       
-      // Determine color based on the type of alignment
-      const activeGuide = alignmentGuides[0]; // First guide is highest priority
-      let snapColor = '#f97316'; // Default orange
-      
-      if (activeGuide?.lineType === 'extension') {
-        snapColor = '#3b82f6'; // Blue for extension alignment
-      } else if (activeGuide?.lineType === 'point-alignment') {
-        snapColor = '#22c55e'; // Green for point alignment
-      }
-      
-      ctx.strokeStyle = snapColor;
-      ctx.fillStyle = snapColor + '60'; // Add transparency
-      ctx.lineWidth = 3;
-      ctx.shadowColor = snapColor;
-      ctx.shadowBlur = 8;
-      
-      ctx.beginPath();
-      ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 8, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.stroke();
-      
-      // Pulsing effect with matching color
-      ctx.strokeStyle = snapColor;
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = 0.7;
-      ctx.setLineDash([6, 6]);
-      ctx.beginPath();
-      ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 14, 0, 2 * Math.PI);
-      ctx.stroke();
-      
-      // Small alignment indicator circle like CAD software
-      if (activeGuide?.lineType === 'extension') {
-        ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = snapColor;
-        ctx.fillStyle = 'white';
-        ctx.lineWidth = 2;
+      // Skip drawing here if we already drew the intersection indicator above
+      if (!(hasVertical && hasHorizontal)) {
+        ctx.save();
         
-        // Small circle with cross inside to indicate precise alignment
+        // Determine color based on the type of alignment
+        const activeGuide = alignmentGuides[0]; // First guide is highest priority
+        let snapColor = '#f97316'; // Default orange
+        
+        if (activeGuide?.lineType === 'extension') {
+          snapColor = '#3b82f6'; // Blue for extension alignment
+        } else if (activeGuide?.lineType === 'point-alignment') {
+          snapColor = '#22c55e'; // Green for point alignment
+        }
+        
+        ctx.strokeStyle = snapColor;
+        ctx.fillStyle = snapColor + '60'; // Add transparency
+        ctx.lineWidth = 3;
+        ctx.shadowColor = snapColor;
+        ctx.shadowBlur = 8;
+        
         ctx.beginPath();
-        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 4, 0, 2 * Math.PI);
+        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 8, 0, 2 * Math.PI);
         ctx.fill();
         ctx.stroke();
         
-        // Cross inside the circle
+        // Pulsing effect with matching color
+        ctx.strokeStyle = snapColor;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.7;
+        ctx.setLineDash([6, 6]);
         ctx.beginPath();
-        ctx.moveTo(alignmentSnapPoint.x - 2, alignmentSnapPoint.y);
-        ctx.lineTo(alignmentSnapPoint.x + 2, alignmentSnapPoint.y);
-        ctx.moveTo(alignmentSnapPoint.x, alignmentSnapPoint.y - 2);
-        ctx.lineTo(alignmentSnapPoint.x, alignmentSnapPoint.y + 2);
+        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 14, 0, 2 * Math.PI);
         ctx.stroke();
+        
+        // Small alignment indicator circle like CAD software
+        if (activeGuide?.lineType === 'extension') {
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = snapColor;
+          ctx.fillStyle = 'white';
+          ctx.lineWidth = 2;
+          
+          // Small circle with cross inside to indicate precise alignment
+          ctx.beginPath();
+          ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 4, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.stroke();
+          
+          // Cross inside the circle
+          ctx.beginPath();
+          ctx.moveTo(alignmentSnapPoint.x - 2, alignmentSnapPoint.y);
+          ctx.lineTo(alignmentSnapPoint.x + 2, alignmentSnapPoint.y);
+          ctx.moveTo(alignmentSnapPoint.x, alignmentSnapPoint.y - 2);
+          ctx.lineTo(alignmentSnapPoint.x, alignmentSnapPoint.y + 2);
+          ctx.stroke();
+        }
+        
+        ctx.restore();
       }
-      
-      ctx.restore();
     }
 
     // Draw snap point indicator
