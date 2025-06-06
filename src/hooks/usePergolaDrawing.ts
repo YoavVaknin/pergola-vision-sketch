@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { Point, PergolaElementType, DrawingState, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement, DivisionElement, ShadingConfig, MeasurementConfig } from '@/types/pergola';
 import { calculateRealDistance, calculatePolygonArea, calculatePolygonAngles } from '@/utils/measurementUtils';
@@ -34,6 +33,67 @@ export const usePergolaDrawing = () => {
     showAngles: true,
     unit: 'cm'
   });
+
+  // New state for length input
+  const [lengthInputState, setLengthInputState] = useState<{
+    visible: boolean;
+    position: Point;
+    startPoint: Point | null;
+    targetLength: number;
+  }>({
+    visible: false,
+    position: { x: 0, y: 0 },
+    startPoint: null,
+    targetLength: 0
+  });
+
+  // פונקציה לחישוב נקודה חדשה על פי אורך ויישור
+  const calculatePointByLength = useCallback((startPoint: Point, direction: Point, targetLength: number): Point => {
+    const currentLength = calculateRealDistance(startPoint, direction, measurementConfig.pixelsPerCm);
+    if (currentLength === 0) return direction;
+    
+    const ratio = targetLength / currentLength;
+    const targetPixelLength = targetLength * measurementConfig.pixelsPerCm;
+    
+    const dx = direction.x - startPoint.x;
+    const dy = direction.y - startPoint.y;
+    const currentPixelLength = Math.sqrt(dx * dx + dy * dy);
+    
+    if (currentPixelLength === 0) return direction;
+    
+    const scale = targetPixelLength / currentPixelLength;
+    
+    return {
+      x: startPoint.x + dx * scale,
+      y: startPoint.y + dy * scale
+    };
+  }, [measurementConfig.pixelsPerCm]);
+
+  // Show length input
+  const showLengthInput = useCallback((startPoint: Point, mousePosition: Point) => {
+    const currentLength = calculateRealDistance(startPoint, mousePosition, measurementConfig.pixelsPerCm);
+    setLengthInputState({
+      visible: true,
+      position: mousePosition,
+      startPoint,
+      targetLength: currentLength
+    });
+  }, [measurementConfig.pixelsPerCm]);
+
+  // Hide length input
+  const hideLengthInput = useCallback(() => {
+    setLengthInputState(prev => ({ ...prev, visible: false }));
+  }, []);
+
+  // Handle length input submission
+  const handleLengthSubmit = useCallback((length: number) => {
+    if (lengthInputState.startPoint) {
+      const lastMousePosition = lengthInputState.position;
+      const newPoint = calculatePointByLength(lengthInputState.startPoint, lastMousePosition, length);
+      addPoint(newPoint);
+      hideLengthInput();
+    }
+  }, [lengthInputState, calculatePointByLength]);
 
   // פונקציה לבדיקה אם נקודה נמצאת בתוך פוליגון
   const isPointInPolygon = (point: Point, polygon: Point[]): boolean => {
@@ -356,27 +416,22 @@ export const usePergolaDrawing = () => {
       console.log('Frame measurements:', measurements);
       
       setElements(prev => {
-        // הסרת קורות הצללה, החלוקה והעמודים הקיימים
         const filteredElements = prev.filter(el => el.type !== 'shading' && el.type !== 'column' && el.type !== 'division');
         
-        // הוספת המסגרת החדשה
         const newElements: PergolaElementType[] = [...filteredElements, newFrame];
         
-        // הוספת קורות הצללה
         if (shadingConfig.enabled) {
           const shadingBeams = generateShadingBeams(drawingState.tempPoints, shadingConfig);
           console.log('Adding shading beams:', shadingBeams);
           newElements.push(...shadingBeams);
         }
         
-        // הוספת קורות החלוקה
         if (shadingConfig.divisionEnabled) {
           const divisionBeams = generateDivisionBeams(drawingState.tempPoints, shadingConfig);
           console.log('Adding division beams:', divisionBeams);
           newElements.push(...divisionBeams);
         }
         
-        // הוספת עמודים בפינות
         const cornerColumns = generateCornerColumns(drawingState.tempPoints);
         newElements.push(...cornerColumns);
         
@@ -395,22 +450,18 @@ export const usePergolaDrawing = () => {
     setShadingConfig(prev => {
       const updated = { ...prev, ...newConfig };
       
-      // עדכון קורות הצללה והחלוקה הקיימות
       const frameElement = elements.find(el => el.type === 'frame') as FrameElement;
       if (frameElement) {
         setElements(prevElements => {
-          // הסרת קורות הצללה והחלוקה קיימות
           const filteredElements = prevElements.filter(el => el.type !== 'shading' && el.type !== 'division');
           
           const newElements: PergolaElementType[] = [...filteredElements];
           
-          // הוספת קורות הצללה חדשות
           if (updated.enabled) {
             const shadingBeams = generateShadingBeams(frameElement.points, updated);
             newElements.push(...shadingBeams);
           }
           
-          // הוספת קורות החלוקה חדשות
           if (updated.divisionEnabled) {
             const divisionBeams = generateDivisionBeams(frameElement.points, updated);
             newElements.push(...divisionBeams);
@@ -428,7 +479,6 @@ export const usePergolaDrawing = () => {
     setMeasurementConfig(prev => {
       const updated = { ...prev, ...newConfig };
       
-      // Update measurements for existing frames
       setElements(prevElements => {
         return prevElements.map(element => {
           if (element.type === 'frame') {
@@ -521,6 +571,7 @@ export const usePergolaDrawing = () => {
     drawingState,
     shadingConfig,
     measurementConfig,
+    lengthInputState,
     addPoint,
     finishFrame,
     addBeam,
@@ -531,6 +582,10 @@ export const usePergolaDrawing = () => {
     selectElement,
     clearAll,
     updateShadingConfig,
-    updateMeasurementConfig
+    updateMeasurementConfig,
+    showLengthInput,
+    hideLengthInput,
+    handleLengthSubmit,
+    calculatePointByLength
   };
 };

@@ -1,9 +1,11 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Point, PergolaElementType, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement, DivisionElement } from '@/types/pergola';
 import { usePergolaDrawing } from '@/hooks/usePergolaDrawing';
+import { useSmartAlignment, AlignmentGuide } from '@/hooks/useSmartAlignment';
 import { DrawingToolbar } from './DrawingToolbar';
 import { ShadingConfigComponent } from './ShadingConfig';
-import { getMidpoint, getPolygonCentroid, formatMeasurement, formatArea } from '@/utils/measurementUtils';
+import { LengthInput } from './LengthInput';
+import { getMidpoint, getPolygonCentroid, formatMeasurement, formatArea, calculateRealDistance } from '@/utils/measurementUtils';
 
 export const FreeDrawingCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -14,12 +16,15 @@ export const FreeDrawingCanvas = () => {
   const [snapPoint, setSnapPoint] = useState<Point | null>(null);
   const [angleSnapPoint, setAngleSnapPoint] = useState<Point | null>(null);
   const [isAngleSnapped, setIsAngleSnapped] = useState(false);
+  const [alignmentGuides, setAlignmentGuides] = useState<AlignmentGuide[]>([]);
+  const [alignmentSnapPoint, setAlignmentSnapPoint] = useState<Point | null>(null);
   
   const {
     elements,
     drawingState,
     shadingConfig,
     measurementConfig,
+    lengthInputState,
     addPoint,
     finishFrame,
     addBeam,
@@ -30,8 +35,14 @@ export const FreeDrawingCanvas = () => {
     selectElement,
     clearAll,
     updateShadingConfig,
-    updateMeasurementConfig
+    updateMeasurementConfig,
+    showLengthInput,
+    hideLengthInput,
+    handleLengthSubmit,
+    calculatePointByLength
   } = usePergolaDrawing();
+
+  const { findAlignmentGuides, getSnapPoint } = useSmartAlignment();
 
   const getCanvasPoint = useCallback((clientX: number, clientY: number): Point => {
     const canvas = canvasRef.current;
@@ -44,14 +55,12 @@ export const FreeDrawingCanvas = () => {
     };
   }, []);
 
-  // פונקציה לחישוב מרחק בין שתי נקודות
   const calculateDistance = useCallback((point1: Point, point2: Point): number => {
     const dx = point1.x - point2.x;
     const dy = point1.y - point2.y;
     return Math.sqrt(dx * dx + dy * dy);
   }, []);
 
-  // פונקציה לחישוב זווית בין שתי נקודות (בדרגות)
   const calculateAngle = useCallback((point1: Point, point2: Point): number => {
     const dx = point2.x - point1.x;
     const dy = point2.y - point1.y;
@@ -60,14 +69,12 @@ export const FreeDrawingCanvas = () => {
     return angleDeg;
   }, []);
 
-  // פונקציה לחישוב נקודה בזווית נעולה
   const calculateSnappedAnglePoint = useCallback((startPoint: Point, endPoint: Point): { point: Point; snapped: boolean } => {
     const distance = calculateDistance(startPoint, endPoint);
     const currentAngle = calculateAngle(startPoint, endPoint);
     
-    // זוויות יעד: 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°
     const targetAngles = [0, 45, 90, 135, 180, -135, -90, -45];
-    const tolerance = 5; // ±5 מעלות
+    const tolerance = 5;
     
     for (const targetAngle of targetAngles) {
       const angleDiff = Math.abs(currentAngle - targetAngle);
@@ -75,7 +82,6 @@ export const FreeDrawingCanvas = () => {
       const angleDiffNeg360 = Math.abs(currentAngle - targetAngle - 360);
       
       if (angleDiff <= tolerance || angleDiff360 <= tolerance || angleDiffNeg360 <= tolerance) {
-        // חישוב הנקודה החדשה בזווית הנעולה
         const targetAngleRad = (targetAngle * Math.PI) / 180;
         const snappedPoint: Point = {
           x: startPoint.x + distance * Math.cos(targetAngleRad),
@@ -88,13 +94,11 @@ export const FreeDrawingCanvas = () => {
     return { point: endPoint, snapped: false };
   }, [calculateDistance, calculateAngle]);
 
-  // פונקציה למציאת נקודה קרובה לסנאפ
   const findSnapPoint = useCallback((mousePos: Point): Point | null => {
     if (drawingState.mode !== 'frame') return null;
     
     const SNAP_DISTANCE = 10;
     
-    // בדיקה מול הנקודה הראשונה (לסגירה אוטומטית)
     if (drawingState.tempPoints.length >= 3) {
       const firstPoint = drawingState.tempPoints[0];
       const distance = calculateDistance(mousePos, firstPoint);
@@ -103,7 +107,6 @@ export const FreeDrawingCanvas = () => {
       }
     }
     
-    // בדיקה מול נקודות קיימות במסגרות אחרות
     for (const element of elements) {
       if (element.type === 'frame') {
         const frameElement = element as FrameElement;
@@ -119,7 +122,6 @@ export const FreeDrawingCanvas = () => {
     return null;
   }, [drawingState.mode, drawingState.tempPoints, elements, calculateDistance]);
 
-  // בדיקה אם העכבר קרוב לנקודה הראשונה
   const checkNearFirstPoint = useCallback((mousePos: Point): boolean => {
     if (drawingState.mode !== 'frame' || drawingState.tempPoints.length < 3) {
       return false;
@@ -127,7 +129,7 @@ export const FreeDrawingCanvas = () => {
     
     const firstPoint = drawingState.tempPoints[0];
     const distance = calculateDistance(mousePos, firstPoint);
-    return distance <= 10; // מרחק של 10 פיקסלים
+    return distance <= 10;
   }, [drawingState.mode, drawingState.tempPoints, calculateDistance]);
 
   // Function to draw measurement text
@@ -192,6 +194,24 @@ export const FreeDrawingCanvas = () => {
       ctx.stroke();
     }
 
+    // Draw alignment guides
+    alignmentGuides.forEach(guide => {
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(guide.startPoint.x, guide.startPoint.y);
+      ctx.lineTo(guide.endPoint.x, guide.endPoint.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // Draw small indicator at target point
+      ctx.fillStyle = '#3b82f6';
+      ctx.beginPath();
+      ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 3, 0, 2 * Math.PI);
+      ctx.fill();
+    });
+
     // Draw elements
     elements.forEach(element => {
       ctx.strokeStyle = element.color || '#000000';
@@ -217,7 +237,6 @@ export const FreeDrawingCanvas = () => {
                 const point1 = frame.points[index];
                 const point2 = frame.points[(index + 1) % frame.points.length];
                 
-                // Skip the last segment if frame is not closed
                 if (!frame.closed && index === frame.points.length - 1) return;
                 
                 const midpoint = getMidpoint(point1, point2);
@@ -236,7 +255,6 @@ export const FreeDrawingCanvas = () => {
                 const point = frame.points[index];
                 const angleText = `${angle.toFixed(0)}°`;
                 
-                // Offset angle text slightly from the vertex
                 const offset = 15;
                 drawMeasurementText(ctx, angleText, point.x + offset, point.y - offset, {
                   fontSize: 10,
@@ -325,13 +343,11 @@ export const FreeDrawingCanvas = () => {
       ctx.fillStyle = 'rgba(34, 197, 94, 0.2)';
       ctx.lineWidth = 2;
       
-      // עיגול פנימי מלא
       ctx.beginPath();
       ctx.arc(snapPoint.x, snapPoint.y, 8, 0, 2 * Math.PI);
       ctx.fill();
       ctx.stroke();
       
-      // עיגול חיצוני מהבהב
       ctx.strokeStyle = '#22c55e';
       ctx.lineWidth = 1;
       ctx.setLineDash([3, 3]);
@@ -339,6 +355,18 @@ export const FreeDrawingCanvas = () => {
       ctx.arc(snapPoint.x, snapPoint.y, 12, 0, 2 * Math.PI);
       ctx.stroke();
       ctx.setLineDash([]);
+    }
+
+    // Draw alignment snap point indicator
+    if (alignmentSnapPoint) {
+      ctx.strokeStyle = '#3b82f6';
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.3)';
+      ctx.lineWidth = 2;
+      
+      ctx.beginPath();
+      ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 6, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
     }
 
     // Draw temporary points for frame drawing
@@ -359,7 +387,6 @@ export const FreeDrawingCanvas = () => {
       ctx.setLineDash([]);
       drawingState.tempPoints.forEach((point, index) => {
         if (index === 0) {
-          // הדגשה של הנקודה הראשונה כאשר העכבר קרוב אליה
           if (isNearFirstPoint) {
             ctx.fillStyle = '#22c55e';
             ctx.strokeStyle = '#16a34a';
@@ -369,7 +396,6 @@ export const FreeDrawingCanvas = () => {
             ctx.fill();
             ctx.stroke();
             
-            // הוספת עיגול חיצוני מהבהב
             ctx.strokeStyle = '#22c55e';
             ctx.lineWidth = 1;
             ctx.setLineDash([3, 3]);
@@ -391,22 +417,22 @@ export const FreeDrawingCanvas = () => {
         }
       });
       
-      // קו זמני מהנקודה האחרונה לעמדת העכבר
+      // Draw temporary line to mouse
       if (mousePosition && drawingState.tempPoints.length > 0) {
         const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
-        let targetPoint = snapPoint || mousePosition;
-        let lineColor = snapPoint ? '#22c55e' : '#94a3b8';
-        let lineWidth = snapPoint ? 2 : 1;
+        let targetPoint = alignmentSnapPoint || snapPoint || mousePosition;
+        let lineColor = alignmentSnapPoint ? '#3b82f6' : (snapPoint ? '#22c55e' : '#94a3b8');
+        let lineWidth = (alignmentSnapPoint || snapPoint) ? 2 : 1;
         let lineDash: number[] = [3, 3];
         
-        // בדיקה ליישור זווית חכם - עכשיו גם לקו הראשון!
-        if (!snapPoint) {
+        // Check for angle snap
+        if (!snapPoint && !alignmentSnapPoint) {
           const { point: anglePoint, snapped } = calculateSnappedAnglePoint(lastPoint, mousePosition);
           if (snapped) {
             targetPoint = anglePoint;
-            lineColor = '#f59e0b'; // צהוב/כתום לזווית נעולה
+            lineColor = '#f59e0b';
             lineWidth = 2;
-            lineDash = [5, 2]; // קו מקווקו שונה
+            lineDash = [5, 2];
             setAngleSnapPoint(anglePoint);
             setIsAngleSnapped(true);
           } else {
@@ -427,7 +453,19 @@ export const FreeDrawingCanvas = () => {
         ctx.stroke();
         ctx.setLineDash([]);
         
-        // הוספת סמן יישור זווית
+        // Draw live length measurement
+        if (targetPoint && measurementConfig.showLengths) {
+          const currentLength = calculateRealDistance(lastPoint, targetPoint, measurementConfig.pixelsPerCm);
+          const lengthText = formatMeasurement(currentLength, measurementConfig.unit);
+          const midpoint = getMidpoint(lastPoint, targetPoint);
+          
+          drawMeasurementText(ctx, lengthText, midpoint.x, midpoint.y - 15, {
+            fontSize: 12,
+            color: '#059669',
+            background: true
+          });
+        }
+        
         if (isAngleSnapped && angleSnapPoint) {
           ctx.fillStyle = '#f59e0b';
           ctx.strokeStyle = '#d97706';
@@ -439,7 +477,7 @@ export const FreeDrawingCanvas = () => {
         }
       }
     }
-  }, [elements, drawingState, mousePosition, isNearFirstPoint, snapPoint, angleSnapPoint, isAngleSnapped, calculateSnappedAnglePoint, measurementConfig, drawMeasurementText]);
+  }, [elements, drawingState, mousePosition, isNearFirstPoint, snapPoint, angleSnapPoint, isAngleSnapped, alignmentGuides, alignmentSnapPoint, calculateSnappedAnglePoint, measurementConfig, drawMeasurementText]);
 
   useEffect(() => {
     drawElements();
@@ -449,13 +487,24 @@ export const FreeDrawingCanvas = () => {
     const point = getCanvasPoint(e.clientX, e.clientY);
     setMousePosition(point);
     
-    // בדיקה אם העכבר קרוב לנקודה הראשונה
     const nearFirst = checkNearFirstPoint(point);
     setIsNearFirstPoint(nearFirst);
     
-    // בדיקה למציאת נקודת סנאפ
     const foundSnapPoint = findSnapPoint(point);
     setSnapPoint(foundSnapPoint);
+
+    // Smart alignment detection
+    if (drawingState.mode === 'frame' && drawingState.tempPoints.length > 0) {
+      const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
+      const guides = findAlignmentGuides(point, lastPoint, elements, 15);
+      setAlignmentGuides(guides);
+      
+      const alignSnap = getSnapPoint(point, guides);
+      setAlignmentSnapPoint(alignSnap);
+    } else {
+      setAlignmentGuides([]);
+      setAlignmentSnapPoint(null);
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -465,19 +514,18 @@ export const FreeDrawingCanvas = () => {
       case 'frame':
         let pointToAdd = point;
         
-        // עדיפות לסנאפ לנקודה קיימת
-        if (snapPoint) {
+        // Priority: alignment snap > regular snap > angle snap
+        if (alignmentSnapPoint) {
+          pointToAdd = alignmentSnapPoint;
+        } else if (snapPoint) {
           pointToAdd = snapPoint;
-          // בדיקה לסגירה אוטומטית
           if (drawingState.tempPoints.length >= 3 && 
               snapPoint === drawingState.tempPoints[0]) {
             console.log('Auto-closing frame - snapped to first point');
             finishFrame();
             return;
           }
-        }
-        // אחרת, בדיקה ליישור זווית
-        else if (isAngleSnapped && angleSnapPoint) {
+        } else if (isAngleSnapped && angleSnapPoint) {
           pointToAdd = angleSnapPoint;
         }
         
@@ -521,8 +569,16 @@ export const FreeDrawingCanvas = () => {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Tab' && drawingState.mode === 'frame' && drawingState.tempPoints.length > 0 && mousePosition) {
+      e.preventDefault();
+      const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
+      showLengthInput(lastPoint, mousePosition);
+    }
+  };
+
   return (
-    <div className="grid lg:grid-cols-4 gap-6 h-full">
+    <div className="grid lg:grid-cols-4 gap-6 h-full" onKeyDown={handleKeyDown} tabIndex={0}>
       <div className="lg:col-span-1 space-y-4">
         <DrawingToolbar
           mode={drawingState.mode}
@@ -609,22 +665,35 @@ export const FreeDrawingCanvas = () => {
       <div className="lg:col-span-3">
         <div className="border rounded-lg shadow-sm bg-white p-4">
           <h3 className="text-lg font-semibold mb-4">שרטוט חופשי עם מדידות</h3>
-          <canvas
-            ref={canvasRef}
-            width={800}
-            height={600}
-            className="border rounded cursor-crosshair bg-white"
-            onMouseDown={handleMouseDown}
-            onMouseUp={handleMouseUp}
-            onMouseMove={handleMouseMove}
-            onDoubleClick={handleDoubleClick}
-          />
+          <div className="relative">
+            <canvas
+              ref={canvasRef}
+              width={800}
+              height={600}
+              className="border rounded cursor-crosshair bg-white"
+              onMouseDown={handleMouseDown}
+              onMouseUp={handleMouseUp}
+              onMouseMove={handleMouseMove}
+              onDoubleClick={handleDoubleClick}
+            />
+            
+            <LengthInput
+              visible={lengthInputState.visible}
+              position={lengthInputState.position}
+              currentLength={lengthInputState.targetLength}
+              unit={measurementConfig.unit}
+              onSubmit={handleLengthSubmit}
+              onCancel={hideLengthInput}
+            />
+          </div>
           
           <div className="mt-4 text-sm text-muted-foreground">
             <p><strong>הוראות:</strong></p>
             <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
-            <p>• <span className="text-amber-600">יישור חכם:</span> זווית נעולה (0°, 45°, 90°) מוצגת בכתום מקווקו מהקו הראשון</p>
-            <p>• <span className="text-blue-600">מדידות:</span> אורכים, שטח וזוויות מוצגים אוטומטית</p>
+            <p>• <span className="text-amber-600">יישור חכם:</span> זווית נעולה (0°, 45°, 90°) מוצגת בכתום מקווקו</p>
+            <p>• <span className="text-blue-600">יישור מקביל:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
+            <p>• <span className="text-green-600">מדידות חיות:</span> אורך הקו מוצג בזמן אמת בזמן השרטוט</p>
+            <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק (הקלד אורך + Enter)</p>
             <p>• הצללה וחלוקה יתווספו אוטומטית בתוך המסגרת לפי ההגדרות</p>
             <p>• עמודים יתווספו אוטומטית בפינות המסגרת</p>
             <p>• קורה/קיר: לחץ והחזק, גרור ושחרר</p>
