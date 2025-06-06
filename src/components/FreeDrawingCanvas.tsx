@@ -245,7 +245,7 @@ export const FreeDrawingCanvas = () => {
       ctx.stroke();
     }
 
-    // ENHANCED ALIGNMENT GUIDES - Now displays ALL guides simultaneously with different colors
+    // ENHANCED ALIGNMENT GUIDES - Color-coded by type and function
     alignmentGuides.forEach((guide, index) => {
       ctx.save();
       
@@ -274,14 +274,39 @@ export const FreeDrawingCanvas = () => {
         ctx.fill();
         ctx.stroke();
         
-      } else if (guide.lineType === 'point-alignment') {
-        // POINT ALIGNMENT - Orange dashed lines for point alignments (changed from green to orange for better distinction)
-        ctx.strokeStyle = '#f97316'; // Orange for point alignment
+      } else if (guide.lineType === 'point-alignment-vertical') {
+        // VERTICAL POINT ALIGNMENT - BLUE vertical dashed lines
+        ctx.strokeStyle = '#3b82f6'; // Blue for vertical (X-axis alignment)
         ctx.lineWidth = 2;
         ctx.setLineDash([8, 8]);
         ctx.globalAlpha = 0.9;
         
-        console.log(`Drawing point alignment guide ${index}:`, guide);
+        console.log(`Drawing vertical point alignment guide ${index}:`, guide);
+        
+        ctx.beginPath();
+        ctx.moveTo(guide.startPoint.x, guide.startPoint.y);
+        ctx.lineTo(guide.endPoint.x, guide.endPoint.y);
+        ctx.stroke();
+        
+        // Target point indicator - blue circle
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#3b82f6';
+        ctx.strokeStyle = '#1d4ed8';
+        ctx.lineWidth = 2;
+        
+        ctx.beginPath();
+        ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+        
+      } else if (guide.lineType === 'point-alignment-horizontal') {
+        // HORIZONTAL POINT ALIGNMENT - ORANGE horizontal dashed lines
+        ctx.strokeStyle = '#f97316'; // Orange for horizontal (Y-axis alignment)
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 8]);
+        ctx.globalAlpha = 0.9;
+        
+        console.log(`Drawing horizontal point alignment guide ${index}:`, guide);
         
         ctx.beginPath();
         ctx.moveTo(guide.startPoint.x, guide.startPoint.y);
@@ -312,7 +337,7 @@ export const FreeDrawingCanvas = () => {
       ctx.restore();
     });
 
-    // ENHANCED INTERSECTION POINT INDICATOR - Special visualization for ANY type of intersections
+    // ENHANCED INTERSECTION POINT INDICATOR - Special visualization for intersections
     if (alignmentSnapPoint && alignmentGuides.length >= 2) {
       const verticalGuides = alignmentGuides.filter(g => g.type === 'vertical');
       const horizontalGuides = alignmentGuides.filter(g => g.type === 'horizontal');
@@ -320,18 +345,18 @@ export const FreeDrawingCanvas = () => {
       if (verticalGuides.length >= 1 && horizontalGuides.length >= 1) {
         ctx.save();
         
-        // Determine intersection type and color
+        // Determine intersection type and color based on guide types
         const hasExtensionVertical = verticalGuides.some(g => g.lineType === 'extension');
         const hasExtensionHorizontal = horizontalGuides.some(g => g.lineType === 'extension');
-        const hasPointAlignmentVertical = verticalGuides.some(g => g.lineType === 'point-alignment');
-        const hasPointAlignmentHorizontal = horizontalGuides.some(g => g.lineType === 'point-alignment');
+        const hasVerticalPointAlignment = verticalGuides.some(g => g.lineType === 'point-alignment-vertical');
+        const hasHorizontalPointAlignment = horizontalGuides.some(g => g.lineType === 'point-alignment-horizontal');
         
         let snapColor = '#10b981'; // Default green for mixed intersections
         
         if (hasExtensionVertical && hasExtensionHorizontal) {
           snapColor = '#3b82f6'; // Blue for extension intersections
-        } else if (hasPointAlignmentVertical && hasPointAlignmentHorizontal) {
-          snapColor = '#f97316'; // Orange for point alignment intersections
+        } else if (hasVerticalPointAlignment && hasHorizontalPointAlignment) {
+          snapColor = '#f97316'; // Orange for point alignment intersections (mix of blue vertical + orange horizontal)
         }
         
         // Special intersection indicator - larger circle with cross pattern
@@ -533,8 +558,10 @@ export const FreeDrawingCanvas = () => {
         
         if (activeGuide?.lineType === 'extension') {
           snapColor = '#3b82f6'; // Blue for extension alignment
-        } else if (activeGuide?.lineType === 'point-alignment') {
-          snapColor = '#f97316'; // Orange for point alignment
+        } else if (activeGuide?.lineType === 'point-alignment-vertical') {
+          snapColor = '#3b82f6'; // Blue for vertical point alignment
+        } else if (activeGuide?.lineType === 'point-alignment-horizontal') {
+          snapColor = '#f97316'; // Orange for horizontal point alignment
         }
         
         ctx.strokeStyle = snapColor;
@@ -558,7 +585,7 @@ export const FreeDrawingCanvas = () => {
         ctx.stroke();
         
         // Small alignment indicator circle like CAD software
-        if (activeGuide?.lineType === 'extension') {
+        if (activeGuide?.lineType === 'extension' || activeGuide?.lineType === 'point-alignment-vertical' || activeGuide?.lineType === 'point-alignment-horizontal') {
           ctx.setLineDash([]);
           ctx.globalAlpha = 1;
           ctx.strokeStyle = snapColor;
@@ -966,7 +993,7 @@ export const FreeDrawingCanvas = () => {
         </div>
         
         <div className="p-4 bg-muted rounded-lg">
-          <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
+          <h4 className="font-semibold mb-2">סטטistikות</h4>
           <div className="text-sm space-y-1">
             <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
             <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
@@ -1018,10 +1045,10 @@ export const FreeDrawingCanvas = () => {
           <div className="mt-4 text-sm text-muted-foreground">
             <p><strong>הוראות:</strong></p>
             <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
-            <p>• <span className="text-blue-600">Extension Lines:</span> קווי עזר כחולים מקווקווים עבור יישור עם קווים קיימים</p>
-            <p>• <span className="text-orange-600">יישור נקודות:</span> קווי עזר כתומים מקווקווים עבור יישור מדויק עם נקודות קיימות</p>
+            <p>• <span className="text-blue-600">קווים אנכיים כחולים:</span> יישור רוחב (X) עם נקודות ו/או קווים קיימים</p>
+            <p>• <span className="text-orange-600">קווים אופקיים כתומים:</span> יישור גובה (Y) עם נקודות קיימות</p>
             <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
-            <p>• <strong>צמתים מרובים:</strong> כאשר מתקיימים תנאי יישור אופקיים ואנכיים יחד - יופיעו שני קווי עזר בו-זמנית</p>
+            <p>• <strong>צמתים מרובים:</strong> כאשר מתקיימים יישור אופקי ואנכי יחד - יופיעו שני קווים בצבעים שונים</p>
             <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
             <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
             <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
