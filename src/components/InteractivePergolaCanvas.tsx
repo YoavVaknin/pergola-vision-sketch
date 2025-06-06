@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from "react";
 import { PergolaConfig } from "@/pages/CreateVisualization";
 
@@ -73,8 +72,34 @@ export const InteractivePergolaCanvas = ({ config }: InteractivePergolaCanvasPro
     ctx.lineWidth = 4;
     ctx.strokeRect(startX, startY, displayWidth, displayHeight);
 
-    console.log(`Drawing pergola: ${config.width}x${config.length} cm, scale: ${scale.toFixed(2)}`);
-  }, [config.width, config.length]);
+    // ציור קורות הצללה
+    ctx.strokeStyle = '#f97316'; // כתום
+    ctx.lineWidth = 2;
+
+    const spacingInPixels = config.beamSpacing * scale;
+
+    if (config.beamSpacing > 0) {
+      if (config.beamDirection === 0) {
+        // קורות אנכיות (מקבילות לגובה)
+        for (let x = spacingInPixels; x < displayWidth; x += spacingInPixels) {
+          ctx.beginPath();
+          ctx.moveTo(startX + x, startY);
+          ctx.lineTo(startX + x, startY + displayHeight);
+          ctx.stroke();
+        }
+      } else if (config.beamDirection === 90) {
+        // קורות אופקיות (מקבילות לרוחב)
+        for (let y = spacingInPixels; y < displayHeight; y += spacingInPixels) {
+          ctx.beginPath();
+          ctx.moveTo(startX, startY + y);
+          ctx.lineTo(startX + displayWidth, startY + y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    console.log(`Drawing pergola: ${config.width}x${config.length} cm, scale: ${scale.toFixed(2)}, beams: ${config.beamSpacing}cm spacing, direction: ${config.beamDirection}°`);
+  }, [config.width, config.length, config.beamSpacing]);
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-white rounded-lg border">
@@ -84,7 +109,7 @@ export const InteractivePergolaCanvas = ({ config }: InteractivePergolaCanvasPro
           פרגולה {config.width}×{config.length} ס״מ
         </h3>
         <p className="text-sm text-muted-foreground">
-          מסגרת {config.profile_frame}
+          מסגרת {config.profile_frame} | מרווח קורות {config.beamSpacing} ס״מ
         </p>
       </div>
 
