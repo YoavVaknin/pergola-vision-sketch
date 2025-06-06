@@ -314,8 +314,8 @@ export const FreeDrawingCanvas = () => {
         let lineWidth = snapPoint ? 2 : 1;
         let lineDash: number[] = [3, 3];
         
-        // בדיקה ליישור זווית חכם
-        if (!snapPoint && drawingState.tempPoints.length > 1) {
+        // בדיקה ליישור זווית חכם - עכשיו גם לקו הראשון!
+        if (!snapPoint) {
           const { point: anglePoint, snapped } = calculateSnappedAnglePoint(lastPoint, mousePosition);
           if (snapped) {
             targetPoint = anglePoint;
@@ -392,7 +392,7 @@ export const FreeDrawingCanvas = () => {
           }
         }
         // אחרת, בדיקה ליישור זווית
-        else if (isAngleSnapped && angleSnapPoint && drawingState.tempPoints.length > 0) {
+        else if (isAngleSnapped && angleSnapPoint) {
           pointToAdd = angleSnapPoint;
         }
         
@@ -482,7 +482,7 @@ export const FreeDrawingCanvas = () => {
           <div className="mt-4 text-sm text-muted-foreground">
             <p><strong>הוראות:</strong></p>
             <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
-            <p>• <span className="text-amber-600">יישור חכם:</span> זווית נעולה (0°, 45°, 90°) מוצגת בכתום מקווקו</p>
+            <p>• <span className="text-amber-600">יישור חכם:</span> זווית נעולה (0°, 45°, 90°) מוצגת בכתום מקווקו מהקו הראשון</p>
             <p>• הצללה וחלוקה יתווספו אוטומטית בתוך המסגרת לפי ההגדרות</p>
             <p>• עמודים יתווספו אוטומטית בפינות המסגרת</p>
             <p>• קורה/קיר: לחץ והחזק, גרור ושחרר</p>
