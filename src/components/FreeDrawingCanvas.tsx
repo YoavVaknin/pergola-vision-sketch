@@ -1,3 +1,4 @@
+
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Point, PergolaElementType, FrameElement, BeamElement, ColumnElement, WallElement, ShadingElement, DivisionElement } from '@/types/pergola';
 import { usePergolaDrawing } from '@/hooks/usePergolaDrawing';
@@ -587,17 +588,35 @@ export const FreeDrawingCanvas = () => {
       // Draw temporary line to mouse
       if (mousePosition && drawingState.tempPoints.length > 0) {
         const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
-        let targetPoint = alignmentSnapPoint || snapPoint || mousePosition;
-        let lineColor = alignmentSnapPoint ? '#f97316' : (snapPoint ? '#22c55e' : '#94a3b8');
-        let lineWidth = (alignmentSnapPoint || snapPoint) ? 2 : 1;
+        let targetPoint = mousePosition;
+        let lineColor = '#94a3b8';
+        let lineWidth = 1;
         let lineDash: number[] = [3, 3];
         
-        // Check for angle snap
-        if (!snapPoint && !alignmentSnapPoint) {
+        // PRIORITY SYSTEM: alignment snap > regular snap > angle snap
+        if (alignmentSnapPoint) {
+          // Highest priority - alignment snap
+          targetPoint = alignmentSnapPoint;
+          const activeGuide = alignmentGuides[0];
+          if (activeGuide?.lineType === 'extension') {
+            lineColor = '#3b82f6'; // Blue for extension
+          } else {
+            lineColor = '#22c55e'; // Green for point alignment
+          }
+          lineWidth = 2;
+          lineDash = [5, 5];
+        } else if (snapPoint) {
+          // Second priority - regular point snap
+          targetPoint = snapPoint;
+          lineColor = '#22c55e';
+          lineWidth = 2;
+          lineDash = [5, 5];
+        } else {
+          // Third priority - angle snap (RESTORED FUNCTIONALITY)
           const { point: anglePoint, snapped } = calculateSnappedAnglePoint(lastPoint, mousePosition);
           if (snapped) {
             targetPoint = anglePoint;
-            lineColor = '#f59e0b';
+            lineColor = '#f59e0b'; // Amber for angle snap
             lineWidth = 2;
             lineDash = [5, 2];
             setAngleSnapPoint(anglePoint);
@@ -606,7 +625,10 @@ export const FreeDrawingCanvas = () => {
             setAngleSnapPoint(null);
             setIsAngleSnapped(false);
           }
-        } else {
+        }
+        
+        // If alignment or regular snap is active, clear angle snap
+        if (alignmentSnapPoint || snapPoint) {
           setAngleSnapPoint(null);
           setIsAngleSnapped(false);
         }
@@ -633,12 +655,25 @@ export const FreeDrawingCanvas = () => {
           });
         }
         
+        // Draw angle snap indicator
         if (isAngleSnapped && angleSnapPoint) {
           ctx.fillStyle = '#f59e0b';
           ctx.strokeStyle = '#d97706';
-          ctx.lineWidth = 1;
+          ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.arc(angleSnapPoint.x, angleSnapPoint.y, 4, 0, 2 * Math.PI);
+          ctx.arc(angleSnapPoint.x, angleSnapPoint.y, 6, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.stroke();
+          
+          // Small angle indicator like CAD software
+          ctx.setLineDash([]);
+          ctx.strokeStyle = '#f59e0b';
+          ctx.fillStyle = 'white';
+          ctx.lineWidth = 1;
+          
+          // Small square with angle symbol
+          ctx.beginPath();
+          ctx.arc(angleSnapPoint.x, angleSnapPoint.y, 3, 0, 2 * Math.PI);
           ctx.fill();
           ctx.stroke();
         }
@@ -728,7 +763,7 @@ export const FreeDrawingCanvas = () => {
       case 'frame':
         let pointToAdd = point;
         
-        // Priority: alignment snap > regular snap > angle snap
+        // PRIORITY SYSTEM: alignment snap > regular snap > angle snap
         if (alignmentSnapPoint) {
           pointToAdd = alignmentSnapPoint;
         } else if (snapPoint) {
@@ -916,7 +951,8 @@ export const FreeDrawingCanvas = () => {
           <div className="mt-4 text-sm text-muted-foreground">
             <p><strong>הוראות:</strong></p>
             <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
-            <p>• <span className="text-green-600">יישור חכם:</span> קווי עזר ירוקים מקווקווים מופיעים בעת יישור מדויק עם נקודות קיימות</p>
+            <p>• <span className="text-blue-600">Extension Lines:</span> קווי עזר כחולים מקווקווים עבור יישור עם קווים קיימים</p>
+            <p>• <span className="text-green-600">יישור נקודות:</span> קווי עזר ירוקים מקווקווים עבור יישור מדויק עם נקודות קיימות</p>
             <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
             <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
             <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
