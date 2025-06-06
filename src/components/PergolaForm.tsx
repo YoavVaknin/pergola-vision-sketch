@@ -27,6 +27,14 @@ export const PergolaForm = ({ config, onConfigChange }: PergolaFormProps) => {
     { value: "10/2.5", label: "10/2.5 ס״מ" }
   ];
 
+  const colorOptions = [
+    { value: "שחור", label: "שחור" },
+    { value: "לבן", label: "לבן" },
+    { value: "אפור גרפיט", label: "אפור גרפיט" },
+    { value: "עץ כהה", label: "עץ כהה" },
+    { value: "שמנת", label: "שמנת" }
+  ];
+
   return (
     <div className="space-y-6">
       {/* ממדים כלליים */}
@@ -142,6 +150,77 @@ export const PergolaForm = ({ config, onConfigChange }: PergolaFormProps) => {
               </SelectTrigger>
               <SelectContent>
                 {divisionAndShadingProfileOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* צבעים */}
+      <div>
+        <h3 className="font-medium mb-4 text-foreground">צבעים</h3>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="color_frame" className="text-sm font-medium">
+              צבע מסגרת
+            </Label>
+            <Select 
+              value={config.color_frame} 
+              onValueChange={(value) => onConfigChange({ color_frame: value })}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="בחר צבע מסגרת" />
+              </SelectTrigger>
+              <SelectContent>
+                {colorOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="color_division" className="text-sm font-medium">
+              צבע חלוקה
+            </Label>
+            <Select 
+              value={config.color_division} 
+              onValueChange={(value) => onConfigChange({ color_division: value })}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="בחר צבע חלוקה" />
+              </SelectTrigger>
+              <SelectContent>
+                {colorOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="color_shading" className="text-sm font-medium">
+              צבע הצללה
+            </Label>
+            <Select 
+              value={config.color_shading} 
+              onValueChange={(value) => onConfigChange({ color_shading: value })}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="בחר צבע הצללה" />
+              </SelectTrigger>
+              <SelectContent>
+                {colorOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>

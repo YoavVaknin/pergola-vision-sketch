@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from "react";
 import { PergolaConfig } from "@/pages/CreateVisualization";
 
@@ -7,6 +8,18 @@ interface InteractivePergolaCanvasProps {
 
 export const InteractivePergolaCanvas = ({ config }: InteractivePergolaCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // פונקציה להמרת שמות צבעים לקודי צבע
+  const getColorCode = (colorName: string): string => {
+    const colorMap: { [key: string]: string } = {
+      "שחור": "#1f2937",
+      "לבן": "#ffffff", 
+      "אפור גרפיט": "#6b7280",
+      "עץ כהה": "#8b4513",
+      "שמנת": "#f5f5dc"
+    };
+    return colorMap[colorName] || "#1f2937";
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -67,13 +80,13 @@ export const InteractivePergolaCanvas = ({ config }: InteractivePergolaCanvasPro
     ctx.fillStyle = 'rgba(59, 130, 246, 0.05)';
     ctx.fillRect(startX, startY, displayWidth, displayHeight);
 
-    // מסגרת המלבן
-    ctx.strokeStyle = '#1f2937';
+    // מסגרת המלבן בצבע שנבחר
+    ctx.strokeStyle = getColorCode(config.color_frame);
     ctx.lineWidth = 4;
     ctx.strokeRect(startX, startY, displayWidth, displayHeight);
 
-    // ציור קורות הצללה
-    ctx.strokeStyle = '#f97316'; // כתום
+    // ציור קורות הצללה בצבע שנבחר
+    ctx.strokeStyle = getColorCode(config.color_shading);
     ctx.lineWidth = 2;
 
     const spacingInPixels = config.beamSpacing * scale;
@@ -98,8 +111,8 @@ export const InteractivePergolaCanvas = ({ config }: InteractivePergolaCanvasPro
       }
     }
 
-    console.log(`Drawing pergola: ${config.width}x${config.length} cm, scale: ${scale.toFixed(2)}, beams: ${config.beamSpacing}cm spacing, direction: ${config.beamDirection}°`);
-  }, [config.width, config.length, config.beamSpacing, config.beamDirection]);
+    console.log(`Drawing pergola: ${config.width}x${config.length} cm, scale: ${scale.toFixed(2)}, beams: ${config.beamSpacing}cm spacing, direction: ${config.beamDirection}°, frame color: ${config.color_frame}, shading color: ${config.color_shading}`);
+  }, [config.width, config.length, config.beamSpacing, config.beamDirection, config.color_frame, config.color_shading]);
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-white rounded-lg border">
@@ -109,7 +122,7 @@ export const InteractivePergolaCanvas = ({ config }: InteractivePergolaCanvasPro
           פרגולה {config.width}×{config.length} ס״מ
         </h3>
         <p className="text-sm text-muted-foreground">
-          מסגרת {config.profile_frame} | מרווח קורות {config.beamSpacing} ס״מ
+          מסגרת {config.profile_frame} ({config.color_frame}) | מרווח קורות {config.beamSpacing} ס״מ ({config.color_shading})
         </p>
       </div>
 

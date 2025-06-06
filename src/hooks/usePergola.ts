@@ -12,6 +12,9 @@ export interface PergolaDesign {
   profile_shading: string;
   beam_spacing: number;
   beam_direction: number;
+  color_frame?: string;
+  color_division?: string;
+  color_shading?: string;
   created_by?: string;
   created_at?: string;
 }

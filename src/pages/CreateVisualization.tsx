@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,9 @@ export interface PergolaConfig {
   profile_frame: string;
   profile_division: string;
   profile_shading: string;
+  color_frame: string;
+  color_division: string;
+  color_shading: string;
 }
 
 const CreateVisualization = () => {
@@ -28,7 +30,10 @@ const CreateVisualization = () => {
     beamDirection: 0,
     profile_frame: "10/5",
     profile_division: "4/2",
-    profile_shading: "4/2"
+    profile_shading: "4/2",
+    color_frame: "שחור",
+    color_division: "אפור גרפיט",
+    color_shading: "עץ כהה"
   });
 
   const handleConfigChange = (newConfig: Partial<PergolaConfig>) => {
@@ -43,7 +48,10 @@ const CreateVisualization = () => {
       profile_division: config.profile_division,
       profile_shading: config.profile_shading,
       beam_spacing: config.beamSpacing,
-      beam_direction: 0 // כרגע ברירת מחדל, נוסיף בהמשך שדה בחירה
+      beam_direction: config.beamDirection,
+      color_frame: config.color_frame,
+      color_division: config.color_division,
+      color_shading: config.color_shading
     });
   };
 
