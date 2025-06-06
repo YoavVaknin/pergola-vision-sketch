@@ -16,6 +16,7 @@ export const useSmartAlignment = () => {
     currentPoint: Point,
     previousPoint: Point,
     elements: PergolaElementType[],
+    tempPoints: Point[] = [], // Add temporary points parameter
     tolerance: number = 10
   ): AlignmentGuide[] => {
     const guides: AlignmentGuide[] = [];
@@ -59,7 +60,20 @@ export const useSmartAlignment = () => {
       }
     });
 
-    console.log('All points for alignment:', allPoints);
+    // ADD TEMPORARY POINTS to alignment detection - this is the key enhancement!
+    tempPoints.forEach((point, index) => {
+      // Skip the current point being drawn and the previous point to avoid self-alignment
+      if (index < tempPoints.length - 1) { // Don't include the last point (current drawing point)
+        allPoints.push({
+          point,
+          elementType: 'temp',
+          elementId: `temp-${index}`
+        });
+      }
+    });
+
+    console.log('All points for alignment (including temp):', allPoints);
+    console.log('Temporary points:', tempPoints);
     console.log('Current point:', currentPoint);
 
     // Primary alignment detection - check each existing point for vertical/horizontal alignment
@@ -119,70 +133,89 @@ export const useSmartAlignment = () => {
       }
     });
 
-    // Additional check for line extensions from existing lines
+    // ENHANCED: Check for line extensions from existing lines AND temporary lines
+    const allLinesToCheck: { points: Point[]; isClosed: boolean; elementType: string }[] = [];
+    
+    // Add existing frame lines
     elements.forEach(element => {
       if (element.type === 'frame') {
         const frame = element as FrameElement;
+        allLinesToCheck.push({
+          points: frame.points,
+          isClosed: frame.closed,
+          elementType: 'frame'
+        });
+      }
+    });
+    
+    // ADD TEMPORARY LINES - this is crucial for drawing mode!
+    if (tempPoints.length >= 2) {
+      allLinesToCheck.push({
+        points: tempPoints,
+        isClosed: false,
+        elementType: 'temp'
+      });
+    }
+
+    allLinesToCheck.forEach(({ points, isClosed, elementType }) => {
+      for (let i = 0; i < points.length; i++) {
+        const p1 = points[i];
+        const p2 = points[(i + 1) % points.length];
         
-        for (let i = 0; i < frame.points.length; i++) {
-          const p1 = frame.points[i];
-          const p2 = frame.points[(i + 1) % frame.points.length];
+        // Skip if this is the last segment of an open frame/temp line
+        if (!isClosed && i === points.length - 1) continue;
+        
+        // Check for vertical line extension
+        if (Math.abs(p1.x - p2.x) < 5) { // Nearly vertical line
+          const lineX = (p1.x + p2.x) / 2;
+          const xDiff = Math.abs(currentPoint.x - lineX);
           
-          // Skip if this is the last segment of an open frame
-          if (!frame.closed && i === frame.points.length - 1) continue;
-          
-          // Check for vertical line extension
-          if (Math.abs(p1.x - p2.x) < 5) { // Nearly vertical line
-            const lineX = (p1.x + p2.x) / 2;
-            const xDiff = Math.abs(currentPoint.x - lineX);
+          if (xDiff <= tolerance) {
+            console.log(`VERTICAL LINE EXTENSION DETECTED from ${elementType}!`);
             
-            if (xDiff <= tolerance) {
-              console.log('VERTICAL LINE EXTENSION DETECTED!');
-              
-              const canvasHeight = 600;
-              const lineMinY = Math.min(p1.y, p2.y);
-              const lineMaxY = Math.max(p1.y, p2.y);
-              
-              // Extend the line to include current point
-              const extendedMinY = Math.min(lineMinY, currentPoint.y) - 100;
-              const extendedMaxY = Math.max(lineMaxY, currentPoint.y) + 100;
-              
-              guides.push({
-                type: 'vertical',
-                position: lineX,
-                startPoint: { x: lineX, y: Math.max(0, extendedMinY) },
-                endPoint: { x: lineX, y: Math.min(canvasHeight, extendedMaxY) },
-                targetPoint: { x: lineX, y: currentPoint.y },
-                lineType: 'extension'
-              });
-            }
+            const canvasHeight = 600;
+            const lineMinY = Math.min(p1.y, p2.y);
+            const lineMaxY = Math.max(p1.y, p2.y);
+            
+            // Extend the line to include current point
+            const extendedMinY = Math.min(lineMinY, currentPoint.y) - 100;
+            const extendedMaxY = Math.max(lineMaxY, currentPoint.y) + 100;
+            
+            guides.push({
+              type: 'vertical',
+              position: lineX,
+              startPoint: { x: lineX, y: Math.max(0, extendedMinY) },
+              endPoint: { x: lineX, y: Math.min(canvasHeight, extendedMaxY) },
+              targetPoint: { x: lineX, y: currentPoint.y },
+              lineType: 'extension'
+            });
           }
+        }
+        
+        // Check for horizontal line extension
+        if (Math.abs(p1.y - p2.y) < 5) { // Nearly horizontal line
+          const lineY = (p1.y + p2.y) / 2;
+          const yDiff = Math.abs(currentPoint.y - lineY);
           
-          // Check for horizontal line extension
-          if (Math.abs(p1.y - p2.y) < 5) { // Nearly horizontal line
-            const lineY = (p1.y + p2.y) / 2;
-            const yDiff = Math.abs(currentPoint.y - lineY);
+          if (yDiff <= tolerance) {
+            console.log(`HORIZONTAL LINE EXTENSION DETECTED from ${elementType}!`);
             
-            if (yDiff <= tolerance) {
-              console.log('HORIZONTAL LINE EXTENSION DETECTED!');
-              
-              const canvasWidth = 800;
-              const lineMinX = Math.min(p1.x, p2.x);
-              const lineMaxX = Math.max(p1.x, p2.x);
-              
-              // Extend the line to include current point
-              const extendedMinX = Math.min(lineMinX, currentPoint.x) - 100;
-              const extendedMaxX = Math.max(lineMaxX, currentPoint.x) + 100;
-              
-              guides.push({
-                type: 'horizontal',
-                position: lineY,
-                startPoint: { x: Math.max(0, extendedMinX), y: lineY },
-                endPoint: { x: Math.min(canvasWidth, extendedMaxX), y: lineY },
-                targetPoint: { x: currentPoint.x, y: lineY },
-                lineType: 'extension'
-              });
-            }
+            const canvasWidth = 800;
+            const lineMinX = Math.min(p1.x, p2.x);
+            const lineMaxX = Math.max(p1.x, p2.x);
+            
+            // Extend the line to include current point
+            const extendedMinX = Math.min(lineMinX, currentPoint.x) - 100;
+            const extendedMaxX = Math.max(lineMaxX, currentPoint.x) + 100;
+            
+            guides.push({
+              type: 'horizontal',
+              position: lineY,
+              startPoint: { x: Math.max(0, extendedMinX), y: lineY },
+              endPoint: { x: Math.min(canvasWidth, extendedMaxX), y: lineY },
+              targetPoint: { x: currentPoint.x, y: lineY },
+              lineType: 'extension'
+            });
           }
         }
       }

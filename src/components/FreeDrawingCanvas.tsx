@@ -675,12 +675,14 @@ export const FreeDrawingCanvas = () => {
     const foundSnapPoint = findSnapPoint(point);
     setSnapPoint(foundSnapPoint);
 
-    // ENHANCED SMART ALIGNMENT DETECTION
+    // ENHANCED SMART ALIGNMENT DETECTION - Now includes temporary points!
     if (drawingState.mode === 'frame' && drawingState.tempPoints.length > 0) {
       const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
       console.log('Detecting alignment for point:', point, 'from last point:', lastPoint);
+      console.log('Current temporary points:', drawingState.tempPoints);
       
-      const guides = findAlignmentGuides(point, lastPoint, elements, 10); // Reduced tolerance for precision
+      // PASS TEMPORARY POINTS to alignment detection - this is the key fix!
+      const guides = findAlignmentGuides(point, lastPoint, elements, drawingState.tempPoints, 10);
       setAlignmentGuides(guides);
       
       const alignSnap = getSnapPoint(point, guides);
