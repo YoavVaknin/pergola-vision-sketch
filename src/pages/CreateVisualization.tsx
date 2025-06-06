@@ -2,10 +2,11 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Home } from "lucide-react";
+import { ArrowRight, Home, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PergolaForm } from "@/components/PergolaForm";
 import { PergolaCanvas } from "@/components/PergolaCanvas";
+import { usePergola } from "@/hooks/usePergola";
 
 export interface PergolaConfig {
   width: number;
@@ -18,6 +19,7 @@ export interface PergolaConfig {
 
 const CreateVisualization = () => {
   const navigate = useNavigate();
+  const { saveDesign } = usePergola();
   const [config, setConfig] = useState<PergolaConfig>({
     width: 400,
     length: 300,
@@ -29,6 +31,18 @@ const CreateVisualization = () => {
 
   const handleConfigChange = (newConfig: Partial<PergolaConfig>) => {
     setConfig(prev => ({ ...prev, ...newConfig }));
+  };
+
+  const handleSaveDesign = () => {
+    saveDesign.mutate({
+      width: config.width,
+      height: config.length,
+      profile_frame: config.profile_frame,
+      profile_division: config.profile_division,
+      profile_shading: config.profile_shading,
+      beam_spacing: config.beamSpacing,
+      beam_direction: 0 // כרגע ברירת מחדל, נוסיף בהמשך שדה בחירה
+    });
   };
 
   return (
@@ -99,10 +113,21 @@ const CreateVisualization = () => {
           <Button variant="outline" onClick={() => navigate('/')}>
             ביטול
           </Button>
-          <Button className="flex items-center gap-2">
-            המשך לשלב הבא
-            <ArrowRight className="w-4 h-4" />
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              variant="outline"
+              onClick={handleSaveDesign}
+              disabled={saveDesign.isPending}
+              className="flex items-center gap-2"
+            >
+              <Save className="w-4 h-4" />
+              {saveDesign.isPending ? "שומר..." : "שמור הדמיה"}
+            </Button>
+            <Button className="flex items-center gap-2">
+              המשך לשלב הבא
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

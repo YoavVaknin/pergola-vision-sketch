@@ -9,7 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      pergola_designs: {
+        Row: {
+          beam_direction: number
+          beam_spacing: number
+          created_at: string
+          created_by: string | null
+          height: number
+          id: string
+          profile_division: string
+          profile_frame: string
+          profile_shading: string
+          width: number
+        }
+        Insert: {
+          beam_direction?: number
+          beam_spacing: number
+          created_at?: string
+          created_by?: string | null
+          height: number
+          id?: string
+          profile_division: string
+          profile_frame: string
+          profile_shading: string
+          width: number
+        }
+        Update: {
+          beam_direction?: number
+          beam_spacing?: number
+          created_at?: string
+          created_by?: string | null
+          height?: number
+          id?: string
+          profile_division?: string
+          profile_frame?: string
+          profile_shading?: string
+          width?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
