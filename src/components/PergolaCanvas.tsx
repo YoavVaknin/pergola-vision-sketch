@@ -124,7 +124,7 @@ export const PergolaCanvas = ({ config }: PergolaCanvasProps) => {
     
     // פרטים נוספים
     ctx.font = '12px Arial';
-    ctx.fillText(`${numBeams} קורות | מרווח ${config.beamSpacing} ס״מ | פרופיל ${config.profileType}`, canvas.width / 2, 45);
+    ctx.fillText(`${numBeams} קורות | מרווח ${config.beamSpacing} ס״מ | מסגרת ${config.profile_frame}`, canvas.width / 2, 45);
 
   }, [config]);
 
