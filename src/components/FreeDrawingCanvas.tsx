@@ -147,6 +147,7 @@ export const FreeDrawingCanvas = () => {
     return distance <= 10;
   }, [drawingState.mode, drawingState.tempPoints, calculateDistance]);
 
+  // Function to check if click is on a dimension text
   const checkDimensionClick = useCallback((mousePos: Point): { elementId: string; segmentIndex: number; position: Point; length: number } | null => {
     for (const element of elements) {
       if (element.type === 'frame') {
@@ -180,6 +181,7 @@ export const FreeDrawingCanvas = () => {
     return null;
   }, [elements]);
 
+  // Enhanced drawMeasurementText function to handle clicks
   const drawMeasurementText = useCallback((ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: {
     fontSize?: number;
     color?: string;
@@ -243,19 +245,16 @@ export const FreeDrawingCanvas = () => {
       ctx.stroke();
     }
 
-    // Draw alignment guides with proper colors for each type
+    // Draw alignment guides with enhanced styling
     alignmentGuides.forEach(guide => {
-      // Set colors based on guide type and direction
-      if (guide.type === 'vertical') {
-        // Vertical guides - Blue for X-axis alignment
-        ctx.strokeStyle = guide.lineType === 'point-alignment' ? '#3b82f6' : '#60a5fa';
-        ctx.lineWidth = guide.lineType === 'point-alignment' ? 2 : 1;
-        ctx.setLineDash(guide.lineType === 'point-alignment' ? [3, 3] : [5, 5]);
+      if (guide.lineType === 'extension') {
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
       } else {
-        // Horizontal guides - Orange for Y-axis alignment  
-        ctx.strokeStyle = guide.lineType === 'point-alignment' ? '#f97316' : '#fb923c';
-        ctx.lineWidth = guide.lineType === 'point-alignment' ? 2 : 1;
-        ctx.setLineDash(guide.lineType === 'point-alignment' ? [3, 3] : [5, 5]);
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 2]);
       }
       
       ctx.beginPath();
@@ -264,14 +263,11 @@ export const FreeDrawingCanvas = () => {
       ctx.stroke();
       ctx.setLineDash([]);
       
-      // Draw target point indicator with appropriate colors
-      ctx.fillStyle = guide.type === 'vertical' ? '#3b82f6' : '#f97316';
-      ctx.strokeStyle = guide.type === 'vertical' ? '#1d4ed8' : '#ea580c';
-      ctx.lineWidth = 1;
+      // Draw small indicator at target point
+      ctx.fillStyle = guide.lineType === 'extension' ? '#3b82f6' : '#10b981';
       ctx.beginPath();
       ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 3, 0, 2 * Math.PI);
       ctx.fill();
-      ctx.stroke();
     });
 
     // Draw elements
@@ -409,57 +405,6 @@ export const FreeDrawingCanvas = () => {
       }
     });
 
-    // Draw enhanced alignment snap point indicator
-    if (alignmentSnapPoint) {
-      // Check if this is an intersection snap (both vertical and horizontal guides present)
-      const hasVertical = alignmentGuides.some(g => g.type === 'vertical');
-      const hasHorizontal = alignmentGuides.some(g => g.type === 'horizontal');
-      const isIntersection = hasVertical && hasHorizontal;
-      
-      if (isIntersection) {
-        // Special indicator for intersection points
-        ctx.strokeStyle = '#dc2626'; // Red for intersection
-        ctx.fillStyle = 'rgba(220, 38, 38, 0.2)';
-        ctx.lineWidth = 2;
-        
-        // Draw intersection cross
-        ctx.beginPath();
-        ctx.moveTo(alignmentSnapPoint.x - 8, alignmentSnapPoint.y);
-        ctx.lineTo(alignmentSnapPoint.x + 8, alignmentSnapPoint.y);
-        ctx.moveTo(alignmentSnapPoint.x, alignmentSnapPoint.y - 8);
-        ctx.lineTo(alignmentSnapPoint.x, alignmentSnapPoint.y + 8);
-        ctx.stroke();
-        
-        // Draw circle around intersection
-        ctx.beginPath();
-        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 6, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.stroke();
-        
-        // Pulsing ring for intersection
-        ctx.strokeStyle = '#dc2626';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([2, 2]);
-        ctx.beginPath();
-        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 12, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      } else {
-        // Single axis alignment
-        const activeGuide = alignmentGuides[0];
-        let snapColor = activeGuide?.type === 'vertical' ? '#3b82f6' : '#f97316';
-        
-        ctx.strokeStyle = snapColor;
-        ctx.fillStyle = snapColor + '40'; // Add transparency
-        ctx.lineWidth = 2;
-        
-        ctx.beginPath();
-        ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 6, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.stroke();
-      }
-    }
-
     // Draw snap point indicator
     if (snapPoint && drawingState.mode === 'frame') {
       ctx.strokeStyle = '#22c55e';
@@ -478,6 +423,18 @@ export const FreeDrawingCanvas = () => {
       ctx.arc(snapPoint.x, snapPoint.y, 12, 0, 2 * Math.PI);
       ctx.stroke();
       ctx.setLineDash([]);
+    }
+
+    // Draw alignment snap point indicator
+    if (alignmentSnapPoint) {
+      ctx.strokeStyle = '#3b82f6';
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.3)';
+      ctx.lineWidth = 2;
+      
+      ctx.beginPath();
+      ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 6, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
     }
 
     // Draw temporary points for frame drawing
@@ -802,7 +759,7 @@ export const FreeDrawingCanvas = () => {
         </div>
         
         <div className="p-4 bg-muted rounded-lg">
-          <h4 className="font-semibold mb-2">סטטistics</h4>
+          <h4 className="font-semibold mb-2">סטטistikות</h4>
           <div className="text-sm space-y-1">
             <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
             <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
@@ -852,12 +809,11 @@ export const FreeDrawingCanvas = () => {
           </div>
           
           <div className="mt-4 text-sm text-muted-foreground">
-            <p><strong>הוראות מדויקות:</strong></p>
+            <p><strong>הוראות:</strong></p>
             <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
-            <p>• <span className="text-blue-600">קווים כחולים אנכיים:</span> יישור רוחב (ציר X) לנקודות קיימות</p>
-            <p>• <span className="text-orange-600">קווים כתומים אופקיים:</span> יישור גובה (ציר Y) לנקודות קיימות</p>
-            <p>• <span className="text-red-600">צלב אדום:</span> יישור כפול - גם רוחב וגם גובה בו-זמנית</p>
             <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
+            <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
+            <p>• <span className="text-green-600">ישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
             <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
             <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
             <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
