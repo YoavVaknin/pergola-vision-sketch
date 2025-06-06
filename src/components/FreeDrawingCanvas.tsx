@@ -11,6 +11,8 @@ export const FreeDrawingCanvas = () => {
   const [mousePosition, setMousePosition] = useState<Point | null>(null);
   const [isNearFirstPoint, setIsNearFirstPoint] = useState(false);
   const [snapPoint, setSnapPoint] = useState<Point | null>(null);
+  const [angleSnapPoint, setAngleSnapPoint] = useState<Point | null>(null);
+  const [isAngleSnapped, setIsAngleSnapped] = useState(false);
   
   const {
     elements,
@@ -45,6 +47,43 @@ export const FreeDrawingCanvas = () => {
     const dy = point1.y - point2.y;
     return Math.sqrt(dx * dx + dy * dy);
   }, []);
+
+  // פונקציה לחישוב זווית בין שתי נקודות (בדרגות)
+  const calculateAngle = useCallback((point1: Point, point2: Point): number => {
+    const dx = point2.x - point1.x;
+    const dy = point2.y - point1.y;
+    const angleRad = Math.atan2(dy, dx);
+    const angleDeg = (angleRad * 180) / Math.PI;
+    return angleDeg;
+  }, []);
+
+  // פונקציה לחישוב נקודה בזווית נעולה
+  const calculateSnappedAnglePoint = useCallback((startPoint: Point, endPoint: Point): { point: Point; snapped: boolean } => {
+    const distance = calculateDistance(startPoint, endPoint);
+    const currentAngle = calculateAngle(startPoint, endPoint);
+    
+    // זוויות יעד: 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°
+    const targetAngles = [0, 45, 90, 135, 180, -135, -90, -45];
+    const tolerance = 5; // ±5 מעלות
+    
+    for (const targetAngle of targetAngles) {
+      const angleDiff = Math.abs(currentAngle - targetAngle);
+      const angleDiff360 = Math.abs(currentAngle - targetAngle + 360);
+      const angleDiffNeg360 = Math.abs(currentAngle - targetAngle - 360);
+      
+      if (angleDiff <= tolerance || angleDiff360 <= tolerance || angleDiffNeg360 <= tolerance) {
+        // חישוב הנקודה החדשה בזווית הנעולה
+        const targetAngleRad = (targetAngle * Math.PI) / 180;
+        const snappedPoint: Point = {
+          x: startPoint.x + distance * Math.cos(targetAngleRad),
+          y: startPoint.y + distance * Math.sin(targetAngleRad)
+        };
+        return { point: snappedPoint, snapped: true };
+      }
+    }
+    
+    return { point: endPoint, snapped: false };
+  }, [calculateDistance, calculateAngle]);
 
   // פונקציה למציאת נקודה קרובה לסנאפ
   const findSnapPoint = useCallback((mousePos: Point): Point | null => {
@@ -267,22 +306,55 @@ export const FreeDrawingCanvas = () => {
         }
       });
       
-      // קו זמני מהנקודה האחרונה לעמדת העכבר (או לנקודת הסנאפ)
+      // קו זמני מהנקודה האחרונה לעמדת העכבר
       if (mousePosition && drawingState.tempPoints.length > 0) {
         const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
-        const targetPoint = snapPoint || mousePosition;
+        let targetPoint = snapPoint || mousePosition;
+        let lineColor = snapPoint ? '#22c55e' : '#94a3b8';
+        let lineWidth = snapPoint ? 2 : 1;
+        let lineDash: number[] = [3, 3];
         
-        ctx.strokeStyle = snapPoint ? '#22c55e' : '#94a3b8';
-        ctx.lineWidth = snapPoint ? 2 : 1;
-        ctx.setLineDash([3, 3]);
+        // בדיקה ליישור זווית חכם
+        if (!snapPoint && drawingState.tempPoints.length > 1) {
+          const { point: anglePoint, snapped } = calculateSnappedAnglePoint(lastPoint, mousePosition);
+          if (snapped) {
+            targetPoint = anglePoint;
+            lineColor = '#f59e0b'; // צהוב/כתום לזווית נעולה
+            lineWidth = 2;
+            lineDash = [5, 2]; // קו מקווקו שונה
+            setAngleSnapPoint(anglePoint);
+            setIsAngleSnapped(true);
+          } else {
+            setAngleSnapPoint(null);
+            setIsAngleSnapped(false);
+          }
+        } else {
+          setAngleSnapPoint(null);
+          setIsAngleSnapped(false);
+        }
+        
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = lineWidth;
+        ctx.setLineDash(lineDash);
         ctx.beginPath();
         ctx.moveTo(lastPoint.x, lastPoint.y);
         ctx.lineTo(targetPoint.x, targetPoint.y);
         ctx.stroke();
         ctx.setLineDash([]);
+        
+        // הוספת סמן יישור זווית
+        if (isAngleSnapped && angleSnapPoint) {
+          ctx.fillStyle = '#f59e0b';
+          ctx.strokeStyle = '#d97706';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(angleSnapPoint.x, angleSnapPoint.y, 4, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.stroke();
+        }
       }
     }
-  }, [elements, drawingState, mousePosition, isNearFirstPoint, snapPoint]);
+  }, [elements, drawingState, mousePosition, isNearFirstPoint, snapPoint, angleSnapPoint, isAngleSnapped, calculateSnappedAnglePoint]);
 
   useEffect(() => {
     drawElements();
@@ -306,17 +378,25 @@ export const FreeDrawingCanvas = () => {
     
     switch (drawingState.mode) {
       case 'frame':
-        // שימוש בנקודת הסנאפ אם קיימת
-        const pointToAdd = snapPoint || point;
+        let pointToAdd = point;
         
-        // בדיקה לסגירה אוטומטית
-        if (drawingState.tempPoints.length >= 3 && snapPoint && 
-            snapPoint === drawingState.tempPoints[0]) {
-          console.log('Auto-closing frame - snapped to first point');
-          finishFrame();
-        } else {
-          addPoint(pointToAdd);
+        // עדיפות לסנאפ לנקודה קיימת
+        if (snapPoint) {
+          pointToAdd = snapPoint;
+          // בדיקה לסגירה אוטומטית
+          if (drawingState.tempPoints.length >= 3 && 
+              snapPoint === drawingState.tempPoints[0]) {
+            console.log('Auto-closing frame - snapped to first point');
+            finishFrame();
+            return;
+          }
         }
+        // אחרת, בדיקה ליישור זווית
+        else if (isAngleSnapped && angleSnapPoint && drawingState.tempPoints.length > 0) {
+          pointToAdd = angleSnapPoint;
+        }
+        
+        addPoint(pointToAdd);
         break;
         
       case 'beam':
@@ -402,6 +482,7 @@ export const FreeDrawingCanvas = () => {
           <div className="mt-4 text-sm text-muted-foreground">
             <p><strong>הוראות:</strong></p>
             <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
+            <p>• <span className="text-amber-600">יישור חכם:</span> זווית נעולה (0°, 45°, 90°) מוצגת בכתום מקווקו</p>
             <p>• הצללה וחלוקה יתווספו אוטומטית בתוך המסגרת לפי ההגדרות</p>
             <p>• עמודים יתווספו אוטומטית בפינות המסגרת</p>
             <p>• קורה/קיר: לחץ והחזק, גרור ושחרר</p>
