@@ -1,6 +1,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { Point } from '@/types/pergola';
+import { FrameElement } from '@/types/pergola';
 
 export type AccessoryType = 'column' | 'wall' | 'light' | 'fan' | 'color';
 
@@ -40,6 +41,13 @@ export interface DragState {
   startPosition: Point | null;
 }
 
+export interface SnapPoint {
+  position: Point;
+  type: 'corner' | 'midpoint' | 'center';
+  elementId?: string;
+  edgeIndex?: number;
+}
+
 const generateAccessoryId = (): string => {
   return `accessory_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
@@ -74,6 +82,7 @@ export const usePergolaAccessories = () => {
   });
 
   const [hoveredAccessoryId, setHoveredAccessoryId] = useState<string | null>(null);
+  const [snapPoint, setSnapPoint] = useState<SnapPoint | null>(null);
 
   const addAccessory = useCallback((type: AccessoryType, position: Point) => {
     if (type === 'color') {
@@ -150,6 +159,94 @@ export const usePergolaAccessories = () => {
     return null;
   }, [accessories]);
 
+  // Find snap points from frame elements
+  const findSnapPoints = useCallback((point: Point, elements: any[]): SnapPoint[] => {
+    const snapPoints: SnapPoint[] = [];
+    const SNAP_DISTANCE = 15;
+
+    elements.forEach(element => {
+      if (element.type === 'frame') {
+        const frame = element as FrameElement;
+        
+        // Add corner snap points (highest priority)
+        frame.points.forEach((corner, index) => {
+          const distance = Math.sqrt(
+            Math.pow(point.x - corner.x, 2) + Math.pow(point.y - corner.y, 2)
+          );
+          if (distance <= SNAP_DISTANCE) {
+            snapPoints.push({
+              position: corner,
+              type: 'corner',
+              elementId: element.id
+            });
+          }
+        });
+
+        // Add midpoint snap points (medium priority)
+        if (frame.closed) {
+          for (let i = 0; i < frame.points.length; i++) {
+            const point1 = frame.points[i];
+            const point2 = frame.points[(i + 1) % frame.points.length];
+            const midpoint = {
+              x: (point1.x + point2.x) / 2,
+              y: (point1.y + point2.y) / 2
+            };
+            
+            const distance = Math.sqrt(
+              Math.pow(point.x - midpoint.x, 2) + Math.pow(point.y - midpoint.y, 2)
+            );
+            if (distance <= SNAP_DISTANCE) {
+              snapPoints.push({
+                position: midpoint,
+                type: 'midpoint',
+                elementId: element.id,
+                edgeIndex: i
+              });
+            }
+          }
+        }
+
+        // Add center snap point (lowest priority)
+        if (frame.closed && frame.points.length >= 3) {
+          const center = {
+            x: frame.points.reduce((sum, p) => sum + p.x, 0) / frame.points.length,
+            y: frame.points.reduce((sum, p) => sum + p.y, 0) / frame.points.length
+          };
+          
+          const distance = Math.sqrt(
+            Math.pow(point.x - center.x, 2) + Math.pow(point.y - center.y, 2)
+          );
+          if (distance <= SNAP_DISTANCE) {
+            snapPoints.push({
+              position: center,
+              type: 'center',
+              elementId: element.id
+            });
+          }
+        }
+      }
+    });
+
+    return snapPoints;
+  }, []);
+
+  // Get best snap point with priority
+  const getBestSnapPoint = useCallback((snapPoints: SnapPoint[]): SnapPoint | null => {
+    if (snapPoints.length === 0) return null;
+
+    // Priority order: corner -> midpoint -> center
+    const priorityOrder = ['corner', 'midpoint', 'center'];
+    
+    for (const priority of priorityOrder) {
+      const pointsOfType = snapPoints.filter(sp => sp.type === priority);
+      if (pointsOfType.length > 0) {
+        return pointsOfType[0]; // Return first of highest priority
+      }
+    }
+
+    return snapPoints[0];
+  }, []);
+
   // Start dragging an accessory
   const startDragging = useCallback((accessoryId: string, mousePos: Point, accessoryPos: Point) => {
     setDragState({
@@ -163,8 +260,8 @@ export const usePergolaAccessories = () => {
     });
   }, []);
 
-  // Update accessory position during drag
-  const updateDragPosition = useCallback((mousePos: Point) => {
+  // Update accessory position during drag with snapping
+  const updateDragPosition = useCallback((mousePos: Point, elements: any[] = []) => {
     if (!dragState.isDragging || !dragState.draggedAccessoryId || !dragState.dragOffset) {
       return;
     }
@@ -174,12 +271,22 @@ export const usePergolaAccessories = () => {
       y: mousePos.y - dragState.dragOffset.y
     };
 
+    // Find potential snap points
+    const snapPoints = findSnapPoints(newPosition, elements);
+    const bestSnapPoint = getBestSnapPoint(snapPoints);
+    
+    // Update snap point state for visual feedback
+    setSnapPoint(bestSnapPoint);
+
+    // Use snap position if available, otherwise use mouse position
+    const finalPosition = bestSnapPoint ? bestSnapPoint.position : newPosition;
+
     setAccessories(prev => prev.map(accessory => 
       accessory.id === dragState.draggedAccessoryId 
-        ? { ...accessory, position: newPosition }
+        ? { ...accessory, position: finalPosition }
         : accessory
     ));
-  }, [dragState]);
+  }, [dragState, findSnapPoints, getBestSnapPoint]);
 
   // Stop dragging
   const stopDragging = useCallback(() => {
@@ -189,6 +296,7 @@ export const usePergolaAccessories = () => {
       dragOffset: null,
       startPosition: null
     });
+    setSnapPoint(null); // Clear snap point when done dragging
   }, []);
 
   // Set hovered accessory for cursor change
@@ -201,6 +309,7 @@ export const usePergolaAccessories = () => {
     accessoryConfig,
     dragState,
     hoveredAccessoryId,
+    snapPoint,
     addAccessory,
     removeAccessory,
     updateAccessoryConfig,

@@ -68,6 +68,7 @@ export const FreeDrawingCanvas = () => {
     accessoryConfig,
     dragState,
     hoveredAccessoryId,
+    snapPoint: accessorySnapPoint,
     addAccessory,
     removeAccessory,
     updateAccessoryConfig,
@@ -570,6 +571,44 @@ export const FreeDrawingCanvas = () => {
 
     drawAccessories(ctx);
 
+    // Draw accessory snap point if dragging an accessory
+    if (accessorySnapPoint && dragState.isDragging) {
+      ctx.strokeStyle = accessorySnapPoint.type === 'corner' ? '#10b981' : 
+                       accessorySnapPoint.type === 'midpoint' ? '#3b82f6' : '#f59e0b';
+      ctx.fillStyle = accessorySnapPoint.type === 'corner' ? 'rgba(16, 185, 129, 0.2)' : 
+                     accessorySnapPoint.type === 'midpoint' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(245, 158, 11, 0.2)';
+      ctx.lineWidth = 2;
+      
+      // Draw snap indicator circle
+      ctx.beginPath();
+      ctx.arc(accessorySnapPoint.position.x, accessorySnapPoint.position.y, 8, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
+      
+      // Draw snap lines for better visibility
+      ctx.setLineDash([3, 3]);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      
+      // Draw crosshair
+      ctx.moveTo(accessorySnapPoint.position.x - 15, accessorySnapPoint.position.y);
+      ctx.lineTo(accessorySnapPoint.position.x + 15, accessorySnapPoint.position.y);
+      ctx.moveTo(accessorySnapPoint.position.x, accessorySnapPoint.position.y - 15);
+      ctx.lineTo(accessorySnapPoint.position.x, accessorySnapPoint.position.y + 15);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // Draw snap type indicator
+      ctx.fillStyle = accessorySnapPoint.type === 'corner' ? '#10b981' : 
+                     accessorySnapPoint.type === 'midpoint' ? '#3b82f6' : '#f59e0b';
+      ctx.font = '10px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const snapText = accessorySnapPoint.type === 'corner' ? 'פינה' : 
+                      accessorySnapPoint.type === 'midpoint' ? 'אמצע' : 'מרכז';
+      ctx.fillText(snapText, accessorySnapPoint.position.x, accessorySnapPoint.position.y - 20);
+    }
+
     if (snapPoint && drawingState.mode === 'frame') {
       ctx.strokeStyle = '#22c55e';
       ctx.fillStyle = 'rgba(34, 197, 94, 0.2)';
@@ -704,7 +743,7 @@ export const FreeDrawingCanvas = () => {
         }
       }
     }
-  }, [elements, drawingState, mousePosition, isNearFirstPoint, snapPoint, angleSnapPoint, isAngleSnapped, alignmentGuides, alignmentSnapPoint, hoveredCorner, editState, calculateSnappedAnglePoint, measurementConfig, drawMeasurementText, accessories, accessoryConfig, drawAccessories]);
+  }, [elements, drawingState, mousePosition, isNearFirstPoint, snapPoint, angleSnapPoint, isAngleSnapped, alignmentGuides, alignmentSnapPoint, hoveredCorner, editState, calculateSnappedAnglePoint, measurementConfig, drawMeasurementText, accessories, accessoryConfig, drawAccessories, accessorySnapPoint, dragState]);
 
   useEffect(() => {
     drawElements();
@@ -714,9 +753,9 @@ export const FreeDrawingCanvas = () => {
     const point = getCanvasPoint(e.clientX, e.clientY);
     setMousePosition(point);
     
-    // Handle accessory dragging
+    // Handle accessory dragging with snapping
     if (dragState.isDragging) {
-      updateDragPosition(point);
+      updateDragPosition(point, elements);
       return;
     }
     
@@ -846,7 +885,7 @@ export const FreeDrawingCanvas = () => {
     setDragStart(null);
   };
 
-  // Touch event handlers for mobile support
+  // Touch event handlers for mobile support with snapping
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
     const touch = e.touches[0];
@@ -863,7 +902,7 @@ export const FreeDrawingCanvas = () => {
     if (dragState.isDragging && e.touches.length === 1) {
       const touch = e.touches[0];
       const point = getCanvasPoint(touch.clientX, touch.clientY);
-      updateDragPosition(point);
+      updateDragPosition(point, elements);
     }
   };
 
@@ -1054,3 +1093,5 @@ export const FreeDrawingCanvas = () => {
     </div>
   );
 };
+
+</initial_code>
