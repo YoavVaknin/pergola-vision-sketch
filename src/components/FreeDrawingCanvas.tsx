@@ -949,7 +949,7 @@ export const FreeDrawingCanvas = () => {
           mode={drawingState.mode}
           onModeChange={setMode}
           onClear={clearAll}
-          canFinishFrame={drawingState.tempPoints.length >= 3}
+          isDrawing={drawingState.tempPoints.length >= 3}
           onFinishFrame={finishFrame}
         />
         
@@ -1107,3 +1107,5 @@ export const FreeDrawingCanvas = () => {
     </div>
   );
 };
+
+}
