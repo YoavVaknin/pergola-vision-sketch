@@ -952,19 +952,11 @@ export const FreeDrawingCanvas = () => {
           isDrawing={drawingState.tempPoints.length >= 3}
           onFinishFrame={finishFrame}
         />
-        
-        <div className="flex-1" />
-        
-        <Generate3DButton
-          elements={elements}
-          pixelsPerCm={measurementConfig.pixelsPerCm}
-          frameColor={accessoryConfig.frameColor}
-          disabled={elements.length === 0}
-        />
       </div>
 
-      <div className="grid lg:grid-cols-4 gap-6 h-full" onKeyDown={handleKeyDown} tabIndex={0}>
-        <div className="lg:col-span-1 space-y-4">
+      <div className="grid lg:grid-cols-12 gap-6 h-full" onKeyDown={handleKeyDown} tabIndex={0}>
+        {/* Left sidebar - controls */}
+        <div className="lg:col-span-3 space-y-4">
           <AccessoriesMenu
             onAddAccessory={handleAddAccessory}
             accessoryConfig={accessoryConfig}
@@ -1048,7 +1040,8 @@ export const FreeDrawingCanvas = () => {
           </div>
         </div>
         
-        <div className="lg:col-span-3">
+        {/* Main drawing area */}
+        <div className="lg:col-span-6">
           <div className="border rounded-lg shadow-sm bg-white p-4">
             <h3 className="text-lg font-semibold mb-4">שרטוט חופשי עם מדידות ותוספות</h3>
             <div className="relative">
@@ -1066,7 +1059,7 @@ export const FreeDrawingCanvas = () => {
                 onTouchEnd={handleTouchEnd}
                 style={{ 
                   cursor: getCursor(),
-                  touchAction: 'none' // Prevent default touch behaviors
+                  touchAction: 'none'
                 }}
               />
               
@@ -1103,7 +1096,19 @@ export const FreeDrawingCanvas = () => {
             </div>
           </div>
         </div>
+
+        {/* Right sidebar - 3D model generation and viewer */}
+        <div className="lg:col-span-3">
+          <Generate3DButton
+            elements={elements}
+            pixelsPerCm={measurementConfig.pixelsPerCm}
+            frameColor={accessoryConfig.frameColor}
+            disabled={elements.length === 0}
+          />
+        </div>
       </div>
     </div>
   );
 };
+
+</edits_to_apply>
