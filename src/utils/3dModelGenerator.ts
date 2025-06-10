@@ -7,38 +7,37 @@ export interface Vector3D {
   z: number;
 }
 
-export interface Beam3D {
+export interface Mesh3D {
   id: string;
-  type: 'frame' | 'division' | 'shading';
-  start: Vector3D;
-  end: Vector3D;
-  width: number;
-  height: number;
-  depth: number;
-  color: string;
-  profile: string;
-}
-
-export interface ShadingPanel3D {
-  id: string;
-  type: 'shading_panel';
+  type: 'beam' | 'panel';
+  geometry: {
+    type: 'box' | 'plane';
+    width: number;
+    height: number;
+    depth: number;
+  };
   position: Vector3D;
-  width: number;
-  height: number;
-  depth: number;
+  rotation: Vector3D;
   color: string;
-  direction: number; // 0 = vertical, 90 = horizontal
+  material: {
+    type: 'basic' | 'standard';
+    roughness?: number;
+    metalness?: number;
+  };
 }
 
 export interface Model3D {
-  beams: Beam3D[];
-  shadingPanels: ShadingPanel3D[];
+  meshes: Mesh3D[];
   boundingBox: {
     min: Vector3D;
     max: Vector3D;
   };
-  defaultHeight: number;
-  scale: number; // pixels to cm conversion
+  metadata: {
+    frameHeight: number;
+    scale: number;
+    elementCount: number;
+    generatedAt: string;
+  };
 }
 
 export interface DrawingData {
@@ -47,28 +46,57 @@ export interface DrawingData {
   frameColor: string;
 }
 
+// Convert pixel coordinates to real-world coordinates (cm)
+const pixelToCm = (pixelValue: number, pixelsPerCm: number): number => {
+  return pixelValue / pixelsPerCm;
+};
+
+// Calculate beam rotation based on start and end points
+const calculateBeamRotation = (start: Point, end: Point): Vector3D => {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  
+  // Calculate rotation around Z axis (in radians)
+  const rotationZ = Math.atan2(dy, dx);
+  
+  return {
+    x: 0,
+    y: 0,
+    z: rotationZ
+  };
+};
+
+// Calculate beam length in pixels
+const calculateBeamLength = (start: Point, end: Point): number => {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  return Math.sqrt(dx * dx + dy * dy);
+};
+
 export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D => {
+  console.log('🚀 Starting 3D model generation with data:', drawingData);
+  
   const { elements, pixelsPerCm, frameColor } = drawingData;
-  const defaultHeight = 250; // cm
-  const frameDepth = 15; // cm
+  const frameHeight = 250; // cm - default pergola height
+  const frameDepth = 15; // cm - beam cross-section depth
   const divisionDepth = 12; // cm
   const shadingDepth = 3; // cm
   
-  const beams: Beam3D[] = [];
-  const shadingPanels: ShadingPanel3D[] = [];
+  const meshes: Mesh3D[] = [];
   let minX = Infinity, maxX = -Infinity;
   let minY = Infinity, maxY = -Infinity;
   
-  console.log('Starting 3D model generation with', elements.length, 'elements');
+  console.log(`📊 Processing ${elements.length} elements`);
 
   elements.forEach((element, index) => {
-    console.log(`Processing element ${index}:`, element.type, element.id);
+    console.log(`🔨 Processing element ${index}: ${element.type} (ID: ${element.id})`);
     
     switch (element.type) {
       case 'frame':
         const frame = element as FrameElement;
+        console.log(`📐 Frame with ${frame.points.length} points:`, frame.points);
         
-        // Convert frame segments to 3D beams
+        // Create beam for each segment of the frame
         for (let i = 0; i < frame.points.length; i++) {
           const nextIndex = frame.closed ? (i + 1) % frame.points.length : i + 1;
           if (!frame.closed && nextIndex >= frame.points.length) break;
@@ -82,33 +110,48 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
           minY = Math.min(minY, start.y, end.y);
           maxY = Math.max(maxY, start.y, end.y);
           
-          const beam: Beam3D = {
+          const beamLength = calculateBeamLength(start, end);
+          const beamLengthCm = pixelToCm(beamLength, pixelsPerCm);
+          
+          // Calculate center position of the beam
+          const centerX = (start.x + end.x) / 2;
+          const centerY = (start.y + end.y) / 2;
+          
+          const mesh: Mesh3D = {
             id: `${element.id}_segment_${i}`,
-            type: 'frame',
-            start: {
-              x: start.x / pixelsPerCm,
-              y: start.y / pixelsPerCm,
-              z: 0
+            type: 'beam',
+            geometry: {
+              type: 'box',
+              width: beamLengthCm,
+              height: frameDepth,
+              depth: frameHeight
             },
-            end: {
-              x: end.x / pixelsPerCm,
-              y: end.y / pixelsPerCm,
-              z: 0
+            position: {
+              x: pixelToCm(centerX, pixelsPerCm),
+              y: pixelToCm(centerY, pixelsPerCm),
+              z: frameHeight / 2 // Center the beam vertically
             },
-            width: frameDepth,
-            height: defaultHeight,
-            depth: frameDepth,
+            rotation: calculateBeamRotation(start, end),
             color: frameColor || '#1f2937',
-            profile: 'rectangular'
+            material: {
+              type: 'standard',
+              roughness: 0.7,
+              metalness: 0.1
+            }
           };
           
-          beams.push(beam);
-          console.log(`Added frame beam ${i}:`, beam);
+          meshes.push(mesh);
+          console.log(`✅ Added frame beam segment ${i}:`, {
+            length: beamLengthCm.toFixed(1),
+            position: mesh.position,
+            rotation: mesh.rotation
+          });
         }
         break;
         
       case 'division':
         const division = element as DivisionElement;
+        console.log(`🔗 Division beam from (${division.start.x}, ${division.start.y}) to (${division.end.x}, ${division.end.y})`);
         
         // Update bounding box
         minX = Math.min(minX, division.start.x, division.end.x);
@@ -116,32 +159,45 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
         minY = Math.min(minY, division.start.y, division.end.y);
         maxY = Math.max(maxY, division.start.y, division.end.y);
         
-        const divisionBeam: Beam3D = {
+        const divisionLength = calculateBeamLength(division.start, division.end);
+        const divisionLengthCm = pixelToCm(divisionLength, pixelsPerCm);
+        
+        const divisionCenterX = (division.start.x + division.end.x) / 2;
+        const divisionCenterY = (division.start.y + division.end.y) / 2;
+        
+        const divisionMesh: Mesh3D = {
           id: element.id,
-          type: 'division',
-          start: {
-            x: division.start.x / pixelsPerCm,
-            y: division.start.y / pixelsPerCm,
-            z: 0
+          type: 'beam',
+          geometry: {
+            type: 'box',
+            width: divisionLengthCm,
+            height: divisionDepth,
+            depth: frameHeight
           },
-          end: {
-            x: division.end.x / pixelsPerCm,
-            y: division.end.y / pixelsPerCm,
-            z: 0
+          position: {
+            x: pixelToCm(divisionCenterX, pixelsPerCm),
+            y: pixelToCm(divisionCenterY, pixelsPerCm),
+            z: frameHeight / 2
           },
-          width: divisionDepth,
-          height: defaultHeight,
-          depth: divisionDepth,
+          rotation: calculateBeamRotation(division.start, division.end),
           color: division.color || '#f97316',
-          profile: 'rectangular'
+          material: {
+            type: 'standard',
+            roughness: 0.6,
+            metalness: 0.2
+          }
         };
         
-        beams.push(divisionBeam);
-        console.log('Added division beam:', divisionBeam);
+        meshes.push(divisionMesh);
+        console.log(`✅ Added division beam:`, {
+          length: divisionLengthCm.toFixed(1),
+          position: divisionMesh.position
+        });
         break;
         
       case 'shading':
         const shading = element as ShadingElement;
+        console.log(`🌴 Shading element from (${shading.start.x}, ${shading.start.y}) to (${shading.end.x}, ${shading.end.y})`);
         
         // Update bounding box
         minX = Math.min(minX, shading.start.x, shading.end.x);
@@ -149,55 +205,41 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
         minY = Math.min(minY, shading.start.y, shading.end.y);
         maxY = Math.max(maxY, shading.start.y, shading.end.y);
         
-        // Create thin shading beam
-        const shadingBeam: Beam3D = {
+        const shadingLength = calculateBeamLength(shading.start, shading.end);
+        const shadingLengthCm = pixelToCm(shadingLength, pixelsPerCm);
+        
+        const shadingCenterX = (shading.start.x + shading.end.x) / 2;
+        const shadingCenterY = (shading.start.y + shading.end.y) / 2;
+        
+        // Create thin shading slat
+        const shadingMesh: Mesh3D = {
           id: element.id,
-          type: 'shading',
-          start: {
-            x: shading.start.x / pixelsPerCm,
-            y: shading.start.y / pixelsPerCm,
-            z: defaultHeight - 20 // Slightly below the top
+          type: 'beam',
+          geometry: {
+            type: 'box',
+            width: shadingLengthCm,
+            height: shadingDepth,
+            depth: 20 // Thin shading slat
           },
-          end: {
-            x: shading.end.x / pixelsPerCm,
-            y: shading.end.y / pixelsPerCm,
-            z: defaultHeight - 20
-          },
-          width: shadingDepth,
-          height: 20, // Height of shading slat
-          depth: shadingDepth,
-          color: shading.color || '#8b4513',
-          profile: 'flat'
-        };
-        
-        beams.push(shadingBeam);
-        
-        // Create shading panel (flat surface between beams if needed)
-        const length = Math.sqrt(
-          Math.pow(shading.end.x - shading.start.x, 2) + 
-          Math.pow(shading.end.y - shading.start.y, 2)
-        ) / pixelsPerCm;
-        
-        const centerX = (shading.start.x + shading.end.x) / 2 / pixelsPerCm;
-        const centerY = (shading.start.y + shading.end.y) / 2 / pixelsPerCm;
-        
-        const shadingPanel: ShadingPanel3D = {
-          id: `${element.id}_panel`,
-          type: 'shading_panel',
           position: {
-            x: centerX,
-            y: centerY,
-            z: defaultHeight - 10
+            x: pixelToCm(shadingCenterX, pixelsPerCm),
+            y: pixelToCm(shadingCenterY, pixelsPerCm),
+            z: frameHeight - 10 // Position near the top
           },
-          width: shading.direction === 0 ? shadingDepth : length,
-          height: 10, // Panel thickness
-          depth: shading.direction === 0 ? length : shadingDepth,
+          rotation: calculateBeamRotation(shading.start, shading.end),
           color: shading.color || '#8b4513',
-          direction: shading.direction
+          material: {
+            type: 'standard',
+            roughness: 0.8,
+            metalness: 0.0
+          }
         };
         
-        shadingPanels.push(shadingPanel);
-        console.log('Added shading beam and panel:', shadingBeam, shadingPanel);
+        meshes.push(shadingMesh);
+        console.log(`✅ Added shading slat:`, {
+          length: shadingLengthCm.toFixed(1),
+          position: shadingMesh.position
+        });
         break;
     }
   });
@@ -205,50 +247,40 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
   // Calculate bounding box in 3D space
   const boundingBox = {
     min: {
-      x: minX === Infinity ? 0 : minX / pixelsPerCm,
-      y: minY === Infinity ? 0 : minY / pixelsPerCm,
+      x: minX === Infinity ? 0 : pixelToCm(minX, pixelsPerCm),
+      y: minY === Infinity ? 0 : pixelToCm(minY, pixelsPerCm),
       z: 0
     },
     max: {
-      x: maxX === -Infinity ? 100 : maxX / pixelsPerCm,
-      y: maxY === -Infinity ? 100 : maxY / pixelsPerCm,
-      z: defaultHeight
+      x: maxX === -Infinity ? 100 : pixelToCm(maxX, pixelsPerCm),
+      y: maxY === -Infinity ? 100 : pixelToCm(maxY, pixelsPerCm),
+      z: frameHeight
     }
   };
   
   const model: Model3D = {
-    beams,
-    shadingPanels,
+    meshes,
     boundingBox,
-    defaultHeight,
-    scale: pixelsPerCm
+    metadata: {
+      frameHeight,
+      scale: pixelsPerCm,
+      elementCount: elements.length,
+      generatedAt: new Date().toISOString()
+    }
   };
   
-  console.log('Generated 3D model:', model);
-  console.log(`Model contains: ${beams.length} beams, ${shadingPanels.length} shading panels`);
+  console.log('🎉 3D Model generated successfully!');
+  console.log(`📈 Statistics:`, {
+    totalMeshes: meshes.length,
+    boundingBox,
+    dimensions: {
+      width: boundingBox.max.x - boundingBox.min.x,
+      depth: boundingBox.max.y - boundingBox.min.y,
+      height: boundingBox.max.z - boundingBox.min.z
+    }
+  });
   
   return model;
-};
-
-// Helper function to calculate beam length
-export const calculateBeamLength = (beam: Beam3D): number => {
-  const dx = beam.end.x - beam.start.x;
-  const dy = beam.end.y - beam.start.y;
-  const dz = beam.end.z - beam.start.z;
-  return Math.sqrt(dx * dx + dy * dy + dz * dz);
-};
-
-// Helper function to calculate beam angle
-export const calculateBeamAngle = (beam: Beam3D): { xy: number; xz: number; yz: number } => {
-  const dx = beam.end.x - beam.start.x;
-  const dy = beam.end.y - beam.start.y;
-  const dz = beam.end.z - beam.start.z;
-  
-  return {
-    xy: Math.atan2(dy, dx) * 180 / Math.PI, // Angle in XY plane
-    xz: Math.atan2(dz, dx) * 180 / Math.PI, // Angle in XZ plane
-    yz: Math.atan2(dz, dy) * 180 / Math.PI  // Angle in YZ plane
-  };
 };
 
 // Helper function to export model as JSON
@@ -258,13 +290,9 @@ export const exportModelAsJSON = (model: Model3D): string => {
 
 // Helper function to get model statistics
 export const getModelStatistics = (model: Model3D) => {
-  const frameBeams = model.beams.filter(b => b.type === 'frame');
-  const divisionBeams = model.beams.filter(b => b.type === 'division');
-  const shadingBeams = model.beams.filter(b => b.type === 'shading');
-  
-  const totalFrameLength = frameBeams.reduce((sum, beam) => sum + calculateBeamLength(beam), 0);
-  const totalDivisionLength = divisionBeams.reduce((sum, beam) => sum + calculateBeamLength(beam), 0);
-  const totalShadingLength = shadingBeams.reduce((sum, beam) => sum + calculateBeamLength(beam), 0);
+  const frameMeshes = model.meshes.filter(m => m.color === '#1f2937' || m.color.includes('gray'));
+  const divisionMeshes = model.meshes.filter(m => m.color === '#f97316' || m.color.includes('orange'));
+  const shadingMeshes = model.meshes.filter(m => m.color === '#8b4513' || m.color.includes('brown'));
   
   const dimensions = {
     width: model.boundingBox.max.x - model.boundingBox.min.x,
@@ -273,20 +301,14 @@ export const getModelStatistics = (model: Model3D) => {
   };
   
   return {
-    beamCounts: {
-      frame: frameBeams.length,
-      division: divisionBeams.length,
-      shading: shadingBeams.length,
-      total: model.beams.length
-    },
-    lengths: {
-      frame: totalFrameLength,
-      division: totalDivisionLength,
-      shading: totalShadingLength,
-      total: totalFrameLength + totalDivisionLength + totalShadingLength
+    meshCounts: {
+      frame: frameMeshes.length,
+      division: divisionMeshes.length,
+      shading: shadingMeshes.length,
+      total: model.meshes.length
     },
     dimensions,
-    shadingPanels: model.shadingPanels.length,
-    volume: dimensions.width * dimensions.depth * dimensions.height
+    volume: dimensions.width * dimensions.depth * dimensions.height,
+    generatedAt: model.metadata.generatedAt
   };
 };

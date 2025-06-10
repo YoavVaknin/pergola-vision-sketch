@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Box, Download, BarChart3 } from "lucide-react";
+import { Box, Download, BarChart3, CheckCircle } from "lucide-react";
 import { useState } from "react";
 import { use3DModel } from "@/hooks/use3DModel";
 import { PergolaElementType } from "@/types/pergola";
@@ -23,6 +23,7 @@ export const Generate3DButton = ({
     currentModel, 
     isGenerating, 
     generationError, 
+    generationSuccess,
     generateModel, 
     exportModelJSON, 
     getStatistics 
@@ -30,36 +31,69 @@ export const Generate3DButton = ({
 
   const handleGenerate = async () => {
     try {
+      console.log('🚀 User clicked generate 3D model');
+      console.log('📋 Current elements:', elements);
+      console.log('⚙️ Settings:', { pixelsPerCm, frameColor });
+      
       await generateModel(elements, pixelsPerCm, frameColor);
-      console.log('3D model generated successfully!');
+      console.log('✅ 3D model generated successfully!');
     } catch (error) {
-      console.error('Failed to generate 3D model:', error);
+      console.error('❌ Failed to generate 3D model:', error);
     }
   };
 
   const handleExport = () => {
     try {
+      console.log('💾 Exporting 3D model...');
       const jsonData = exportModelJSON();
       const blob = new Blob([jsonData], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'pergola-3d-model.json';
+      a.download = `pergola-3d-model-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
+      console.log('✅ Model exported successfully');
     } catch (error) {
-      console.error('Failed to export model:', error);
+      console.error('❌ Failed to export model:', error);
     }
   };
 
   const stats = getStatistics();
+  const hasElements = elements.length > 0;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3 p-4 bg-gray-50 rounded-lg border">
+      <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+        <Box className="w-4 h-4" />
+        מודל תלת־ממדי
+      </div>
+      
+      {/* Status Messages */}
+      {generationError && (
+        <div className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200">
+          <strong>שגיאה:</strong> {generationError}
+        </div>
+      )}
+      
+      {generationSuccess && (
+        <div className="text-sm text-green-600 bg-green-50 p-3 rounded border border-green-200 flex items-center gap-2">
+          <CheckCircle className="w-4 h-4" />
+          <span>{generationSuccess}</span>
+        </div>
+      )}
+      
+      {!hasElements && (
+        <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded border border-amber-200">
+          יש לצייר מסגרת לפני יצירת מודל תלת־ממדי
+        </div>
+      )}
+
+      {/* Action Buttons */}
       <div className="flex gap-2">
         <Button
           onClick={handleGenerate}
-          disabled={disabled || isGenerating || elements.length === 0}
+          disabled={disabled || isGenerating || !hasElements}
           className="flex items-center gap-2"
           variant="default"
         >
@@ -90,27 +124,54 @@ export const Generate3DButton = ({
         )}
       </div>
 
-      {generationError && (
-        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-          שגיאה: {generationError}
-        </div>
-      )}
-
+      {/* Statistics Display */}
       {currentModel && showStats && stats && (
-        <div className="bg-gray-50 p-3 rounded text-sm">
-          <h4 className="font-semibold mb-2">סטטיסטיקות המודל:</h4>
-          <div className="grid grid-cols-2 gap-2">
-            <div>קורות מסגרת: {stats.beamCounts.frame}</div>
-            <div>קורות חלוקה: {stats.beamCounts.division}</div>
-            <div>קורות הצללה: {stats.beamCounts.shading}</div>
-            <div>פאנלי הצללה: {stats.shadingPanels}</div>
-            <div>אורך כולל: {stats.lengths.total.toFixed(1)} ס"מ</div>
-            <div>נפח: {stats.volume.toFixed(1)} ס"מ³</div>
-            <div>רוחב: {stats.dimensions.width.toFixed(1)} ס"מ</div>
-            <div>עומק: {stats.dimensions.depth.toFixed(1)} ס"מ</div>
+        <div className="bg-white p-4 rounded border">
+          <h4 className="font-semibold mb-3 text-gray-800">סטטיסטיקות המודל:</h4>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">קורות מסגרת:</span>
+              <span className="font-medium">{stats.meshCounts.frame}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">קורות חלוקה:</span>
+              <span className="font-medium">{stats.meshCounts.division}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">קורות הצללה:</span>
+              <span className="font-medium">{stats.meshCounts.shading}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">סה"כ meshes:</span>
+              <span className="font-medium">{stats.meshCounts.total}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">רוחב:</span>
+              <span className="font-medium">{stats.dimensions.width.toFixed(1)} ס"מ</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">עומק:</span>
+              <span className="font-medium">{stats.dimensions.depth.toFixed(1)} ס"מ</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">גובה:</span>
+              <span className="font-medium">{stats.dimensions.height.toFixed(1)} ס"מ</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">נפח:</span>
+              <span className="font-medium">{(stats.volume / 1000000).toFixed(2)} מ"ק</span>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t text-xs text-gray-500">
+            נוצר: {new Date(stats.generatedAt).toLocaleString('he-IL')}
           </div>
         </div>
       )}
+      
+      {/* Debug Info */}
+      <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
+        אלמנטים זמינים: {elements.length} | קנה מידה: {pixelsPerCm} פיקסלים/ס"מ
+      </div>
     </div>
   );
 };
