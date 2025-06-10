@@ -11,6 +11,7 @@ import { LengthInput } from './LengthInput';
 import { DimensionEditor } from './DimensionEditor';
 import { getMidpoint, getPolygonCentroid, formatMeasurement, formatArea, calculateRealDistance } from '@/utils/measurementUtils';
 import { Lightbulb, Fan } from 'lucide-react';
+import { Generate3DButton } from './Generate3DButton';
 
 export const FreeDrawingCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -743,7 +744,7 @@ export const FreeDrawingCanvas = () => {
         }
       }
     }
-  }, [elements, drawingState, mousePosition, isNearFirstPoint, snapPoint, angleSnapPoint, isAngleSnapped, alignmentGuides, alignmentSnapPoint, hoveredCorner, editState, calculateSnappedAnglePoint, measurementConfig, drawMeasurementText, accessories, accessoryConfig, drawAccessories, accessorySnapPoint, dragState]);
+  }, [elements, drawingState, mousePosition, snapPoint, angleSnapPoint, isAngleSnapped, alignmentGuides, alignmentSnapPoint, hoveredCorner, editState, measurementConfig, accessoryConfig, drawMeasurementText, drawAccessories, accessorySnapPoint, dragState]);
 
   useEffect(() => {
     drawElements();
@@ -942,151 +943,164 @@ export const FreeDrawingCanvas = () => {
   };
 
   return (
-    <div className="grid lg:grid-cols-4 gap-6 h-full" onKeyDown={handleKeyDown} tabIndex={0}>
-      <div className="lg:col-span-1 space-y-4">
+    <div className="flex flex-col h-full">
+      <div className="flex gap-4 p-4 bg-white border-b">
         <DrawingToolbar
           mode={drawingState.mode}
           onModeChange={setMode}
-          onClear={handleClearAll}
-          isDrawing={drawingState.isDrawing}
+          onClear={clearAll}
+          canFinishFrame={drawingState.tempPoints.length >= 3}
           onFinishFrame={finishFrame}
         />
         
-        <AccessoriesMenu
-          onAddAccessory={handleAddAccessory}
-          accessoryConfig={accessoryConfig}
-          onConfigChange={updateAccessoryConfig}
-          accessoryCount={accessoryCount}
-        />
+        <div className="flex-1" />
         
-        <ShadingConfigComponent
-          config={shadingConfig}
-          onConfigChange={updateShadingConfig}
+        <Generate3DButton
+          elements={elements}
+          pixelsPerCm={measurementConfig.pixelsPerCm}
+          frameColor={accessoryConfig.frameColor}
+          disabled={elements.length === 0}
         />
-
-        <div className="p-4 bg-muted rounded-lg">
-          <h4 className="font-semibold mb-2">הגדרות מדידה</h4>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm">הצג אורכים</label>
-              <input
-                type="checkbox"
-                checked={measurementConfig.showLengths}
-                onChange={(e) => updateMeasurementConfig({ showLengths: e.target.checked })}
-                className="rounded"
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm">הצג שטח</label>
-              <input
-                type="checkbox"
-                checked={measurementConfig.showArea}
-                onChange={(e) => updateMeasurementConfig({ showArea: e.target.checked })}
-                className="rounded"
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm">הצג זוויות</label>
-              <input
-                type="checkbox"
-                checked={measurementConfig.showAngles}
-                onChange={(e) => updateMeasurementConfig({ showAngles: e.target.checked })}
-                className="rounded"
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm">יחידת מדידה</label>
-              <select
-                value={measurementConfig.unit}
-                onChange={(e) => updateMeasurementConfig({ unit: e.target.value as any })}
-                className="text-sm border rounded px-2 py-1"
-              >
-                <option value="cm">ס״מ</option>
-                <option value="mm">מ״מ</option>
-                <option value="m">מטר</option>
-              </select>
-            </div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm">סקלה (פיקסלים/ס״מ)</label>
-              <input
-                type="number"
-                value={measurementConfig.pixelsPerCm}
-                onChange={(e) => updateMeasurementConfig({ pixelsPerCm: parseFloat(e.target.value) || 2 })}
-                className="text-sm border rounded px-2 py-1 w-16"
-                min="0.1"
-                step="0.1"
-              />
-            </div>
-          </div>
-        </div>
-        
-        <div className="p-4 bg-muted rounded-lg">
-          <h4 className="font-semibold mb-2">סטטistikות</h4>
-          <div className="text-sm space-y-1">
-            <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
-            <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
-            <p>הצללה: {elements.filter(e => e.type === 'shading').length}</p>
-            <p>חלוקה: {elements.filter(e => e.type === 'division').length}</p>
-            <p>עמודים: {elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</p>
-            <p>קירות: {elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</p>
-            <p>תאורה: {accessoryCount.light || 0}</p>
-            <p>מאווררים: {accessoryCount.fan || 0}</p>
-          </div>
-        </div>
       </div>
-      
-      <div className="lg:col-span-3">
-        <div className="border rounded-lg shadow-sm bg-white p-4">
-          <h3 className="text-lg font-semibold mb-4">שרטוט חופשי עם מדידות ותוספות</h3>
-          <div className="relative">
-            <canvas
-              ref={canvasRef}
-              width={800}
-              height={600}
-              className="border rounded cursor-crosshair bg-white"
-              onMouseDown={handleMouseDown}
-              onMouseUp={handleMouseUp}
-              onMouseMove={handleMouseMove}
-              onDoubleClick={handleDoubleClick}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              style={{ 
-                cursor: getCursor(),
-                touchAction: 'none' // Prevent default touch behaviors
-              }}
-            />
-            
-            <LengthInput
-              visible={lengthInputState.visible}
-              position={lengthInputState.position}
-              currentLength={lengthInputState.targetLength}
-              unit={measurementConfig.unit}
-              onSubmit={handleLengthSubmit}
-              onCancel={hideLengthInput}
-            />
-            
-            <DimensionEditor
-              visible={dimensionEditState.visible}
-              position={dimensionEditState.position}
-              currentValue={dimensionEditState.currentLength}
-              unit={measurementConfig.unit}
-              onSubmit={handleDimensionEdit}
-              onCancel={hideDimensionEditor}
-            />
+
+      <div className="grid lg:grid-cols-4 gap-6 h-full" onKeyDown={handleKeyDown} tabIndex={0}>
+        <div className="lg:col-span-1 space-y-4">
+          <AccessoriesMenu
+            onAddAccessory={handleAddAccessory}
+            accessoryConfig={accessoryConfig}
+            onConfigChange={updateAccessoryConfig}
+            accessoryCount={accessoryCount}
+          />
+          
+          <ShadingConfigComponent
+            config={shadingConfig}
+            onConfigChange={updateShadingConfig}
+          />
+
+          <div className="p-4 bg-muted rounded-lg">
+            <h4 className="font-semibold mb-2">הגדרות מדידה</h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm">הצג אורכים</label>
+                <input
+                  type="checkbox"
+                  checked={measurementConfig.showLengths}
+                  onChange={(e) => updateMeasurementConfig({ showLengths: e.target.checked })}
+                  className="rounded"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm">הצג שטח</label>
+                <input
+                  type="checkbox"
+                  checked={measurementConfig.showArea}
+                  onChange={(e) => updateMeasurementConfig({ showArea: e.target.checked })}
+                  className="rounded"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm">הצג זוויות</label>
+                <input
+                  type="checkbox"
+                  checked={measurementConfig.showAngles}
+                  onChange={(e) => updateMeasurementConfig({ showAngles: e.target.checked })}
+                  className="rounded"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm">יחידת מדידה</label>
+                <select
+                  value={measurementConfig.unit}
+                  onChange={(e) => updateMeasurementConfig({ unit: e.target.value as any })}
+                  className="text-sm border rounded px-2 py-1"
+                >
+                  <option value="cm">ס״מ</option>
+                  <option value="mm">מ״מ</option>
+                  <option value="m">מטר</option>
+                </select>
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm">סקלה (פיקסלים/ס״מ)</label>
+                <input
+                  type="number"
+                  value={measurementConfig.pixelsPerCm}
+                  onChange={(e) => updateMeasurementConfig({ pixelsPerCm: parseFloat(e.target.value) || 2 })}
+                  className="text-sm border rounded px-2 py-1 w-16"
+                  min="0.1"
+                  step="0.1"
+                />
+              </div>
+            </div>
           </div>
           
-          <div className="mt-4 text-sm text-muted-foreground">
-            <p><strong>הוראות:</strong></p>
-            <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
-            <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
-            <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
-            <p>• <span className="text-green-600">ישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
-            <p>• <strong>תוספות:</strong> בחר תוספות מהתפריט השמאלי להוספה למרכז הפרגולה</p>
-            <p>• <strong>גרירת תוספות:</strong> לחץ וגרור תוספות לשינוי מיקום (תמיכה במסכי מגע)</p>
-            <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
-            <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
-            <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
+          <div className="p-4 bg-muted rounded-lg">
+            <h4 className="font-semibold mb-2">סטטistikות</h4>
+            <div className="text-sm space-y-1">
+              <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
+              <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
+              <p>הצללה: {elements.filter(e => e.type === 'shading').length}</p>
+              <p>חלוקה: {elements.filter(e => e.type === 'division').length}</p>
+              <p>עמודים: {elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</p>
+              <p>קירות: {elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</p>
+              <p>תאורה: {accessoryCount.light || 0}</p>
+              <p>מאווררים: {accessoryCount.fan || 0}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="lg:col-span-3">
+          <div className="border rounded-lg shadow-sm bg-white p-4">
+            <h3 className="text-lg font-semibold mb-4">שרטוט חופשי עם מדידות ותוספות</h3>
+            <div className="relative">
+              <canvas
+                ref={canvasRef}
+                width={800}
+                height={600}
+                className="border rounded cursor-crosshair bg-white"
+                onMouseDown={handleMouseDown}
+                onMouseUp={handleMouseUp}
+                onMouseMove={handleMouseMove}
+                onDoubleClick={handleDoubleClick}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                style={{ 
+                  cursor: getCursor(),
+                  touchAction: 'none' // Prevent default touch behaviors
+                }}
+              />
+              
+              <LengthInput
+                visible={lengthInputState.visible}
+                position={lengthInputState.position}
+                currentLength={lengthInputState.targetLength}
+                unit={measurementConfig.unit}
+                onSubmit={handleLengthSubmit}
+                onCancel={hideLengthInput}
+              />
+              
+              <DimensionEditor
+                visible={dimensionEditState.visible}
+                position={dimensionEditState.position}
+                currentValue={dimensionEditState.currentLength}
+                unit={measurementConfig.unit}
+                onSubmit={handleDimensionEdit}
+                onCancel={hideDimensionEditor}
+              />
+            </div>
+            
+            <div className="mt-4 text-sm text-muted-foreground">
+              <p><strong>הוראות:</strong></p>
+              <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
+              <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
+              <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
+              <p>• <span className="text-green-600">ישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
+              <p>• <strong>תוספות:</strong> בחר תוספות מהתפריט השמאלי להוספה למרכז הפרגולה</p>
+              <p>• <strong>גרירת תוספות:</strong> לחץ וגרור תוספות לשינוי מיקום (תמיכה במסכי מגע)</p>
+              <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
+              <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
+              <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
+            </div>
           </div>
         </div>
       </div>
