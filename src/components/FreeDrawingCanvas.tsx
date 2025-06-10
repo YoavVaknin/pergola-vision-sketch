@@ -66,11 +66,18 @@ export const FreeDrawingCanvas = () => {
   const {
     accessories,
     accessoryConfig,
+    dragState,
+    hoveredAccessoryId,
     addAccessory,
     removeAccessory,
     updateAccessoryConfig,
     clearAllAccessories,
-    getDefaultPosition
+    getDefaultPosition,
+    findAccessoryAtPoint,
+    startDragging,
+    updateDragPosition,
+    stopDragging,
+    setHoveredAccessory
   } = usePergolaAccessories();
 
   // Calculate accessory counts
@@ -252,6 +259,20 @@ export const FreeDrawingCanvas = () => {
 
   const drawAccessories = useCallback((ctx: CanvasRenderingContext2D) => {
     accessories.forEach(accessory => {
+      const isHovered = hoveredAccessoryId === accessory.id;
+      const isDragged = dragState.isDragging && dragState.draggedAccessoryId === accessory.id;
+      
+      // Apply shadow effect during drag
+      if (isDragged) {
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+      }
+      
+      // Slightly transparent during drag
+      ctx.globalAlpha = isDragged ? 0.7 : 1;
+      
       ctx.fillStyle = accessory.color || '#000000';
       ctx.strokeStyle = accessory.color || '#000000';
       
@@ -332,8 +353,43 @@ export const FreeDrawingCanvas = () => {
           }
           break;
       }
+      
+      // Draw hover outline
+      if (isHovered && !isDragged) {
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        
+        let hoverRadius = 20;
+        switch (accessory.type) {
+          case 'light':
+            hoverRadius = (accessory.size || 12) / 2 + 8;
+            break;
+          case 'fan':
+            hoverRadius = (accessory.size || 20) / 2 + 8;
+            break;
+          case 'column':
+            hoverRadius = (accessory.size || 8) / 2 + 8;
+            break;
+          case 'wall':
+            hoverRadius = 35;
+            break;
+        }
+        
+        ctx.arc(accessory.position.x, accessory.position.y, hoverRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      
+      // Reset shadow and alpha
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.globalAlpha = 1;
     });
-  }, [accessories]);
+  }, [accessories, hoveredAccessoryId, dragState]);
 
   const drawElements = useCallback(() => {
     const canvas = canvasRef.current;
@@ -658,6 +714,16 @@ export const FreeDrawingCanvas = () => {
     const point = getCanvasPoint(e.clientX, e.clientY);
     setMousePosition(point);
     
+    // Handle accessory dragging
+    if (dragState.isDragging) {
+      updateDragPosition(point);
+      return;
+    }
+    
+    // Check for accessory hover
+    const accessoryAtPoint = findAccessoryAtPoint(point);
+    setHoveredAccessory(accessoryAtPoint?.id || null);
+    
     if (!editState.isEditing && drawingState.mode === 'select') {
       const nearestCorner = findNearestCorner(point, elements);
       setHoveredCorner(nearestCorner);
@@ -692,6 +758,13 @@ export const FreeDrawingCanvas = () => {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const point = getCanvasPoint(e.clientX, e.clientY);
+    
+    // Check if clicking on an accessory first
+    const accessoryAtPoint = findAccessoryAtPoint(point);
+    if (accessoryAtPoint) {
+      startDragging(accessoryAtPoint.id, point, accessoryAtPoint.position);
+      return;
+    }
     
     const dimensionClick = checkDimensionClick(point);
     if (dimensionClick) {
@@ -751,7 +824,11 @@ export const FreeDrawingCanvas = () => {
   };
 
   const handleMouseUp = (e: React.MouseEvent) => {
-    if (!isDragging || !dragStart) return;
+    // Handle accessory drag end
+    if (dragState.isDragging) {
+      stopDragging();
+      return;
+    }
     
     const point = getCanvasPoint(e.clientX, e.clientY);
     
@@ -767,6 +844,34 @@ export const FreeDrawingCanvas = () => {
     
     setIsDragging(false);
     setDragStart(null);
+  };
+
+  // Touch event handlers for mobile support
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const point = getCanvasPoint(touch.clientX, touch.clientY);
+    
+    const accessoryAtPoint = findAccessoryAtPoint(point);
+    if (accessoryAtPoint) {
+      startDragging(accessoryAtPoint.id, point, accessoryAtPoint.position);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    if (dragState.isDragging && e.touches.length === 1) {
+      const touch = e.touches[0];
+      const point = getCanvasPoint(touch.clientX, touch.clientY);
+      updateDragPosition(point);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault();
+    if (dragState.isDragging) {
+      stopDragging();
+    }
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -786,6 +891,15 @@ export const FreeDrawingCanvas = () => {
   const handleClearAll = () => {
     clearAll();
     clearAllAccessories();
+  };
+
+  // Dynamic cursor based on hover state
+  const getCursor = () => {
+    if (dragState.isDragging) return 'grabbing';
+    if (hoveredAccessoryId) return 'grab';
+    if (hoveredCorner) return 'move';
+    if (editState.isEditing) return 'grabbing';
+    return 'crosshair';
   };
 
   return (
@@ -895,8 +1009,12 @@ export const FreeDrawingCanvas = () => {
               onMouseUp={handleMouseUp}
               onMouseMove={handleMouseMove}
               onDoubleClick={handleDoubleClick}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
               style={{ 
-                cursor: hoveredCorner ? 'move' : (editState.isEditing ? 'grabbing' : 'crosshair')
+                cursor: getCursor(),
+                touchAction: 'none' // Prevent default touch behaviors
               }}
             />
             
@@ -926,6 +1044,7 @@ export const FreeDrawingCanvas = () => {
             <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
             <p>• <span className="text-green-600">ישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
             <p>• <strong>תוספות:</strong> בחר תוספות מהתפריט השמאלי להוספה למרכז הפרגולה</p>
+            <p>• <strong>גרירת תוספות:</strong> לחץ וגרור תוספות לשינוי מיקום (תמיכה במסכי מגע)</p>
             <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
             <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
             <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
