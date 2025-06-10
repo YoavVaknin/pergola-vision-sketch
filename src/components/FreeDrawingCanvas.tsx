@@ -1107,5 +1107,3 @@ export const FreeDrawingCanvas = () => {
     </div>
   );
 };
-
-}
