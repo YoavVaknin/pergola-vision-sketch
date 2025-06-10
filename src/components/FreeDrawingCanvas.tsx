@@ -1093,5 +1093,3 @@ export const FreeDrawingCanvas = () => {
     </div>
   );
 };
-
-</initial_code>
