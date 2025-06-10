@@ -1026,7 +1026,7 @@ export const FreeDrawingCanvas = () => {
           </div>
           
           <div className="p-4 bg-muted rounded-lg">
-            <h4 className="font-semibold mb-2">סטטistikות</h4>
+            <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
             <div className="text-sm space-y-1">
               <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
               <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
@@ -1110,5 +1110,3 @@ export const FreeDrawingCanvas = () => {
     </div>
   );
 };
-
-</edits_to_apply>
