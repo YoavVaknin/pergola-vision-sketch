@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Box, Download, BarChart3, CheckCircle, Eye } from "lucide-react";
 import { useState } from "react";
@@ -147,15 +146,15 @@ export const Generate3DButton = ({
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">קורות מסגרת:</span>
-                <span className="font-medium">{stats.meshCounts.frame}</span>
+                <span className="font-medium">{stats.meshCounts.frameBeams}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">קורות חלוקה:</span>
-                <span className="font-medium">{stats.meshCounts.division}</span>
+                <span className="font-medium">{stats.meshCounts.divisionBeams}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">קורות הצללה:</span>
-                <span className="font-medium">{stats.meshCounts.shading}</span>
+                <span className="font-medium">{stats.meshCounts.shadingSlats}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">סה"כ meshes:</span>
