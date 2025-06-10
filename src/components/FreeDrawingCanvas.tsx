@@ -3,11 +3,14 @@ import { Point, PergolaElementType, FrameElement, BeamElement, ColumnElement, Wa
 import { usePergolaDrawing } from '@/hooks/usePergolaDrawing';
 import { useSmartAlignment, AlignmentGuide } from '@/hooks/useSmartAlignment';
 import { useCornerEditing } from '@/hooks/useCornerEditing';
+import { usePergolaAccessories, AccessoryType, PergolaAccessory } from '@/hooks/usePergolaAccessories';
 import { DrawingToolbar } from './DrawingToolbar';
 import { ShadingConfigComponent } from './ShadingConfig';
+import { AccessoriesMenu } from './AccessoriesMenu';
 import { LengthInput } from './LengthInput';
 import { DimensionEditor } from './DimensionEditor';
 import { getMidpoint, getPolygonCentroid, formatMeasurement, formatArea, calculateRealDistance } from '@/utils/measurementUtils';
+import { Lightbulb, Fan } from 'lucide-react';
 
 export const FreeDrawingCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -58,6 +61,37 @@ export const FreeDrawingCanvas = () => {
     updateCornerPosition: getUpdatedCornerPosition, 
     stopCornerEdit 
   } = useCornerEditing();
+
+  // Add accessories functionality
+  const {
+    accessories,
+    accessoryConfig,
+    addAccessory,
+    removeAccessory,
+    updateAccessoryConfig,
+    clearAllAccessories,
+    getDefaultPosition
+  } = usePergolaAccessories();
+
+  // Calculate accessory counts
+  const accessoryCount = accessories.reduce((acc, accessory) => {
+    acc[accessory.type] = (acc[accessory.type] || 0) + 1;
+    return acc;
+  }, {} as { [key in AccessoryType]: number });
+
+  // Handle adding accessories
+  const handleAddAccessory = useCallback((type: AccessoryType) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    if (type === 'color') {
+      // Color change is handled by the AccessoriesMenu component
+      return;
+    }
+
+    const defaultPosition = getDefaultPosition(canvas.width, canvas.height);
+    addAccessory(type, defaultPosition);
+  }, [addAccessory, getDefaultPosition]);
 
   const getCanvasPoint = useCallback((clientX: number, clientY: number): Point => {
     const canvas = canvasRef.current;
@@ -147,7 +181,6 @@ export const FreeDrawingCanvas = () => {
     return distance <= 10;
   }, [drawingState.mode, drawingState.tempPoints, calculateDistance]);
 
-  // Function to check if click is on a dimension text
   const checkDimensionClick = useCallback((mousePos: Point): { elementId: string; segmentIndex: number; position: Point; length: number } | null => {
     for (const element of elements) {
       if (element.type === 'frame') {
@@ -161,12 +194,11 @@ export const FreeDrawingCanvas = () => {
             
             const midpoint = getMidpoint(point1, point2);
             
-            // Check if click is near the midpoint (dimension text area)
             const distance = Math.sqrt(
               Math.pow(mousePos.x - midpoint.x, 2) + Math.pow(mousePos.y - midpoint.y, 2)
             );
             
-            if (distance <= 20) { // 20px tolerance for clicking on dimension
+            if (distance <= 20) {
               return {
                 elementId: element.id,
                 segmentIndex: i,
@@ -181,7 +213,6 @@ export const FreeDrawingCanvas = () => {
     return null;
   }, [elements]);
 
-  // Enhanced drawMeasurementText function to handle clicks
   const drawMeasurementText = useCallback((ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: {
     fontSize?: number;
     color?: string;
@@ -219,6 +250,91 @@ export const FreeDrawingCanvas = () => {
     ctx.fillText(text, x, y);
   }, []);
 
+  const drawAccessories = useCallback((ctx: CanvasRenderingContext2D) => {
+    accessories.forEach(accessory => {
+      ctx.fillStyle = accessory.color || '#000000';
+      ctx.strokeStyle = accessory.color || '#000000';
+      
+      switch (accessory.type) {
+        case 'light':
+          ctx.fillStyle = accessory.color || '#fbbf24';
+          ctx.beginPath();
+          ctx.arc(accessory.position.x, accessory.position.y, (accessory.size || 12) / 2, 0, 2 * Math.PI);
+          ctx.fill();
+          
+          ctx.strokeStyle = accessory.color || '#fbbf24';
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 8; i++) {
+            const angle = (i * Math.PI) / 4;
+            const startRadius = (accessory.size || 12) / 2 + 2;
+            const endRadius = (accessory.size || 12) / 2 + 6;
+            ctx.beginPath();
+            ctx.moveTo(
+              accessory.position.x + Math.cos(angle) * startRadius,
+              accessory.position.y + Math.sin(angle) * startRadius
+            );
+            ctx.lineTo(
+              accessory.position.x + Math.cos(angle) * endRadius,
+              accessory.position.y + Math.sin(angle) * endRadius
+            );
+            ctx.stroke();
+          }
+          break;
+          
+        case 'fan':
+          ctx.fillStyle = accessory.color || '#6b7280';
+          ctx.beginPath();
+          ctx.arc(accessory.position.x, accessory.position.y, 4, 0, 2 * Math.PI);
+          ctx.fill();
+          
+          ctx.strokeStyle = accessory.color || '#6b7280';
+          ctx.lineWidth = 3;
+          for (let i = 0; i < 4; i++) {
+            const angle = (i * Math.PI) / 2;
+            const bladeLength = (accessory.size || 20) / 2;
+            ctx.beginPath();
+            ctx.moveTo(accessory.position.x, accessory.position.y);
+            ctx.lineTo(
+              accessory.position.x + Math.cos(angle) * bladeLength,
+              accessory.position.y + Math.sin(angle) * bladeLength
+            );
+            ctx.stroke();
+          }
+          break;
+          
+        case 'column':
+          const columnSize = accessory.size || 8;
+          ctx.fillStyle = accessory.color || '#374151';
+          ctx.fillRect(
+            accessory.position.x - columnSize / 2,
+            accessory.position.y - columnSize / 2,
+            columnSize,
+            columnSize
+          );
+          break;
+          
+        case 'wall':
+          ctx.strokeStyle = accessory.color || '#111827';
+          ctx.lineWidth = accessory.size || 6;
+          const wallLength = 60;
+          ctx.beginPath();
+          ctx.moveTo(accessory.position.x - wallLength / 2, accessory.position.y);
+          ctx.lineTo(accessory.position.x + wallLength / 2, accessory.position.y);
+          ctx.stroke();
+          
+          ctx.strokeStyle = '#9ca3af';
+          ctx.lineWidth = 1;
+          for (let i = -wallLength / 2; i < wallLength / 2; i += 10) {
+            ctx.beginPath();
+            ctx.moveTo(accessory.position.x + i, accessory.position.y - 3);
+            ctx.lineTo(accessory.position.x + i, accessory.position.y + 3);
+            ctx.stroke();
+          }
+          break;
+      }
+    });
+  }, [accessories]);
+
   const drawElements = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -226,10 +342,8 @@ export const FreeDrawingCanvas = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw grid
     ctx.strokeStyle = '#f3f4f6';
     ctx.lineWidth = 1;
     for (let i = 0; i <= canvas.width; i += 20) {
@@ -245,7 +359,6 @@ export const FreeDrawingCanvas = () => {
       ctx.stroke();
     }
 
-    // Draw alignment guides with enhanced styling
     alignmentGuides.forEach(guide => {
       if (guide.lineType === 'extension') {
         ctx.strokeStyle = '#3b82f6';
@@ -263,16 +376,14 @@ export const FreeDrawingCanvas = () => {
       ctx.stroke();
       ctx.setLineDash([]);
       
-      // Draw small indicator at target point
       ctx.fillStyle = guide.lineType === 'extension' ? '#3b82f6' : '#10b981';
       ctx.beginPath();
       ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 3, 0, 2 * Math.PI);
       ctx.fill();
     });
 
-    // Draw elements
     elements.forEach(element => {
-      ctx.strokeStyle = element.color || '#000000';
+      ctx.strokeStyle = element.type === 'frame' ? accessoryConfig.frameColor : (element.color || '#000000');
       
       switch (element.type) {
         case 'frame':
@@ -289,7 +400,6 @@ export const FreeDrawingCanvas = () => {
             }
             ctx.stroke();
 
-            // Draw measurements with click detection
             if (measurementConfig.showLengths && frame.measurements) {
               frame.measurements.segmentLengths.forEach((length, index) => {
                 const point1 = frame.points[index];
@@ -308,7 +418,6 @@ export const FreeDrawingCanvas = () => {
               });
             }
 
-            // Draw angles
             if (measurementConfig.showAngles && frame.measurements && frame.measurements.angles && frame.closed) {
               frame.measurements.angles.forEach((angle, index) => {
                 const point = frame.points[index];
@@ -322,7 +431,6 @@ export const FreeDrawingCanvas = () => {
               });
             }
 
-            // Draw area
             if (measurementConfig.showArea && frame.measurements && frame.measurements.area && frame.closed) {
               const centroid = getPolygonCentroid(frame.points);
               const areaText = `שטח: ${formatArea(frame.measurements.area)}`;
@@ -334,7 +442,6 @@ export const FreeDrawingCanvas = () => {
               });
             }
           }
-          // Draw corner points with hover effect
           frame.points.forEach((point, index) => {
             const isHovered = hoveredCorner?.elementId === frame.id && hoveredCorner?.cornerIndex === index;
             const isBeingEdited = editState.isEditing && editState.elementId === frame.id && editState.cornerIndex === index;
@@ -405,7 +512,8 @@ export const FreeDrawingCanvas = () => {
       }
     });
 
-    // Draw snap point indicator
+    drawAccessories(ctx);
+
     if (snapPoint && drawingState.mode === 'frame') {
       ctx.strokeStyle = '#22c55e';
       ctx.fillStyle = 'rgba(34, 197, 94, 0.2)';
@@ -425,7 +533,6 @@ export const FreeDrawingCanvas = () => {
       ctx.setLineDash([]);
     }
 
-    // Draw alignment snap point indicator
     if (alignmentSnapPoint) {
       ctx.strokeStyle = '#3b82f6';
       ctx.fillStyle = 'rgba(59, 130, 246, 0.3)';
@@ -437,7 +544,6 @@ export const FreeDrawingCanvas = () => {
       ctx.stroke();
     }
 
-    // Draw temporary points for frame drawing
     if (drawingState.mode === 'frame' && drawingState.tempPoints.length > 0) {
       ctx.strokeStyle = '#10b981';
       ctx.lineWidth = 2;
@@ -485,7 +591,6 @@ export const FreeDrawingCanvas = () => {
         }
       });
       
-      // Draw temporary line to mouse
       if (mousePosition && drawingState.tempPoints.length > 0) {
         const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
         let targetPoint = alignmentSnapPoint || snapPoint || mousePosition;
@@ -493,7 +598,6 @@ export const FreeDrawingCanvas = () => {
         let lineWidth = (alignmentSnapPoint || snapPoint) ? 2 : 1;
         let lineDash: number[] = [3, 3];
         
-        // Check for angle snap
         if (!snapPoint && !alignmentSnapPoint) {
           const { point: anglePoint, snapped } = calculateSnappedAnglePoint(lastPoint, mousePosition);
           if (snapped) {
@@ -521,7 +625,6 @@ export const FreeDrawingCanvas = () => {
         ctx.stroke();
         ctx.setLineDash([]);
         
-        // Draw live length measurement
         if (targetPoint && measurementConfig.showLengths) {
           const currentLength = calculateRealDistance(lastPoint, targetPoint, measurementConfig.pixelsPerCm);
           const lengthText = formatMeasurement(currentLength, measurementConfig.unit);
@@ -545,7 +648,7 @@ export const FreeDrawingCanvas = () => {
         }
       }
     }
-  }, [elements, drawingState, mousePosition, isNearFirstPoint, snapPoint, angleSnapPoint, isAngleSnapped, alignmentGuides, alignmentSnapPoint, hoveredCorner, editState, calculateSnappedAnglePoint, measurementConfig, drawMeasurementText]);
+  }, [elements, drawingState, mousePosition, isNearFirstPoint, snapPoint, angleSnapPoint, isAngleSnapped, alignmentGuides, alignmentSnapPoint, hoveredCorner, editState, calculateSnappedAnglePoint, measurementConfig, drawMeasurementText, accessories, accessoryConfig, drawAccessories]);
 
   useEffect(() => {
     drawElements();
@@ -555,13 +658,11 @@ export const FreeDrawingCanvas = () => {
     const point = getCanvasPoint(e.clientX, e.clientY);
     setMousePosition(point);
     
-    // Check for corner hover
     if (!editState.isEditing && drawingState.mode === 'select') {
       const nearestCorner = findNearestCorner(point, elements);
       setHoveredCorner(nearestCorner);
     }
     
-    // Handle corner editing
     if (editState.isEditing) {
       const newPosition = getUpdatedCornerPosition(point);
       if (newPosition && editState.elementId && editState.cornerIndex !== null) {
@@ -576,7 +677,6 @@ export const FreeDrawingCanvas = () => {
     const foundSnapPoint = findSnapPoint(point);
     setSnapPoint(foundSnapPoint);
 
-    // Smart alignment detection
     if (drawingState.mode === 'frame' && drawingState.tempPoints.length > 0) {
       const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
       const guides = findAlignmentGuides(point, lastPoint, elements, 15);
@@ -593,7 +693,6 @@ export const FreeDrawingCanvas = () => {
   const handleMouseDown = (e: React.MouseEvent) => {
     const point = getCanvasPoint(e.clientX, e.clientY);
     
-    // Check for dimension click first
     const dimensionClick = checkDimensionClick(point);
     if (dimensionClick) {
       showDimensionEditor(
@@ -605,7 +704,6 @@ export const FreeDrawingCanvas = () => {
       return;
     }
     
-    // Check for corner editing
     if (drawingState.mode === 'select') {
       const nearestCorner = findNearestCorner(point, elements);
       if (nearestCorner) {
@@ -623,7 +721,6 @@ export const FreeDrawingCanvas = () => {
       case 'frame':
         let pointToAdd = point;
         
-        // Priority: alignment snap > regular snap > angle snap
         if (alignmentSnapPoint) {
           pointToAdd = alignmentSnapPoint;
         } else if (snapPoint) {
@@ -686,15 +783,27 @@ export const FreeDrawingCanvas = () => {
     }
   };
 
+  const handleClearAll = () => {
+    clearAll();
+    clearAllAccessories();
+  };
+
   return (
     <div className="grid lg:grid-cols-4 gap-6 h-full" onKeyDown={handleKeyDown} tabIndex={0}>
       <div className="lg:col-span-1 space-y-4">
         <DrawingToolbar
           mode={drawingState.mode}
           onModeChange={setMode}
-          onClear={clearAll}
+          onClear={handleClearAll}
           isDrawing={drawingState.isDrawing}
           onFinishFrame={finishFrame}
+        />
+        
+        <AccessoriesMenu
+          onAddAccessory={handleAddAccessory}
+          accessoryConfig={accessoryConfig}
+          onConfigChange={updateAccessoryConfig}
+          accessoryCount={accessoryCount}
         />
         
         <ShadingConfigComponent
@@ -765,15 +874,17 @@ export const FreeDrawingCanvas = () => {
             <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
             <p>הצללה: {elements.filter(e => e.type === 'shading').length}</p>
             <p>חלוקה: {elements.filter(e => e.type === 'division').length}</p>
-            <p>עמודים: {elements.filter(e => e.type === 'column').length}</p>
-            <p>קירות: {elements.filter(e => e.type === 'wall').length}</p>
+            <p>עמודים: {elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</p>
+            <p>קירות: {elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</p>
+            <p>תאורה: {accessoryCount.light || 0}</p>
+            <p>מאווררים: {accessoryCount.fan || 0}</p>
           </div>
         </div>
       </div>
       
       <div className="lg:col-span-3">
         <div className="border rounded-lg shadow-sm bg-white p-4">
-          <h3 className="text-lg font-semibold mb-4">שרטוט חופשי עם מדידות</h3>
+          <h3 className="text-lg font-semibold mb-4">שרטוט חופשי עם מדידות ותוספות</h3>
           <div className="relative">
             <canvas
               ref={canvasRef}
@@ -814,6 +925,7 @@ export const FreeDrawingCanvas = () => {
             <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
             <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
             <p>• <span className="text-green-600">ישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
+            <p>• <strong>תוספות:</strong> בחר תוספות מהתפריט השמאלי להוספה למרכז הפרגולה</p>
             <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
             <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
             <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
