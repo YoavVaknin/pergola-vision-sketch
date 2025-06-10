@@ -10,55 +10,84 @@ interface Model3DViewerProps {
   height?: number;
 }
 
-// Convert our mesh data to Three.js components
+// Enhanced mesh component with better geometry handling
 const Mesh3DComponent = ({ mesh }: { mesh: Mesh3D }) => {
-  const { geometry, position, rotation, color, material } = mesh;
+  const { geometry, position, rotation, color, material, type } = mesh;
   
-  // Convert rotation from our format to Three.js format
   const threeRotation: [number, number, number] = [rotation.x, rotation.y, rotation.z];
   const threePosition: [number, number, number] = [position.x, position.y, position.z];
   
+  // Create different geometries based on mesh type
+  const createGeometry = () => {
+    switch (type) {
+      case 'frame_beam':
+        return <boxGeometry args={[geometry.width, geometry.height, geometry.depth]} />;
+      case 'division_beam':
+        return <boxGeometry args={[geometry.width, geometry.height, geometry.depth]} />;
+      case 'shading_slat':
+        return <boxGeometry args={[geometry.width, geometry.height, geometry.depth]} />;
+      case 'column':
+        return <boxGeometry args={[geometry.width, geometry.height, geometry.depth]} />;
+      default:
+        return <boxGeometry args={[geometry.width, geometry.height, geometry.depth]} />;
+    }
+  };
+  
+  // Enhanced material properties based on type
+  const getMaterialProps = () => {
+    const baseProps = {
+      color: color,
+      roughness: material.roughness || 0.7,
+      metalness: material.metalness || 0.1
+    };
+    
+    switch (type) {
+      case 'frame_beam':
+        return { ...baseProps, roughness: 0.6, metalness: 0.2 };
+      case 'column':
+        return { ...baseProps, roughness: 0.8, metalness: 0.1 };
+      case 'shading_slat':
+        return { ...baseProps, roughness: 0.9, metalness: 0.0 };
+      default:
+        return baseProps;
+    }
+  };
+  
   return (
-    <mesh position={threePosition} rotation={threeRotation}>
-      <boxGeometry args={[geometry.width, geometry.height, geometry.depth]} />
-      <meshStandardMaterial 
-        color={color} 
-        roughness={material.roughness || 0.7}
-        metalness={material.metalness || 0.1}
-      />
+    <mesh position={threePosition} rotation={threeRotation} castShadow receiveShadow>
+      {createGeometry()}
+      <meshStandardMaterial {...getMaterialProps()} />
     </mesh>
   );
 };
 
 const Scene = ({ model }: { model: Model3D }) => {
-  // Calculate scene center and bounds for better camera positioning
+  // Calculate optimal camera positioning based on model dimensions
   const bounds = model.boundingBox;
   const center = {
     x: (bounds.min.x + bounds.max.x) / 2,
     y: (bounds.min.y + bounds.max.y) / 2,
-    z: (bounds.min.z + bounds.max.z) / 2
+    z: (bounds.max.z) / 2 // Position camera to show full height
   };
   
-  const size = {
-    x: bounds.max.x - bounds.min.x,
-    y: bounds.max.y - bounds.min.y,
-    z: bounds.max.z - bounds.min.z
-  };
-  
-  // Calculate optimal camera distance
-  const maxDimension = Math.max(size.x, size.y, size.z);
-  const cameraDistance = maxDimension * 2;
+  const dimensions = model.metadata.dimensions;
+  const maxDimension = Math.max(dimensions.width, dimensions.depth, dimensions.height);
+  const cameraDistance = maxDimension * 1.5;
 
   return (
     <>
-      {/* Camera positioned to show the model nicely */}
+      {/* Enhanced camera positioning for pergola viewing */}
       <PerspectiveCamera
         makeDefault
-        position={[center.x + cameraDistance, center.y + cameraDistance, center.z + cameraDistance]}
-        fov={50}
+        position={[
+          center.x + cameraDistance * 0.8,
+          center.y + cameraDistance * 0.6,
+          center.z + cameraDistance * 0.8
+        ]}
+        fov={45}
       />
       
-      {/* Orbit controls for interaction */}
+      {/* Enhanced orbit controls for better pergola inspection */}
       <OrbitControls
         target={[center.x, center.y, center.z]}
         enableDamping
@@ -66,68 +95,95 @@ const Scene = ({ model }: { model: Model3D }) => {
         enableZoom
         enablePan
         enableRotate
-        maxPolarAngle={Math.PI}
-        minDistance={maxDimension * 0.5}
-        maxDistance={maxDimension * 5}
+        maxPolarAngle={Math.PI * 0.9} // Prevent going too low
+        minDistance={maxDimension * 0.3}
+        maxDistance={maxDimension * 3}
+        autoRotate={false}
+        autoRotateSpeed={1}
       />
       
-      {/* Lighting setup */}
-      <ambientLight intensity={0.4} />
+      {/* Enhanced lighting setup for pergola visualization */}
+      <ambientLight intensity={0.6} />
+      
+      {/* Main directional light (sun simulation) */}
       <directionalLight
-        position={[center.x + 100, center.y + 100, center.z + 100]}
-        intensity={0.8}
+        position={[center.x + 200, center.y + 300, center.z + 200]}
+        intensity={1}
         castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-far={1000}
+        shadow-camera-left={-300}
+        shadow-camera-right={300}
+        shadow-camera-top={300}
+        shadow-camera-bottom={-300}
       />
+      
+      {/* Fill light */}
       <directionalLight
-        position={[center.x - 100, center.y + 50, center.z - 100]}
+        position={[center.x - 100, center.y + 100, center.z - 100]}
+        intensity={0.4}
+      />
+      
+      {/* Rim light for definition */}
+      <directionalLight
+        position={[center.x, center.y - 100, center.z + 200]}
         intensity={0.3}
       />
       
-      {/* Ground grid for reference */}
+      {/* Ground plane for shadows */}
+      <mesh
+        position={[center.x, center.y, -5]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        receiveShadow
+      >
+        <planeGeometry args={[dimensions.width * 2, dimensions.depth * 2]} />
+        <shadowMaterial opacity={0.3} />
+      </mesh>
+      
+      {/* Enhanced ground grid */}
       <Grid
-        position={[center.x, bounds.min.y - 5, center.z]}
-        args={[maxDimension * 2, maxDimension * 2]}
+        position={[center.x, center.y, 0]}
+        args={[dimensions.width * 1.5, dimensions.depth * 1.5]}
         cellSize={50}
         cellThickness={0.5}
         sectionSize={100}
         sectionThickness={1}
-        sectionColor="#444444"
-        cellColor="#888888"
+        sectionColor="#555555"
+        cellColor="#999999"
         infiniteGrid={false}
-        fadeDistance={maxDimension * 3}
-        fadeStrength={1}
+        fadeDistance={maxDimension * 2}
+        fadeStrength={0.8}
       />
       
-      {/* Render all meshes */}
+      {/* Render all pergola components */}
       {model.meshes.map((mesh) => (
         <Mesh3DComponent key={mesh.id} mesh={mesh} />
       ))}
       
-      {/* Reference axes at origin */}
-      <group position={[bounds.min.x, bounds.min.y, bounds.min.z]}>
+      {/* Enhanced reference axes at origin */}
+      <group position={[bounds.min.x, bounds.min.y, 0]}>
         {/* X axis - Red */}
-        <mesh position={[25, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[1, 1, 50]} />
-          <meshBasicMaterial color="#ff0000" />
+        <mesh position={[30, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[1, 1, 60]} />
+          <meshBasicMaterial color="#ff4444" />
         </mesh>
         {/* Y axis - Green */}
-        <mesh position={[0, 25, 0]}>
-          <cylinderGeometry args={[1, 1, 50]} />
-          <meshBasicMaterial color="#00ff00" />
+        <mesh position={[0, 30, 0]}>
+          <cylinderGeometry args={[1, 1, 60]} />
+          <meshBasicMaterial color="#44ff44" />
         </mesh>
         {/* Z axis - Blue */}
-        <mesh position={[0, 0, 25]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[1, 1, 50]} />
-          <meshBasicMaterial color="#0000ff" />
+        <mesh position={[0, 0, 30]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[1, 1, 60]} />
+          <meshBasicMaterial color="#4444ff" />
         </mesh>
       </group>
     </>
   );
 };
 
-export const Model3DViewer = ({ model, width = 600, height = 400 }: Model3DViewerProps) => {
+export const Model3DViewer = ({ model, width = 500, height = 400 }: Model3DViewerProps) => {
   if (!model || model.meshes.length === 0) {
     return (
       <div 
@@ -143,12 +199,12 @@ export const Model3DViewer = ({ model, width = 600, height = 400 }: Model3DViewe
     );
   }
 
-  console.log('🎬 Rendering 3D model with', model.meshes.length, 'meshes');
+  console.log('🎬 Rendering enhanced 3D pergola model with', model.meshes.length, 'components');
 
   return (
     <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
       <div className="bg-gray-50 px-3 py-2 border-b">
-        <h4 className="text-sm font-medium text-gray-700">תצוגה תלת-ממדית</h4>
+        <h4 className="text-sm font-medium text-gray-700">הדמיה תלת-ממדית - פרגולה</h4>
         <p className="text-xs text-gray-500">
           עכבר: סיבוב | גלגל: זום | ימני+גרירה: הזזה
         </p>
@@ -157,17 +213,18 @@ export const Model3DViewer = ({ model, width = 600, height = 400 }: Model3DViewe
       <div style={{ width, height }}>
         <Canvas
           shadows
-          camera={{ position: [100, 100, 100], fov: 50 }}
-          style={{ background: 'linear-gradient(to bottom, #e0f2fe, #f8fafc)' }}
+          camera={{ position: [100, 100, 100], fov: 45 }}
+          style={{ background: 'linear-gradient(to bottom, #87ceeb, #f0f8ff)' }}
         >
           <Scene model={model} />
         </Canvas>
       </div>
       
       <div className="bg-gray-50 px-3 py-2 border-t text-xs text-gray-600">
-        {model.meshes.length} רכיבים | 
-        גובה: {model.metadata.frameHeight}ס"מ | 
-        נוצר: {new Date(model.metadata.generatedAt).toLocaleTimeString('he-IL')}
+        רכיבי פרגולה: {model.meshes.filter(m => m.type === 'frame_beam').length} קורות מסגרת | 
+        {model.meshes.filter(m => m.type === 'shading_slat').length} רצועות הצללה | 
+        {model.meshes.filter(m => m.type === 'column').length} עמודים |
+        מימדים: {model.metadata.dimensions.width.toFixed(0)}×{model.metadata.dimensions.depth.toFixed(0)}×{model.metadata.dimensions.height.toFixed(0)} ס"מ
       </div>
     </div>
   );

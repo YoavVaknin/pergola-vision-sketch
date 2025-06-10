@@ -63,7 +63,6 @@ export const FreeDrawingCanvas = () => {
     stopCornerEdit 
   } = useCornerEditing();
 
-  // Add accessories functionality
   const {
     accessories,
     accessoryConfig,
@@ -94,7 +93,6 @@ export const FreeDrawingCanvas = () => {
     if (!canvas) return;
 
     if (type === 'color') {
-      // Color change is handled by the AccessoriesMenu component
       return;
     }
 
@@ -264,7 +262,6 @@ export const FreeDrawingCanvas = () => {
       const isHovered = hoveredAccessoryId === accessory.id;
       const isDragged = dragState.isDragging && dragState.draggedAccessoryId === accessory.id;
       
-      // Apply shadow effect during drag
       if (isDragged) {
         ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
         ctx.shadowBlur = 8;
@@ -272,7 +269,6 @@ export const FreeDrawingCanvas = () => {
         ctx.shadowOffsetY = 2;
       }
       
-      // Slightly transparent during drag
       ctx.globalAlpha = isDragged ? 0.7 : 1;
       
       ctx.fillStyle = accessory.color || '#000000';
@@ -356,7 +352,6 @@ export const FreeDrawingCanvas = () => {
           break;
       }
       
-      // Draw hover outline
       if (isHovered && !isDragged) {
         ctx.strokeStyle = '#3b82f6';
         ctx.lineWidth = 2;
@@ -384,7 +379,6 @@ export const FreeDrawingCanvas = () => {
         ctx.setLineDash([]);
       }
       
-      // Reset shadow and alpha
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
       ctx.shadowOffsetX = 0;
@@ -402,6 +396,7 @@ export const FreeDrawingCanvas = () => {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // Grid
     ctx.strokeStyle = '#f3f4f6';
     ctx.lineWidth = 1;
     for (let i = 0; i <= canvas.width; i += 20) {
@@ -572,7 +567,6 @@ export const FreeDrawingCanvas = () => {
 
     drawAccessories(ctx);
 
-    // Draw accessory snap point if dragging an accessory
     if (accessorySnapPoint && dragState.isDragging) {
       ctx.strokeStyle = accessorySnapPoint.type === 'corner' ? '#10b981' : 
                        accessorySnapPoint.type === 'midpoint' ? '#3b82f6' : '#f59e0b';
@@ -580,18 +574,15 @@ export const FreeDrawingCanvas = () => {
                      accessorySnapPoint.type === 'midpoint' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(245, 158, 11, 0.2)';
       ctx.lineWidth = 2;
       
-      // Draw snap indicator circle
       ctx.beginPath();
       ctx.arc(accessorySnapPoint.position.x, accessorySnapPoint.position.y, 8, 0, 2 * Math.PI);
       ctx.fill();
       ctx.stroke();
       
-      // Draw snap lines for better visibility
       ctx.setLineDash([3, 3]);
       ctx.lineWidth = 1;
       ctx.beginPath();
       
-      // Draw crosshair
       ctx.moveTo(accessorySnapPoint.position.x - 15, accessorySnapPoint.position.y);
       ctx.lineTo(accessorySnapPoint.position.x + 15, accessorySnapPoint.position.y);
       ctx.moveTo(accessorySnapPoint.position.x, accessorySnapPoint.position.y - 15);
@@ -599,7 +590,6 @@ export const FreeDrawingCanvas = () => {
       ctx.stroke();
       ctx.setLineDash([]);
       
-      // Draw snap type indicator
       ctx.fillStyle = accessorySnapPoint.type === 'corner' ? '#10b981' : 
                      accessorySnapPoint.type === 'midpoint' ? '#3b82f6' : '#f59e0b';
       ctx.font = '10px Arial';
@@ -754,13 +744,11 @@ export const FreeDrawingCanvas = () => {
     const point = getCanvasPoint(e.clientX, e.clientY);
     setMousePosition(point);
     
-    // Handle accessory dragging with snapping
     if (dragState.isDragging) {
       updateDragPosition(point, elements);
       return;
     }
     
-    // Check for accessory hover
     const accessoryAtPoint = findAccessoryAtPoint(point);
     setHoveredAccessory(accessoryAtPoint?.id || null);
     
@@ -799,7 +787,6 @@ export const FreeDrawingCanvas = () => {
   const handleMouseDown = (e: React.MouseEvent) => {
     const point = getCanvasPoint(e.clientX, e.clientY);
     
-    // Check if clicking on an accessory first
     const accessoryAtPoint = findAccessoryAtPoint(point);
     if (accessoryAtPoint) {
       startDragging(accessoryAtPoint.id, point, accessoryAtPoint.position);
@@ -864,7 +851,6 @@ export const FreeDrawingCanvas = () => {
   };
 
   const handleMouseUp = (e: React.MouseEvent) => {
-    // Handle accessory drag end
     if (dragState.isDragging) {
       stopDragging();
       return;
@@ -886,7 +872,6 @@ export const FreeDrawingCanvas = () => {
     setDragStart(null);
   };
 
-  // Touch event handlers for mobile support with snapping
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
     const touch = e.touches[0];
@@ -933,7 +918,6 @@ export const FreeDrawingCanvas = () => {
     clearAllAccessories();
   };
 
-  // Dynamic cursor based on hover state
   const getCursor = () => {
     if (dragState.isDragging) return 'grabbing';
     if (hoveredAccessoryId) return 'grab';
@@ -956,7 +940,7 @@ export const FreeDrawingCanvas = () => {
 
       <div className="grid lg:grid-cols-12 gap-6 h-full" onKeyDown={handleKeyDown} tabIndex={0}>
         {/* Left sidebar - controls */}
-        <div className="lg:col-span-3 space-y-4">
+        <div className="lg:col-span-2 space-y-4">
           <AccessoriesMenu
             onAddAccessory={handleAddAccessory}
             accessoryConfig={accessoryConfig}
@@ -1040,8 +1024,8 @@ export const FreeDrawingCanvas = () => {
           </div>
         </div>
         
-        {/* Main drawing area */}
-        <div className="lg:col-span-6">
+        {/* Main drawing area - made wider */}
+        <div className="lg:col-span-7">
           <div className="border rounded-lg shadow-sm bg-white p-4">
             <h3 className="text-lg font-semibold mb-4">שרטוט חופשי עם מדידות ותוספות</h3>
             <div className="relative">
@@ -1087,7 +1071,7 @@ export const FreeDrawingCanvas = () => {
               <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
               <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
               <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
-              <p>• <span className="text-green-600">ישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
+              <p>• <span className="text-green-600">יישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
               <p>• <strong>תוספות:</strong> בחר תוספות מהתפריט השמאלי להוספה למרכז הפרגולה</p>
               <p>• <strong>גרירת תוספות:</strong> לחץ וגרור תוספות לשינוי מיקום (תמיכה במסכי מגע)</p>
               <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
