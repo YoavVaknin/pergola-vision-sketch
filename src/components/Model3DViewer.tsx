@@ -1,4 +1,3 @@
-
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid, PerspectiveCamera } from '@react-three/drei';
 import { Model3D, Mesh3D } from '@/utils/3dModelGenerator';
@@ -87,7 +86,7 @@ const Scene = ({ model }: { model: Model3D }) => {
         fov={45}
       />
       
-      {/* Enhanced orbit controls for better pergola inspection */}
+      {/* Significantly improved orbit controls for complete 360° freedom */}
       <OrbitControls
         target={[center.x, center.y, center.z]}
         enableDamping
@@ -95,11 +94,17 @@ const Scene = ({ model }: { model: Model3D }) => {
         enableZoom
         enablePan
         enableRotate
-        maxPolarAngle={Math.PI * 0.9} // Prevent going too low
-        minDistance={maxDimension * 0.3}
-        maxDistance={maxDimension * 3}
+        maxPolarAngle={Math.PI} // Allow full vertical rotation (including viewing from below)
+        minPolarAngle={0} // Allow viewing from directly above
+        minAzimuthAngle={-Infinity} // Remove horizontal rotation limits
+        maxAzimuthAngle={Infinity} // Remove horizontal rotation limits
+        minDistance={maxDimension * 0.2} // Allow much closer zoom
+        maxDistance={maxDimension * 4} // Allow farther zoom out
         autoRotate={false}
         autoRotateSpeed={1}
+        rotateSpeed={0.8} // Slightly faster rotation for better responsiveness
+        zoomSpeed={1.2} // Improved zoom responsiveness
+        panSpeed={0.8} // Improved pan responsiveness
       />
       
       {/* Enhanced lighting setup for pergola visualization */}
@@ -183,7 +188,7 @@ const Scene = ({ model }: { model: Model3D }) => {
   );
 };
 
-export const Model3DViewer = ({ model, width = 500, height = 400 }: Model3DViewerProps) => {
+export const Model3DViewer = ({ model, width = 800, height = 600 }: Model3DViewerProps) => {
   if (!model || model.meshes.length === 0) {
     return (
       <div 
@@ -202,15 +207,15 @@ export const Model3DViewer = ({ model, width = 500, height = 400 }: Model3DViewe
   console.log('🎬 Rendering enhanced 3D pergola model with', model.meshes.length, 'components');
 
   return (
-    <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
+    <div className="border rounded-lg overflow-hidden bg-white shadow-sm w-full">
       <div className="bg-gray-50 px-3 py-2 border-b">
         <h4 className="text-sm font-medium text-gray-700">הדמיה תלת-ממדית - פרגולה</h4>
         <p className="text-xs text-gray-500">
-          עכבר: סיבוב | גלגל: זום | ימני+גרירה: הזזה
+          עכבר: סיבוב חופשי 360° | גלגל: זום | ימני+גרירה: הזזה | סיבוב מלא לכל כיוון
         </p>
       </div>
       
-      <div style={{ width, height }}>
+      <div style={{ width, height }} className="w-full">
         <Canvas
           shadows
           camera={{ position: [100, 100, 100], fov: 45 }}

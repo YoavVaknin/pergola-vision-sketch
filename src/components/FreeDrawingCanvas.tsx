@@ -12,6 +12,7 @@ import { DimensionEditor } from './DimensionEditor';
 import { getMidpoint, getPolygonCentroid, formatMeasurement, formatArea, calculateRealDistance } from '@/utils/measurementUtils';
 import { Lightbulb, Fan, Box } from 'lucide-react';
 import { Generate3DButton } from './Generate3DButton';
+import { Model3DViewer } from './Model3DViewer';
 
 export const FreeDrawingCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -938,9 +939,9 @@ export const FreeDrawingCanvas = () => {
         />
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 p-6" onKeyDown={handleKeyDown} tabIndex={0}>
+      <div className="flex-1 grid grid-cols-1 xl:grid-cols-3 gap-6 p-6" onKeyDown={handleKeyDown} tabIndex={0}>
         {/* Left sidebar - controls */}
-        <div className="lg:col-span-1 space-y-4">
+        <div className="xl:col-span-1 space-y-4">
           <AccessoriesMenu
             onAddAccessory={handleAddAccessory}
             accessoryConfig={accessoryConfig}
@@ -1024,15 +1025,16 @@ export const FreeDrawingCanvas = () => {
           </div>
         </div>
         
-        {/* Main drawing area */}
-        <div className="lg:col-span-2">
-          <div className="border rounded-lg shadow-sm bg-white p-4 h-full">
+        {/* Main content area - split between drawing and 3D model */}
+        <div className="xl:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Drawing area */}
+          <div className="border rounded-lg shadow-sm bg-white p-4">
             <h3 className="text-lg font-semibold mb-4">שרטוט חופשי עם מדידות ותוספות</h3>
             <div className="relative">
               <canvas
                 ref={canvasRef}
-                width={800}
-                height={600}
+                width={600}
+                height={500}
                 className="border rounded cursor-crosshair bg-white w-full h-auto max-w-full"
                 onMouseDown={handleMouseDown}
                 onMouseUp={handleMouseUp}
@@ -1079,22 +1081,31 @@ export const FreeDrawingCanvas = () => {
               <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
             </div>
           </div>
-        </div>
 
-        {/* Right sidebar - 3D model generation and viewer */}
-        <div className="lg:col-span-1">
-          <div className="bg-white border rounded-lg shadow-sm p-4">
+          {/* Enhanced 3D model viewing area - much larger */}
+          <div className="border rounded-lg shadow-sm bg-white p-4">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Box className="w-5 h-5" />
-              הדמיה תלת־ממדית
+              הדמיה תלת־ממדית מתקדמת
             </h3>
-            <Generate3DButton
-              elements={elements}
-              pixelsPerCm={measurementConfig.pixelsPerCm}
-              frameColor={accessoryConfig.frameColor}
-              shadingConfig={shadingConfig}
-              disabled={elements.length === 0}
-            />
+            <div className="space-y-4">
+              <Generate3DButton
+                elements={elements}
+                pixelsPerCm={measurementConfig.pixelsPerCm}
+                frameColor={accessoryConfig.frameColor}
+                shadingConfig={shadingConfig}
+                disabled={elements.length === 0}
+              />
+              
+              {/* Large 3D viewer taking most of the available space */}
+              <div className="h-[500px] w-full">
+                <Model3DViewer 
+                  model={null} 
+                  width={undefined} 
+                  height={500}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
