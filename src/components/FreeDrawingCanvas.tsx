@@ -928,20 +928,124 @@ export const FreeDrawingCanvas = () => {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex gap-4 p-4 bg-white border-b">
-        <DrawingToolbar
-          mode={drawingState.mode}
-          onModeChange={setMode}
-          onClear={clearAll}
-          isDrawing={drawingState.tempPoints.length >= 3}
-          onFinishFrame={finishFrame}
-        />
+    <div className="flex h-screen bg-gradient-to-br from-blue-50 to-indigo-100" onKeyDown={handleKeyDown} tabIndex={0}>
+      {/* Left sidebar - Drawing and tools */}
+      <div className="w-1/3 bg-white border-r border-gray-200 p-4 overflow-y-auto">
+        {/* Drawing toolbar */}
+        <div className="mb-6">
+          <DrawingToolbar
+            mode={drawingState.mode}
+            onModeChange={setMode}
+            onClear={clearAll}
+            isDrawing={drawingState.tempPoints.length >= 3}
+            onFinishFrame={finishFrame}
+          />
+        </div>
+
+        {/* Free drawing canvas */}
+        <div className="border rounded-lg shadow-sm bg-white p-4 mb-6">
+          <h3 className="text-lg font-semibold mb-4">שרטוט חופשי</h3>
+          <div className="relative">
+            <canvas
+              ref={canvasRef}
+              width={400}
+              height={300}
+              className="border rounded cursor-crosshair bg-white w-full h-auto max-w-full"
+              onMouseDown={handleMouseDown}
+              onMouseUp={handleMouseUp}
+              onMouseMove={handleMouseMove}
+              onDoubleClick={handleDoubleClick}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              style={{ 
+                cursor: getCursor(),
+                touchAction: 'none'
+              }}
+            />
+            
+            <LengthInput
+              visible={lengthInputState.visible}
+              position={lengthInputState.position}
+              currentLength={lengthInputState.targetLength}
+              unit={measurementConfig.unit}
+              onSubmit={handleLengthSubmit}
+              onCancel={hideLengthInput}
+            />
+            
+            <DimensionEditor
+              visible={dimensionEditState.visible}
+              position={dimensionEditState.position}
+              currentValue={dimensionEditState.currentLength}
+              unit={measurementConfig.unit}
+              onSubmit={handleDimensionEdit}
+              onCancel={hideDimensionEditor}
+            />
+          </div>
+          
+          <div className="mt-4 text-sm text-muted-foreground">
+            <p><strong>הוראות:</strong></p>
+            <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
+            <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
+            <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
+            <p>• <span className="text-green-600">יישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
+            <p>• <strong>תוספות:</strong> בחר תוספות מהתפריט השמאלי להוספה למרכז הפרגולה</p>
+            <p>• <strong>גרירת תוספות:</strong> לחץ וגרור תוספות לשינוי מיקום (תמיכה במסכי מגע)</p>
+            <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
+            <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
+            <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
+          </div>
+        </div>
+
+        {/* Statistics */}
+        <div className="p-4 bg-muted rounded-lg">
+          <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
+          <div className="text-sm space-y-1">
+            <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
+            <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
+            <p>הצללה: {elements.filter(e => e.type === 'shading').length}</p>
+            <p>חלוקה: {elements.filter(e => e.type === 'division').length}</p>
+            <p>עמודים: {elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</p>
+            <p>קירות: {elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</p>
+            <p>תאורה: {accessoryCount.light || 0}</p>
+            <p>מאווררים: {accessoryCount.fan || 0}</p>
+          </div>
+        </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 xl:grid-cols-3 gap-6 p-6" onKeyDown={handleKeyDown} tabIndex={0}>
-        {/* Left sidebar - controls */}
-        <div className="xl:col-span-1 space-y-4">
+      {/* Right side - 3D visualization and settings */}
+      <div className="flex-1 flex flex-col p-6">
+        {/* 3D model viewing area - vertical format */}
+        <div className="flex-1 max-w-md mx-auto">
+          <div className="border rounded-lg shadow-sm bg-white p-4 h-full flex flex-col">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Box className="w-5 h-5" />
+              הדמיה תלת־ממדית מתקדמת
+            </h3>
+            
+            <div className="mb-4">
+              <Generate3DButton
+                elements={elements}
+                pixelsPerCm={measurementConfig.pixelsPerCm}
+                frameColor={accessoryConfig.frameColor}
+                shadingConfig={shadingConfig}
+                disabled={elements.length === 0}
+              />
+            </div>
+            
+            {/* Large 3D viewer in vertical format */}
+            <div className="flex-1 min-h-0">
+              <Model3DViewer 
+                model={null} 
+                width={undefined} 
+                height={undefined}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Settings below the 3D viewer */}
+        <div className="mt-6 max-w-md mx-auto w-full space-y-4">
           <AccessoriesMenu
             onAddAccessory={handleAddAccessory}
             accessoryConfig={accessoryConfig}
@@ -1005,104 +1109,6 @@ export const FreeDrawingCanvas = () => {
                   className="text-sm border rounded px-2 py-1 w-16"
                   min="0.1"
                   step="0.1"
-                />
-              </div>
-            </div>
-          </div>
-          
-          <div className="p-4 bg-muted rounded-lg">
-            <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
-            <div className="text-sm space-y-1">
-              <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
-              <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
-              <p>הצללה: {elements.filter(e => e.type === 'shading').length}</p>
-              <p>חלוקה: {elements.filter(e => e.type === 'division').length}</p>
-              <p>עמודים: {elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</p>
-              <p>קירות: {elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</p>
-              <p>תאורה: {accessoryCount.light || 0}</p>
-              <p>מאווררים: {accessoryCount.fan || 0}</p>
-            </div>
-          </div>
-        </div>
-        
-        {/* Main content area - split between drawing and 3D model */}
-        <div className="xl:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Drawing area */}
-          <div className="border rounded-lg shadow-sm bg-white p-4">
-            <h3 className="text-lg font-semibold mb-4">שרטוט חופשי עם מדידות ותוספות</h3>
-            <div className="relative">
-              <canvas
-                ref={canvasRef}
-                width={600}
-                height={500}
-                className="border rounded cursor-crosshair bg-white w-full h-auto max-w-full"
-                onMouseDown={handleMouseDown}
-                onMouseUp={handleMouseUp}
-                onMouseMove={handleMouseMove}
-                onDoubleClick={handleDoubleClick}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-                style={{ 
-                  cursor: getCursor(),
-                  touchAction: 'none'
-                }}
-              />
-              
-              <LengthInput
-                visible={lengthInputState.visible}
-                position={lengthInputState.position}
-                currentLength={lengthInputState.targetLength}
-                unit={measurementConfig.unit}
-                onSubmit={handleLengthSubmit}
-                onCancel={hideLengthInput}
-              />
-              
-              <DimensionEditor
-                visible={dimensionEditState.visible}
-                position={dimensionEditState.position}
-                currentValue={dimensionEditState.currentLength}
-                unit={measurementConfig.unit}
-                onSubmit={handleDimensionEdit}
-                onCancel={hideDimensionEditor}
-              />
-            </div>
-            
-            <div className="mt-4 text-sm text-muted-foreground">
-              <p><strong>הוראות:</strong></p>
-              <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
-              <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
-              <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
-              <p>• <span className="text-green-600">יישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
-              <p>• <strong>תוספות:</strong> בחר תוספות מהתפריט השמאלי להוספה למרכז הפרגולה</p>
-              <p>• <strong>גרירת תוספות:</strong> לחץ וגרור תוספות לשינוי מיקום (תמיכה במסכי מגע)</p>
-              <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
-              <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
-              <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
-            </div>
-          </div>
-
-          {/* Enhanced 3D model viewing area - much larger */}
-          <div className="border rounded-lg shadow-sm bg-white p-4">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Box className="w-5 h-5" />
-              הדמיה תלת־ממדית מתקדמת
-            </h3>
-            <div className="space-y-4">
-              <Generate3DButton
-                elements={elements}
-                pixelsPerCm={measurementConfig.pixelsPerCm}
-                frameColor={accessoryConfig.frameColor}
-                shadingConfig={shadingConfig}
-                disabled={elements.length === 0}
-              />
-              
-              {/* Large 3D viewer taking most of the available space */}
-              <div className="h-[500px] w-full">
-                <Model3DViewer 
-                  model={null} 
-                  width={undefined} 
-                  height={500}
                 />
               </div>
             </div>
