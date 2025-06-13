@@ -141,12 +141,13 @@ const isPointInsidePolygon = (point: Point, polygon: Point[]): boolean => {
   return inside;
 };
 
-// Create shading slats for bottom shading model (Z=0)
+// Create shading slats aligned with frame bottom
 const createBottomShadingSlats = (
   framePoints: Point[],
   config: ShadingConfig,
   pixelsPerCm: number,
-  id: string
+  id: string,
+  frameHeight: number
 ): Mesh3D[] => {
   if (!config.enabled || framePoints.length < 3) {
     console.log('Shading disabled or insufficient frame points');
@@ -167,8 +168,9 @@ const createBottomShadingSlats = (
     bounds: { minX, maxX, minY, maxY }
   });
 
-  // Z position for shading slats (at bottom - Z=0)
-  const slatZPosition = 0;
+  // Z position for shading slats - aligned with bottom of frame
+  const frameBottomZ = frameHeight - config.frameProfile.height;
+  const slatZPosition = frameBottomZ;
 
   if (config.shadingDirection === 'width') {
     // Shading slats along width (vertical orientation)
@@ -200,7 +202,7 @@ const createBottomShadingSlats = (
           const centerY = (startY + endY) / 2;
           const slatLength = Math.abs(endY - startY);
           
-          if (slatLength > 1) { // Only create if slat is long enough
+          if (slatLength > 1) {
             slats.push({
               id: `${id}_shading_slat_${slats.length}`,
               type: 'shading_slat',
@@ -257,7 +259,7 @@ const createBottomShadingSlats = (
           const centerX = (startX + endX) / 2;
           const slatLength = Math.abs(endX - startX);
           
-          if (slatLength > 1) { // Only create if slat is long enough
+          if (slatLength > 1) {
             slats.push({
               id: `${id}_shading_slat_${slats.length}`,
               type: 'shading_slat',
@@ -286,16 +288,17 @@ const createBottomShadingSlats = (
     }
   }
   
-  console.log(`Generated ${slats.length} bottom shading slats`);
+  console.log(`Generated ${slats.length} bottom shading slats at Z=${slatZPosition}`);
   return slats;
 };
 
-// Create division beams above shading slats
+// Create division beams positioned above shading slats
 const createDivisionBeams = (
   framePoints: Point[],
   config: ShadingConfig,
   pixelsPerCm: number,
-  id: string
+  id: string,
+  frameHeight: number
 ): Mesh3D[] => {
   if (!config.divisionEnabled || framePoints.length < 3) {
     console.log('Division beams disabled or insufficient frame points');
@@ -316,8 +319,9 @@ const createDivisionBeams = (
     bounds: { minX, maxX, minY, maxY }
   });
 
-  // Z position for division beams (above shading slats)
-  const divisionZPosition = config.shadingProfile.height;
+  // Z position for division beams - positioned on top of shading slats
+  const frameBottomZ = frameHeight - config.frameProfile.height;
+  const divisionZPosition = frameBottomZ + config.shadingProfile.height;
 
   // Create division beams along width
   if (config.divisionDirection === 'width' || config.divisionDirection === 'both') {
@@ -401,7 +405,7 @@ const createDivisionBeams = (
     }
   }
   
-  console.log(`Generated ${beams.length} division beams`);
+  console.log(`Generated ${beams.length} division beams at Z=${divisionZPosition}`);
   return beams;
 };
 
@@ -472,7 +476,7 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
           minY = Math.min(minY, start.y, end.y);
           maxY = Math.max(maxY, start.y, end.y);
           
-          // Create main structural beam at top of pergola
+          // Create main structural beam at proper Z position
           const frameZPosition = frameHeight - shadingConfig.frameProfile.height;
           
           const beam = createPergolaBeam(
@@ -487,38 +491,39 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
           );
           
           meshes.push(beam);
-          console.log(`✅ Added frame beam segment ${i}`);
+          console.log(`✅ Added frame beam segment ${i} at Z=${frameZPosition}`);
         }
 
         // Generate shading slats and division beams for closed frames only
         if (frame.closed && frame.points.length >= 3) {
           console.log('🌞 Generating shading and division elements for closed frame');
           
-          // Generate shading slats at Z=0 (bottom level)
+          // Generate shading slats aligned with frame bottom
           const shadingSlats = createBottomShadingSlats(
             frame.points,
             shadingConfig,
             pixelsPerCm,
-            element.id
+            element.id,
+            frameHeight
           );
           meshes.push(...shadingSlats);
           
-          // Generate division beams above shading slats
+          // Generate division beams positioned above shading slats
           const divisionBeams = createDivisionBeams(
             frame.points,
             shadingConfig,
             pixelsPerCm,
-            element.id
+            element.id,
+            frameHeight
           );
           meshes.push(...divisionBeams);
         }
         break;
 
-      // Handle other element types if needed (columns, etc.) - only if explicitly drawn
+      // Only add columns if they were explicitly drawn by the user
       case 'column':
-        // Only add columns if they were explicitly drawn by the user
         console.log('Adding explicitly drawn column');
-        // Column creation logic here if needed
+        // Column creation logic here if needed - only for drawn columns
         break;
     }
   });
