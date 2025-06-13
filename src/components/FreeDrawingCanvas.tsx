@@ -1092,6 +1092,7 @@ export const FreeDrawingCanvas = () => {
               elements={elements}
               pixelsPerCm={measurementConfig.pixelsPerCm}
               frameColor={accessoryConfig.frameColor}
+              shadingConfig={shadingConfig}
               disabled={elements.length === 0}
             />
           </div>

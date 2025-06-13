@@ -1,199 +1,177 @@
-import { Button } from "@/components/ui/button";
-import { Box, Download, BarChart3, CheckCircle, Eye } from "lucide-react";
-import { useState } from "react";
-import { use3DModel } from "@/hooks/use3DModel";
-import { PergolaElementType } from "@/types/pergola";
-import { Model3DViewer } from "./Model3DViewer";
+
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Box, Download, BarChart3 } from 'lucide-react';
+import { PergolaElementType, ShadingConfig } from '@/types/pergola';
+import { use3DModel } from '@/hooks/use3DModel';
+import { Model3DViewer } from './Model3DViewer';
+import { toast } from 'sonner';
 
 interface Generate3DButtonProps {
   elements: PergolaElementType[];
   pixelsPerCm: number;
   frameColor: string;
+  shadingConfig: ShadingConfig;
   disabled?: boolean;
 }
 
-export const Generate3DButton = ({ 
-  elements, 
-  pixelsPerCm, 
-  frameColor, 
-  disabled = false 
-}: Generate3DButtonProps) => {
-  const [showStats, setShowStats] = useState(false);
-  const [showViewer, setShowViewer] = useState(true); // Show viewer by default
-  const { 
-    currentModel, 
-    isGenerating, 
-    generationError, 
+export const Generate3DButton: React.FC<Generate3DButtonProps> = ({
+  elements,
+  pixelsPerCm,
+  frameColor,
+  shadingConfig,
+  disabled = false
+}) => {
+  const {
+    currentModel,
+    isGenerating,
+    generationError,
     generationSuccess,
-    generateModel, 
-    exportModelJSON, 
-    getStatistics 
+    generateModel,
+    exportModelJSON,
+    getStatistics,
+    clearModel
   } = use3DModel();
 
   const handleGenerate = async () => {
     try {
-      console.log('🚀 User clicked generate 3D model');
-      console.log('📋 Current elements:', elements);
-      console.log('⚙️ Settings:', { pixelsPerCm, frameColor });
+      console.log('🎯 Generating 3D model with config:', {
+        elements: elements.length,
+        pixelsPerCm,
+        frameColor,
+        shadingConfig
+      });
       
-      await generateModel(elements, pixelsPerCm, frameColor);
-      console.log('✅ 3D model generated successfully!');
-      
-      // Auto-show viewer when model is generated
-      setShowViewer(true);
+      await generateModel(elements, pixelsPerCm, frameColor, shadingConfig);
+      toast.success('המודל התלת-ממדי נוצר בהצלחה!');
     } catch (error) {
-      console.error('❌ Failed to generate 3D model:', error);
+      console.error('❌ Error generating model:', error);
+      toast.error('שגיאה בייצור המודל התלת-ממדי');
     }
   };
 
   const handleExport = () => {
     try {
-      console.log('💾 Exporting 3D model...');
       const jsonData = exportModelJSON();
       const blob = new Blob([jsonData], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `pergola-3d-model-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `pergola-model-${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      console.log('✅ Model exported successfully');
+      toast.success('המודל יוצא בהצלחה!');
     } catch (error) {
-      console.error('❌ Failed to export model:', error);
+      toast.error('שגיאה בייצוא המודל');
     }
   };
 
-  const stats = getStatistics();
-  const hasElements = elements.length > 0;
+  const statistics = getStatistics();
+  const hasFrameElements = elements.some(el => el.type === 'frame');
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Control Panel */}
-      <div className="flex flex-col gap-3 p-4 bg-gray-50 rounded-lg border">
-        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-          <Box className="w-4 h-4" />
-          מודל תלת־ממדי
-        </div>
-        
-        {/* Status Messages */}
-        {generationError && (
-          <div className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200">
-            <strong>שגיאה:</strong> {generationError}
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Box className="w-5 h-5" />
+            ייצור מודל תלת-ממדי
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-sm text-muted-foreground">
+            <p>דגם נוכחי: <span className="font-medium">
+              {shadingConfig.pergolaModel === 'bottom_shading' ? 'הצללה תחתונה' :
+               shadingConfig.pergolaModel === 'top_shading' ? 'הצללה עליונה' : 'דגם טי'}
+            </span></p>
+            {hasFrameElements && (
+              <p>פרופילים: מסגרת {shadingConfig.frameProfile.width}×{shadingConfig.frameProfile.height}, 
+                 חלוקה {shadingConfig.divisionProfile.width}×{shadingConfig.divisionProfile.height}, 
+                 הצללה {shadingConfig.shadingProfile.width}×{shadingConfig.shadingProfile.height}</p>
+            )}
           </div>
-        )}
-        
-        {generationSuccess && (
-          <div className="text-sm text-green-600 bg-green-50 p-3 rounded border border-green-200 flex items-center gap-2">
-            <CheckCircle className="w-4 h-4" />
-            <span>{generationSuccess}</span>
-          </div>
-        )}
-        
-        {!hasElements && (
-          <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded border border-amber-200">
-            יש לצייר מסגרת לפני יצירת מודל תלת־ממדי
-          </div>
-        )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 flex-wrap">
           <Button
             onClick={handleGenerate}
-            disabled={disabled || isGenerating || !hasElements}
-            className="flex items-center gap-2"
-            variant="default"
+            disabled={disabled || !hasFrameElements || isGenerating}
+            className="w-full"
+            size="lg"
           >
-            <Box className="w-4 h-4" />
-            {isGenerating ? 'מייצר מודל...' : 'ייצור מודל תלת־ממדי'}
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                מייצר מודל...
+              </>
+            ) : (
+              <>
+                <Box className="w-4 h-4 mr-2" />
+                צור מודל תלת-ממדי
+              </>
+            )}
           </Button>
 
-          {currentModel && (
-            <>
-              <Button
-                onClick={() => setShowViewer(!showViewer)}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Eye className="w-4 h-4" />
-                {showViewer ? 'הסתר תצוגה' : 'הצג תצוגה'}
-              </Button>
-
-              <Button
-                onClick={handleExport}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                ייצוא JSON
-              </Button>
-
-              <Button
-                onClick={() => setShowStats(!showStats)}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <BarChart3 className="w-4 h-4" />
-                סטטיסטיקות
-              </Button>
-            </>
+          {!hasFrameElements && (
+            <p className="text-sm text-muted-foreground text-center">
+              יש לצייר מסגרת לפני ייצור המודל התלת-ממדי
+            </p>
           )}
-        </div>
 
-        {/* Statistics Display */}
-        {currentModel && showStats && stats && (
-          <div className="bg-white p-4 rounded border">
-            <h4 className="font-semibold mb-3 text-gray-800">סטטיסטיקות המודל:</h4>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">קורות מסגרת:</span>
-                <span className="font-medium">{stats.meshCounts.frameBeams}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">קורות חלוקה:</span>
-                <span className="font-medium">{stats.meshCounts.divisionBeams}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">קורות הצללה:</span>
-                <span className="font-medium">{stats.meshCounts.shadingSlats}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">סה"כ meshes:</span>
-                <span className="font-medium">{stats.meshCounts.total}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">רוחב:</span>
-                <span className="font-medium">{stats.dimensions.width.toFixed(1)} ס"מ</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">עומק:</span>
-                <span className="font-medium">{stats.dimensions.depth.toFixed(1)} ס"מ</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">גובה:</span>
-                <span className="font-medium">{stats.dimensions.height.toFixed(1)} ס"מ</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">נפח:</span>
-                <span className="font-medium">{(stats.volume / 1000000).toFixed(2)} מ"ק</span>
-              </div>
+          {generationError && (
+            <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+              {generationError}
             </div>
-            <div className="mt-3 pt-3 border-t text-xs text-gray-500">
-              נוצר: {new Date(stats.generatedAt).toLocaleString('he-IL')}
-            </div>
-          </div>
-        )}
-        
-        {/* Debug Info */}
-        <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
-          אלמנטים זמינים: {elements.length} | קנה מידה: {pixelsPerCm} פיקסלים/ס"מ
-        </div>
-      </div>
+          )}
 
-      {/* 3D Viewer */}
-      {currentModel && showViewer && (
-        <div className="bg-white rounded-lg border shadow-sm">
-          <Model3DViewer model={currentModel} width={600} height={400} />
-        </div>
+          {generationSuccess && (
+            <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
+              {generationSuccess}
+            </div>
+          )}
+
+          {currentModel && (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleExport}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  ייצוא JSON
+                </Button>
+                <Button
+                  onClick={clearModel}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                >
+                  נקה מודל
+                </Button>
+              </div>
+
+              {statistics && (
+                <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                  <div className="flex items-center gap-1 mb-1">
+                    <BarChart3 className="w-3 h-3" />
+                    <span className="font-medium">סטטיסטיקות:</span>
+                  </div>
+                  <p>קורות מסגרת: {statistics.meshCounts.frameBeams}</p>
+                  <p>קורות חלוקה: {statistics.meshCounts.divisionBeams}</p>
+                  <p>רצועות הצללה: {statistics.meshCounts.shadingSlats}</p>
+                  <p>עמודים: {statistics.meshCounts.columns}</p>
+                  <p>סה"כ רכיבים: {statistics.meshCounts.total}</p>
+                  <p>מימדים: {statistics.dimensions.width.toFixed(1)}×{statistics.dimensions.depth.toFixed(1)}×{statistics.dimensions.height.toFixed(1)} ס"מ</p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {currentModel && (
+        <Model3DViewer model={currentModel} width={400} height={300} />
       )}
     </div>
   );

@@ -17,13 +17,28 @@ export const usePergolaDrawing = () => {
   });
   
   const [shadingConfig, setShadingConfig] = useState<ShadingConfig>({
-    spacing: 50,
+    spacing: 10,
     direction: 0,
     color: '#8b4513',
     enabled: true,
-    divisionSpacing: 100,
+    divisionSpacing: 50,
     divisionColor: '#f97316',
-    divisionEnabled: true
+    divisionEnabled: true,
+    pergolaModel: 'bottom_shading',
+    frameProfile: {
+      width: 20,
+      height: 15
+    },
+    divisionProfile: {
+      width: 15,
+      height: 10
+    },
+    shadingProfile: {
+      width: 8,
+      height: 2
+    },
+    divisionDirection: 'both',
+    shadingDirection: 'width'
   });
 
   const [measurementConfig, setMeasurementConfig] = useState<MeasurementConfig>({
@@ -155,40 +170,31 @@ export const usePergolaDrawing = () => {
     };
   }, [measurementConfig.pixelsPerCm]);
 
-  // פונקציה לחישוב קורות הצללה
+  // Simplified shading beams generation (now handled by 3D generator)
   const generateShadingBeams = useCallback((framePoints: Point[], config: ShadingConfig): ShadingElement[] => {
+    // This is now mainly for 2D display purposes
     if (!config.enabled || framePoints.length < 3) {
-      console.log('Shading disabled or insufficient points:', config.enabled, framePoints.length);
       return [];
     }
 
     const beams: ShadingElement[] = [];
-    
-    // חישוב bounding box של המסגרת
     const minX = Math.min(...framePoints.map(p => p.x));
     const maxX = Math.max(...framePoints.map(p => p.x));
     const minY = Math.min(...framePoints.map(p => p.y));
     const maxY = Math.max(...framePoints.map(p => p.y));
 
-    console.log('Frame bounds:', { minX, maxX, minY, maxY });
-    console.log('Shading config:', config);
-
-    if (config.direction === 0) {
-      // קורות אנכיות - מעבר על ציר X
+    if (config.shadingDirection === 'width') {
       for (let x = minX + config.spacing; x < maxX; x += config.spacing) {
         const intersections: number[] = [];
         
-        // חיפוש החתכים עם צלעות המסגרת
         for (let i = 0; i < framePoints.length; i++) {
           const p1 = framePoints[i];
           const p2 = framePoints[(i + 1) % framePoints.length];
           
-          // בדיקה אם הקו האנכי חותך את הצלע
           const minEdgeX = Math.min(p1.x, p2.x);
           const maxEdgeX = Math.max(p1.x, p2.x);
           
           if (x >= minEdgeX && x <= maxEdgeX && p1.x !== p2.x) {
-            // חישוב נקודת החתך
             const t = (x - p1.x) / (p2.x - p1.x);
             const y = p1.y + t * (p2.y - p1.y);
             
@@ -198,9 +204,7 @@ export const usePergolaDrawing = () => {
           }
         }
         
-        // מיון החתכים ויצירת קורות בזוגות
         intersections.sort((a, b) => a - b);
-        console.log(`Vertical line at x=${x}, intersections:`, intersections);
         
         for (let i = 0; i < intersections.length - 1; i += 2) {
           if (i + 1 < intersections.length) {
@@ -221,21 +225,17 @@ export const usePergolaDrawing = () => {
         }
       }
     } else {
-      // קורות אופקיות - מעבר על ציר Y
       for (let y = minY + config.spacing; y < maxY; y += config.spacing) {
         const intersections: number[] = [];
         
-        // חיפוש החתכים עם צלעות המסגרת
         for (let i = 0; i < framePoints.length; i++) {
           const p1 = framePoints[i];
           const p2 = framePoints[(i + 1) % framePoints.length];
           
-          // בדיקה אם הקו האופקי חותך את הצלע
           const minEdgeY = Math.min(p1.y, p2.y);
           const maxEdgeY = Math.max(p1.y, p2.y);
           
           if (y >= minEdgeY && y <= maxEdgeY && p1.y !== p2.y) {
-            // חישוב נקודת החתך
             const t = (y - p1.y) / (p2.y - p1.y);
             const x = p1.x + t * (p2.x - p1.x);
             
@@ -245,9 +245,7 @@ export const usePergolaDrawing = () => {
           }
         }
         
-        // מיון החתכים ויצירת קורות בזוגות
         intersections.sort((a, b) => a - b);
-        console.log(`Horizontal line at y=${y}, intersections:`, intersections);
         
         for (let i = 0; i < intersections.length - 1; i += 2) {
           if (i + 1 < intersections.length) {
@@ -269,46 +267,35 @@ export const usePergolaDrawing = () => {
       }
     }
 
-    console.log('Generated shading beams:', beams.length, beams);
     return beams;
   }, []);
 
-  // פונקציה לחישוב קורות חלוקה
+  // Simplified division beams generation (now handled by 3D generator)
   const generateDivisionBeams = useCallback((framePoints: Point[], config: ShadingConfig): DivisionElement[] => {
+    // This is now mainly for 2D display purposes
     if (!config.divisionEnabled || framePoints.length < 3) {
-      console.log('Division disabled or insufficient points:', config.divisionEnabled, framePoints.length);
       return [];
     }
 
     const beams: DivisionElement[] = [];
-    
-    // חישוב bounding box של המסגרת
     const minX = Math.min(...framePoints.map(p => p.x));
     const maxX = Math.max(...framePoints.map(p => p.x));
     const minY = Math.min(...framePoints.map(p => p.y));
     const maxY = Math.max(...framePoints.map(p => p.y));
 
-    console.log('Division beams - Frame bounds:', { minX, maxX, minY, maxY });
-
-    // קורות החלוקה תמיד עוברות בכיוון הניצב לקורות הצללה
-    const divisionDirection = config.direction === 0 ? 90 : 0;
-
-    if (divisionDirection === 0) {
-      // קורות חלוקה אנכיות - מעבר על ציר X
+    // Division beams along width
+    if (config.divisionDirection === 'width' || config.divisionDirection === 'both') {
       for (let x = minX + config.divisionSpacing; x < maxX; x += config.divisionSpacing) {
         const intersections: number[] = [];
         
-        // חיפוש החתכים עם צלעות המסגרת
         for (let i = 0; i < framePoints.length; i++) {
           const p1 = framePoints[i];
           const p2 = framePoints[(i + 1) % framePoints.length];
           
-          // בדיקה אם הקו האנכי חותך את הצלע
           const minEdgeX = Math.min(p1.x, p2.x);
           const maxEdgeX = Math.max(p1.x, p2.x);
           
           if (x >= minEdgeX && x <= maxEdgeX && p1.x !== p2.x) {
-            // חישוב נקודת החתך
             const t = (x - p1.x) / (p2.x - p1.x);
             const y = p1.y + t * (p2.y - p1.y);
             
@@ -318,9 +305,7 @@ export const usePergolaDrawing = () => {
           }
         }
         
-        // מיון החתכים ויצירת קורות בזוגות
         intersections.sort((a, b) => a - b);
-        console.log(`Division vertical line at x=${x}, intersections:`, intersections);
         
         for (let i = 0; i < intersections.length - 1; i += 2) {
           if (i + 1 < intersections.length) {
@@ -334,28 +319,27 @@ export const usePergolaDrawing = () => {
               end,
               width: 3,
               spacing: config.divisionSpacing,
-              direction: divisionDirection,
+              direction: 0,
               color: config.divisionColor
             });
           }
         }
       }
-    } else {
-      // קורות חלוקה אופקיות - מעבר על ציר Y
+    }
+
+    // Division beams along length
+    if (config.divisionDirection === 'length' || config.divisionDirection === 'both') {
       for (let y = minY + config.divisionSpacing; y < maxY; y += config.divisionSpacing) {
         const intersections: number[] = [];
         
-        // חיפוש החתכים עם צלעות המסגרת
         for (let i = 0; i < framePoints.length; i++) {
           const p1 = framePoints[i];
           const p2 = framePoints[(i + 1) % framePoints.length];
           
-          // בדיקה אם הקו האופקי חותך את הצלע
           const minEdgeY = Math.min(p1.y, p2.y);
           const maxEdgeY = Math.max(p1.y, p2.y);
           
           if (y >= minEdgeY && y <= maxEdgeY && p1.y !== p2.y) {
-            // חישוב נקודת החתך
             const t = (y - p1.y) / (p2.y - p1.y);
             const x = p1.x + t * (p2.x - p1.x);
             
@@ -365,9 +349,7 @@ export const usePergolaDrawing = () => {
           }
         }
         
-        // מיון החתכים ויצירת קורות בזוגות
         intersections.sort((a, b) => a - b);
-        console.log(`Division horizontal line at y=${y}, intersections:`, intersections);
         
         for (let i = 0; i < intersections.length - 1; i += 2) {
           if (i + 1 < intersections.length) {
@@ -381,7 +363,7 @@ export const usePergolaDrawing = () => {
               end,
               width: 3,
               spacing: config.divisionSpacing,
-              direction: divisionDirection,
+              direction: 90,
               color: config.divisionColor
             });
           }
@@ -389,7 +371,6 @@ export const usePergolaDrawing = () => {
       }
     }
 
-    console.log('Generated division beams:', beams.length, beams);
     return beams;
   }, []);
 

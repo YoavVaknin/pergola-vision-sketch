@@ -76,6 +76,22 @@ export interface ShadingConfig {
   divisionSpacing: number; // מרחק בין קורות החלוקה
   divisionColor: string;
   divisionEnabled: boolean;
+  // New properties for pergola models
+  pergolaModel: 'bottom_shading' | 'top_shading' | 't_model';
+  frameProfile: {
+    width: number; // cm
+    height: number; // cm
+  };
+  divisionProfile: {
+    width: number; // cm
+    height: number; // cm
+  };
+  shadingProfile: {
+    width: number; // cm
+    height: number; // cm
+  };
+  divisionDirection: 'width' | 'length' | 'both'; // כיוון קורות החלוקה
+  shadingDirection: 'width' | 'length'; // כיוון קורות הצללה
 }
 
 export interface MeasurementConfig {

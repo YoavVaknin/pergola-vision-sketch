@@ -1,135 +1,233 @@
 
-import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { ShadingConfig } from "@/types/pergola";
+import React from 'react';
+import { ShadingConfig } from '@/types/pergola';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 
 interface ShadingConfigProps {
   config: ShadingConfig;
-  onConfigChange: (config: Partial<ShadingConfig>) => void;
+  onConfigChange: (newConfig: Partial<ShadingConfig>) => void;
 }
 
-export const ShadingConfigComponent = ({ config, onConfigChange }: ShadingConfigProps) => {
+export const ShadingConfigComponent: React.FC<ShadingConfigProps> = ({ config, onConfigChange }) => {
   return (
-    <Card className="p-4">
-      <h4 className="font-semibold mb-3">הגדרות הצללה וחלוקה</h4>
-      
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="shading-enabled">הפעל הצללה</Label>
-          <Switch
-            id="shading-enabled"
-            checked={config.enabled}
-            onCheckedChange={(enabled) => onConfigChange({ enabled })}
-          />
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">הגדרות פרגולה</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Pergola Model Selection */}
+        <div className="space-y-2">
+          <Label>דגם פרגולה</Label>
+          <Select
+            value={config.pergolaModel}
+            onValueChange={(value: any) => onConfigChange({ pergolaModel: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bottom_shading">הצללה תחתונה</SelectItem>
+              <SelectItem value="top_shading">הצללה עליונה</SelectItem>
+              <SelectItem value="t_model">דגם טי</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        {config.enabled && (
-          <>
+        <Separator />
+
+        {/* Frame Profile */}
+        <div className="space-y-3">
+          <Label className="font-medium">פרופיל מסגרת</Label>
+          <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label htmlFor="spacing">מרווח קורות הצללה (ס״מ)</Label>
+              <Label className="text-sm">רוחב (ס"מ)</Label>
               <Input
-                id="spacing"
                 type="number"
-                min="20"
-                max="200"
-                step="10"
-                value={config.spacing}
-                onChange={(e) => onConfigChange({ spacing: Number(e.target.value) })}
-                className="mt-1"
+                value={config.frameProfile.width}
+                onChange={(e) => onConfigChange({
+                  frameProfile: { ...config.frameProfile, width: Number(e.target.value) }
+                })}
+                min="1"
+                step="0.1"
               />
             </div>
-
             <div>
-              <Label htmlFor="direction">כיוון קורות הצללה</Label>
-              <Select 
-                value={config.direction.toString()} 
-                onValueChange={(value) => onConfigChange({ direction: Number(value) })}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">אנכי</SelectItem>
-                  <SelectItem value="90">אופקי</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label className="text-sm">גובה (ס"מ)</Label>
+              <Input
+                type="number"
+                value={config.frameProfile.height}
+                onChange={(e) => onConfigChange({
+                  frameProfile: { ...config.frameProfile, height: Number(e.target.value) }
+                })}
+                min="1"
+                step="0.1"
+              />
             </div>
+          </div>
+        </div>
 
-            <div>
-              <Label htmlFor="shading-color">צבע קורות הצללה</Label>
-              <Select 
-                value={config.color} 
-                onValueChange={(value) => onConfigChange({ color: value })}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="#8b4513">עץ כהה</SelectItem>
-                  <SelectItem value="#6b7280">אפור גרפיט</SelectItem>
-                  <SelectItem value="#1f2937">שחור</SelectItem>
-                  <SelectItem value="#ffffff">לבן</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </>
-        )}
-
-        <div className="border-t pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <Label htmlFor="division-enabled">הפעל קורות חלוקה</Label>
+        {/* Division Beams */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="font-medium">קורות חלוקה</Label>
             <Switch
-              id="division-enabled"
               checked={config.divisionEnabled}
-              onCheckedChange={(divisionEnabled) => onConfigChange({ divisionEnabled })}
+              onCheckedChange={(checked) => onConfigChange({ divisionEnabled: checked })}
             />
           </div>
-
+          
           {config.divisionEnabled && (
             <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-sm">רוחב (ס"מ)</Label>
+                  <Input
+                    type="number"
+                    value={config.divisionProfile.width}
+                    onChange={(e) => onConfigChange({
+                      divisionProfile: { ...config.divisionProfile, width: Number(e.target.value) }
+                    })}
+                    min="1"
+                    step="0.1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">גובה (ס"מ)</Label>
+                  <Input
+                    type="number"
+                    value={config.divisionProfile.height}
+                    onChange={(e) => onConfigChange({
+                      divisionProfile: { ...config.divisionProfile, height: Number(e.target.value) }
+                    })}
+                    min="1"
+                    step="0.1"
+                  />
+                </div>
+              </div>
+              
               <div>
-                <Label htmlFor="division-spacing">מרווח קורות חלוקה (ס״מ)</Label>
+                <Label className="text-sm">מרווח (ס"מ)</Label>
                 <Input
-                  id="division-spacing"
                   type="number"
-                  min="50"
-                  max="300"
-                  step="25"
                   value={config.divisionSpacing}
                   onChange={(e) => onConfigChange({ divisionSpacing: Number(e.target.value) })}
-                  className="mt-1"
+                  min="10"
+                  step="1"
                 />
               </div>
-
+              
               <div>
-                <Label htmlFor="division-color">צבע קורות חלוקה</Label>
-                <Select 
-                  value={config.divisionColor} 
-                  onValueChange={(value) => onConfigChange({ divisionColor: value })}
+                <Label className="text-sm">כיוון</Label>
+                <Select
+                  value={config.divisionDirection}
+                  onValueChange={(value: any) => onConfigChange({ divisionDirection: value })}
                 >
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="#f97316">כתום</SelectItem>
-                    <SelectItem value="#6b7280">אפור גרפיט</SelectItem>
-                    <SelectItem value="#dc2626">אדום</SelectItem>
-                    <SelectItem value="#16a34a">ירוק</SelectItem>
-                    <SelectItem value="#1d4ed8">כחול</SelectItem>
+                    <SelectItem value="width">לרוחב</SelectItem>
+                    <SelectItem value="length">לאורך</SelectItem>
+                    <SelectItem value="both">שניהם</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="text-xs text-muted-foreground mt-2">
-                קורות החלוקה עוברות בכיוון הניצב לקורות הצללה
+              
+              <div>
+                <Label className="text-sm">צבע</Label>
+                <Input
+                  type="color"
+                  value={config.divisionColor}
+                  onChange={(e) => onConfigChange({ divisionColor: e.target.value })}
+                />
               </div>
             </>
           )}
         </div>
-      </div>
+
+        {/* Shading Slats */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="font-medium">קורות הצללה</Label>
+            <Switch
+              checked={config.enabled}
+              onCheckedChange={(checked) => onConfigChange({ enabled: checked })}
+            />
+          </div>
+          
+          {config.enabled && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-sm">רוחב (ס"מ)</Label>
+                  <Input
+                    type="number"
+                    value={config.shadingProfile.width}
+                    onChange={(e) => onConfigChange({
+                      shadingProfile: { ...config.shadingProfile, width: Number(e.target.value) }
+                    })}
+                    min="1"
+                    step="0.1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">גובה (ס"מ)</Label>
+                  <Input
+                    type="number"
+                    value={config.shadingProfile.height}
+                    onChange={(e) => onConfigChange({
+                      shadingProfile: { ...config.shadingProfile, height: Number(e.target.value) }
+                    })}
+                    min="1"
+                    step="0.1"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-sm">מרווח (ס"מ)</Label>
+                <Input
+                  type="number"
+                  value={config.spacing}
+                  onChange={(e) => onConfigChange({ spacing: Number(e.target.value) })}
+                  min="1"
+                  step="1"
+                />
+              </div>
+              
+              <div>
+                <Label className="text-sm">כיוון</Label>
+                <Select
+                  value={config.shadingDirection}
+                  onValueChange={(value: any) => onConfigChange({ shadingDirection: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="width">לרוחב</SelectItem>
+                    <SelectItem value="length">לאורך</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label className="text-sm">צבע</Label>
+                <Input
+                  type="color"
+                  value={config.color}
+                  onChange={(e) => onConfigChange({ color: e.target.value })}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </CardContent>
     </Card>
   );
 };

@@ -1,7 +1,7 @@
 
 import { useState, useCallback } from 'react';
 import { generate3DModelFromDrawing, Model3D, getModelStatistics, exportModelAsJSON } from '@/utils/3dModelGenerator';
-import { PergolaElementType } from '@/types/pergola';
+import { PergolaElementType, ShadingConfig } from '@/types/pergola';
 
 export const use3DModel = () => {
   const [currentModel, setCurrentModel] = useState<Model3D | null>(null);
@@ -12,7 +12,8 @@ export const use3DModel = () => {
   const generateModel = useCallback(async (
     elements: PergolaElementType[],
     pixelsPerCm: number,
-    frameColor: string
+    frameColor: string,
+    shadingConfig: ShadingConfig
   ) => {
     console.log('🎯 Starting model generation process...');
     setIsGenerating(true);
@@ -24,6 +25,7 @@ export const use3DModel = () => {
         elementsCount: elements.length, 
         pixelsPerCm, 
         frameColor,
+        shadingConfig,
         elements: elements.map(el => ({ type: el.type, id: el.id }))
       });
       
@@ -34,7 +36,8 @@ export const use3DModel = () => {
       const drawingData = {
         elements,
         pixelsPerCm,
-        frameColor
+        frameColor,
+        shadingConfig
       };
       
       const model = generate3DModelFromDrawing(drawingData);
@@ -43,7 +46,7 @@ export const use3DModel = () => {
       const stats = getModelStatistics(model);
       console.log('📊 Model statistics:', stats);
       
-      const successMessage = `מודל נוצר בהצלחה! ${stats.meshCounts.total} meshes, מימדים: ${stats.dimensions.width.toFixed(1)}×${stats.dimensions.depth.toFixed(1)}×${stats.dimensions.height.toFixed(1)} ס"מ`;
+      const successMessage = `מודל ${shadingConfig.pergolaModel === 'bottom_shading' ? 'הצללה תחתונה' : 'פרגולה'} נוצר בהצלחה! ${stats.meshCounts.total} רכיבים, מימדים: ${stats.dimensions.width.toFixed(1)}×${stats.dimensions.depth.toFixed(1)}×${stats.dimensions.height.toFixed(1)} ס"מ`;
       setGenerationSuccess(successMessage);
       
       return model;

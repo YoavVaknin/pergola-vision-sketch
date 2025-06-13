@@ -1,4 +1,4 @@
-import { Point, PergolaElementType, FrameElement, ShadingElement, DivisionElement } from '@/types/pergola';
+import { Point, PergolaElementType, FrameElement, ShadingElement, DivisionElement, ShadingConfig } from '@/types/pergola';
 
 export interface Vector3D {
   x: number;
@@ -50,6 +50,7 @@ export interface DrawingData {
   elements: PergolaElementType[];
   pixelsPerCm: number;
   frameColor: string;
+  shadingConfig: ShadingConfig;
 }
 
 // Convert pixel coordinates to real-world coordinates (cm)
@@ -79,15 +80,14 @@ const calculateBeamLength = (start: Point, end: Point): number => {
   return Math.sqrt(dx * dx + dy * dy);
 };
 
-// Generate proper pergola beams with realistic dimensions
+// Enhanced pergola beam creation with profile support
 const createPergolaBeam = (
   id: string,
   start: Point,
   end: Point,
   pixelsPerCm: number,
-  height: number,
-  beamWidth: number,
-  beamHeight: number,
+  zPosition: number,
+  profile: { width: number; height: number },
   color: string,
   type: 'frame_beam' | 'division_beam' = 'frame_beam'
 ): Mesh3D => {
@@ -103,13 +103,13 @@ const createPergolaBeam = (
     geometry: {
       type: 'box',
       width: beamLengthCm,
-      height: beamHeight,
-      depth: beamWidth
+      height: profile.height,
+      depth: profile.width
     },
     position: {
       x: pixelToCm(centerX, pixelsPerCm),
       y: pixelToCm(centerY, pixelsPerCm),
-      z: height + beamWidth / 2 // Position beam at the top
+      z: zPosition + profile.height / 2
     },
     rotation: calculateBeamRotation(start, end),
     color,
@@ -121,64 +121,263 @@ const createPergolaBeam = (
   };
 };
 
-// Generate shading slats with proper spacing and dimensions
-const createShadingSlats = (
-  shading: ShadingElement,
+// Enhanced shading slats creation for bottom shading model
+const createBottomShadingSlats = (
+  framePoints: Point[],
+  config: ShadingConfig,
   pixelsPerCm: number,
-  frameHeight: number,
+  frameThickness: number,
   id: string
 ): Mesh3D[] => {
+  if (!config.enabled || framePoints.length < 3) {
+    return [];
+  }
+
   const slats: Mesh3D[] = [];
-  const slatWidth = 8; // cm
-  const slatThickness = 2; // cm
-  const spacing = 15; // cm between slats
   
-  const beamLength = calculateBeamLength(shading.start, shading.end);
-  const beamLengthCm = pixelToCm(beamLength, pixelsPerCm);
-  
-  // Calculate perpendicular direction for slat placement
-  const dx = shading.end.x - shading.start.x;
-  const dy = shading.end.y - shading.start.y;
-  const length = Math.sqrt(dx * dx + dy * dy);
-  const perpX = -dy / length;
-  const perpY = dx / length;
-  
-  const numSlats = Math.floor(beamLengthCm / spacing);
-  
-  for (let i = 0; i < numSlats; i++) {
-    const t = (i + 0.5) / numSlats;
-    const slatCenterX = shading.start.x + t * dx;
-    const slatCenterY = shading.start.y + t * dy;
-    
-    slats.push({
-      id: `${id}_slat_${i}`,
-      type: 'shading_slat',
-      geometry: {
-        type: 'box',
-        width: slatWidth,
-        height: slatThickness,
-        depth: 100 // Length of the slat
-      },
-      position: {
-        x: pixelToCm(slatCenterX, pixelsPerCm),
-        y: pixelToCm(slatCenterY, pixelsPerCm),
-        z: frameHeight - 5 // Position just below the frame
-      },
-      rotation: {
-        x: 0,
-        y: 0,
-        z: Math.atan2(perpY, perpX) // Perpendicular to the shading beam
-      },
-      color: shading.color || '#8b4513',
-      material: {
-        type: 'standard',
-        roughness: 0.8,
-        metalness: 0.0
+  // Calculate inner area (excluding frame thickness)
+  const minX = Math.min(...framePoints.map(p => p.x)) + frameThickness;
+  const maxX = Math.max(...framePoints.map(p => p.x)) - frameThickness;
+  const minY = Math.min(...framePoints.map(p => p.y)) + frameThickness;
+  const maxY = Math.max(...framePoints.map(p => p.y)) - frameThickness;
+
+  console.log('Bottom shading - Inner bounds:', { minX, maxX, minY, maxY });
+
+  // Z position for shading slats (at Z = 0)
+  const slatZPosition = 0;
+
+  if (config.shadingDirection === 'width') {
+    // Shading slats along width (vertical lines)
+    for (let x = minX + config.spacing; x < maxX; x += config.spacing) {
+      const intersections: number[] = [];
+      
+      // Find intersections with frame edges (considering inner area)
+      for (let i = 0; i < framePoints.length; i++) {
+        const p1 = framePoints[i];
+        const p2 = framePoints[(i + 1) % framePoints.length];
+        
+        const minEdgeX = Math.min(p1.x, p2.x);
+        const maxEdgeX = Math.max(p1.x, p2.x);
+        
+        if (x >= minEdgeX && x <= maxEdgeX && p1.x !== p2.x) {
+          const t = (x - p1.x) / (p2.x - p1.x);
+          const y = p1.y + t * (p2.y - p1.y);
+          
+          if (y >= minY && y <= maxY) {
+            intersections.push(y);
+          }
+        }
       }
-    });
+      
+      intersections.sort((a, b) => a - b);
+      
+      for (let i = 0; i < intersections.length - 1; i += 2) {
+        if (i + 1 < intersections.length) {
+          const start = { x, y: intersections[i] + frameThickness/2 };
+          const end = { x, y: intersections[i + 1] - frameThickness/2 };
+          
+          const slatLength = pixelToCm(Math.abs(end.y - start.y), pixelsPerCm);
+          
+          slats.push({
+            id: `${id}_shading_slat_${slats.length}`,
+            type: 'shading_slat',
+            geometry: {
+              type: 'box',
+              width: slatLength,
+              height: config.shadingProfile.height,
+              depth: config.shadingProfile.width
+            },
+            position: {
+              x: pixelToCm(x, pixelsPerCm),
+              y: pixelToCm((start.y + end.y) / 2, pixelsPerCm),
+              z: slatZPosition + config.shadingProfile.height / 2
+            },
+            rotation: { x: 0, y: 0, z: Math.PI / 2 },
+            color: config.color,
+            material: {
+              type: 'standard',
+              roughness: 0.8,
+              metalness: 0.0
+            }
+          });
+        }
+      }
+    }
+  } else {
+    // Shading slats along length (horizontal lines)
+    for (let y = minY + config.spacing; y < maxY; y += config.spacing) {
+      const intersections: number[] = [];
+      
+      for (let i = 0; i < framePoints.length; i++) {
+        const p1 = framePoints[i];
+        const p2 = framePoints[(i + 1) % framePoints.length];
+        
+        const minEdgeY = Math.min(p1.y, p2.y);
+        const maxEdgeY = Math.max(p1.y, p2.y);
+        
+        if (y >= minEdgeY && y <= maxEdgeY && p1.y !== p2.y) {
+          const t = (y - p1.y) / (p2.y - p1.y);
+          const x = p1.x + t * (p2.x - p1.x);
+          
+          if (x >= minX && x <= maxX) {
+            intersections.push(x);
+          }
+        }
+      }
+      
+      intersections.sort((a, b) => a - b);
+      
+      for (let i = 0; i < intersections.length - 1; i += 2) {
+        if (i + 1 < intersections.length) {
+          const start = { x: intersections[i] + frameThickness/2, y };
+          const end = { x: intersections[i + 1] - frameThickness/2, y };
+          
+          const slatLength = pixelToCm(Math.abs(end.x - start.x), pixelsPerCm);
+          
+          slats.push({
+            id: `${id}_shading_slat_${slats.length}`,
+            type: 'shading_slat',
+            geometry: {
+              type: 'box',
+              width: slatLength,
+              height: config.shadingProfile.height,
+              depth: config.shadingProfile.width
+            },
+            position: {
+              x: pixelToCm((start.x + end.x) / 2, pixelsPerCm),
+              y: pixelToCm(y, pixelsPerCm),
+              z: slatZPosition + config.shadingProfile.height / 2
+            },
+            rotation: { x: 0, y: 0, z: 0 },
+            color: config.color,
+            material: {
+              type: 'standard',
+              roughness: 0.8,
+              metalness: 0.0
+            }
+          });
+        }
+      }
+    }
   }
   
+  console.log(`Generated ${slats.length} bottom shading slats`);
   return slats;
+};
+
+// Enhanced division beams creation
+const createDivisionBeams = (
+  framePoints: Point[],
+  config: ShadingConfig,
+  pixelsPerCm: number,
+  frameThickness: number,
+  id: string
+): Mesh3D[] => {
+  if (!config.divisionEnabled || framePoints.length < 3) {
+    return [];
+  }
+
+  const beams: Mesh3D[] = [];
+  
+  // Calculate inner area
+  const minX = Math.min(...framePoints.map(p => p.x)) + frameThickness;
+  const maxX = Math.max(...framePoints.map(p => p.x)) - frameThickness;
+  const minY = Math.min(...framePoints.map(p => p.y)) + frameThickness;
+  const maxY = Math.max(...framePoints.map(p => p.y)) - frameThickness;
+
+  // Z position for division beams (above shading slats)
+  const divisionZPosition = config.shadingProfile.height;
+
+  // Create division beams along width
+  if (config.divisionDirection === 'width' || config.divisionDirection === 'both') {
+    for (let x = minX + config.divisionSpacing; x < maxX; x += config.divisionSpacing) {
+      const intersections: number[] = [];
+      
+      for (let i = 0; i < framePoints.length; i++) {
+        const p1 = framePoints[i];
+        const p2 = framePoints[(i + 1) % framePoints.length];
+        
+        const minEdgeX = Math.min(p1.x, p2.x);
+        const maxEdgeX = Math.max(p1.x, p2.x);
+        
+        if (x >= minEdgeX && x <= maxEdgeX && p1.x !== p2.x) {
+          const t = (x - p1.x) / (p2.x - p1.x);
+          const y = p1.y + t * (p2.y - p1.y);
+          
+          if (y >= minY && y <= maxY) {
+            intersections.push(y);
+          }
+        }
+      }
+      
+      intersections.sort((a, b) => a - b);
+      
+      for (let i = 0; i < intersections.length - 1; i += 2) {
+        if (i + 1 < intersections.length) {
+          const start = { x, y: intersections[i] + frameThickness/2 };
+          const end = { x, y: intersections[i + 1] - frameThickness/2 };
+          
+          beams.push(createPergolaBeam(
+            `${id}_division_width_${beams.length}`,
+            start,
+            end,
+            pixelsPerCm,
+            divisionZPosition,
+            config.divisionProfile,
+            config.divisionColor,
+            'division_beam'
+          ));
+        }
+      }
+    }
+  }
+
+  // Create division beams along length
+  if (config.divisionDirection === 'length' || config.divisionDirection === 'both') {
+    for (let y = minY + config.divisionSpacing; y < maxY; y += config.divisionSpacing) {
+      const intersections: number[] = [];
+      
+      for (let i = 0; i < framePoints.length; i++) {
+        const p1 = framePoints[i];
+        const p2 = framePoints[(i + 1) % framePoints.length];
+        
+        const minEdgeY = Math.min(p1.y, p2.y);
+        const maxEdgeY = Math.max(p1.y, p2.y);
+        
+        if (y >= minEdgeY && y <= maxEdgeY && p1.y !== p2.y) {
+          const t = (y - p1.y) / (p2.y - p1.y);
+          const x = p1.x + t * (p2.x - p1.x);
+          
+          if (x >= minX && x <= maxX) {
+            intersections.push(x);
+          }
+        }
+      }
+      
+      intersections.sort((a, b) => a - b);
+      
+      for (let i = 0; i < intersections.length - 1; i += 2) {
+        if (i + 1 < intersections.length) {
+          const start = { x: intersections[i] + frameThickness/2, y };
+          const end = { x: intersections[i + 1] - frameThickness/2, y };
+          
+          beams.push(createPergolaBeam(
+            `${id}_division_length_${beams.length}`,
+            start,
+            end,
+            pixelsPerCm,
+            divisionZPosition,
+            config.divisionProfile,
+            config.divisionColor,
+            'division_beam'
+          ));
+        }
+      }
+    }
+  }
+  
+  console.log(`Generated ${beams.length} division beams`);
+  return beams;
 };
 
 // Generate support columns
@@ -202,7 +401,7 @@ const createSupportColumn = (
     position: {
       x: pixelToCm(position.x, pixelsPerCm),
       y: pixelToCm(position.y, pixelsPerCm),
-      z: height / 2 // Center vertically
+      z: height / 2
     },
     rotation: { x: 0, y: 0, z: 0 },
     color: '#654321',
@@ -215,14 +414,10 @@ const createSupportColumn = (
 };
 
 export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D => {
-  console.log('🚀 Starting enhanced 3D pergola generation with data:', drawingData);
+  console.log('🚀 Starting enhanced 3D pergola generation with bottom shading model');
   
-  const { elements, pixelsPerCm, frameColor } = drawingData;
+  const { elements, pixelsPerCm, frameColor, shadingConfig } = drawingData;
   const frameHeight = 250; // cm - pergola height
-  const frameBeamWidth = 20; // cm - main beam cross-section
-  const frameBeamHeight = 15; // cm
-  const divisionBeamWidth = 15; // cm
-  const divisionBeamHeight = 12; // cm
   
   const meshes: Mesh3D[] = [];
   let minX = Infinity, maxX = -Infinity;
@@ -252,15 +447,14 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
           minY = Math.min(minY, start.y, end.y);
           maxY = Math.max(maxY, start.y, end.y);
           
-          // Create main structural beam
+          // Create main structural beam with profile
           const beam = createPergolaBeam(
             `${element.id}_beam_${i}`,
             start,
             end,
             pixelsPerCm,
-            frameHeight,
-            frameBeamWidth,
-            frameBeamHeight,
+            frameHeight - shadingConfig.frameProfile.height,
+            shadingConfig.frameProfile,
             frameColor || '#2d4a2b',
             'frame_beam'
           );
@@ -268,7 +462,7 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
           meshes.push(beam);
           
           // Add support columns at corners for closed frames
-          if (frame.closed && i < 4) { // Limit to 4 corners max
+          if (frame.closed && i < 4) {
             const column = createSupportColumn(
               start,
               pixelsPerCm,
@@ -280,49 +474,31 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
           
           console.log(`✅ Added frame beam segment ${i} with support structures`);
         }
-        break;
-        
-      case 'division':
-        const division = element as DivisionElement;
-        console.log(`🔗 Division beam from (${division.start.x}, ${division.start.y}) to (${division.end.x}, ${division.end.y})`);
-        
-        // Update bounding box
-        minX = Math.min(minX, division.start.x, division.end.x);
-        maxX = Math.max(maxX, division.start.x, division.end.x);
-        minY = Math.min(minY, division.start.y, division.end.y);
-        maxY = Math.max(maxY, division.start.y, division.end.y);
-        
-        const divisionBeam = createPergolaBeam(
-          element.id,
-          division.start,
-          division.end,
-          pixelsPerCm,
-          frameHeight,
-          divisionBeamWidth,
-          divisionBeamHeight,
-          division.color || '#f97316',
-          'division_beam'
-        );
-        
-        meshes.push(divisionBeam);
-        console.log(`✅ Added division beam with proper dimensions`);
-        break;
-        
-      case 'shading':
-        const shading = element as ShadingElement;
-        console.log(`🌴 Shading element from (${shading.start.x}, ${shading.start.y}) to (${shading.end.x}, ${shading.end.y})`);
-        
-        // Update bounding box
-        minX = Math.min(minX, shading.start.x, shading.end.x);
-        maxX = Math.max(maxX, shading.start.x, shading.end.x);
-        minY = Math.min(minY, shading.start.y, shading.end.y);
-        maxY = Math.max(maxY, shading.start.y, shading.end.y);
-        
-        // Create multiple shading slats instead of single beam
-        const slats = createShadingSlats(shading, pixelsPerCm, frameHeight, element.id);
-        meshes.push(...slats);
-        
-        console.log(`✅ Added ${slats.length} shading slats with proper spacing`);
+
+        // Generate bottom shading slats and division beams for the frame
+        if (frame.closed && frame.points.length >= 3) {
+          const frameThickness = Math.max(shadingConfig.frameProfile.width, shadingConfig.frameProfile.height);
+          
+          // Generate shading slats at Z=0
+          const shadingSlats = createBottomShadingSlats(
+            frame.points,
+            shadingConfig,
+            pixelsPerCm,
+            frameThickness,
+            element.id
+          );
+          meshes.push(...shadingSlats);
+          
+          // Generate division beams above shading slats
+          const divisionBeams = createDivisionBeams(
+            frame.points,
+            shadingConfig,
+            pixelsPerCm,
+            frameThickness,
+            element.id
+          );
+          meshes.push(...divisionBeams);
+        }
         break;
     }
   });
@@ -330,14 +506,14 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
   // Calculate realistic bounding box in 3D space
   const boundingBox = {
     min: {
-      x: minX === Infinity ? 0 : pixelToCm(minX, pixelsPerCm) - frameBeamWidth,
-      y: minY === Infinity ? 0 : pixelToCm(minY, pixelsPerCm) - frameBeamWidth,
+      x: minX === Infinity ? 0 : pixelToCm(minX, pixelsPerCm) - shadingConfig.frameProfile.width,
+      y: minY === Infinity ? 0 : pixelToCm(minY, pixelsPerCm) - shadingConfig.frameProfile.width,
       z: 0
     },
     max: {
-      x: maxX === -Infinity ? 100 : pixelToCm(maxX, pixelsPerCm) + frameBeamWidth,
-      y: maxY === -Infinity ? 100 : pixelToCm(maxY, pixelsPerCm) + frameBeamWidth,
-      z: frameHeight + frameBeamHeight
+      x: maxX === -Infinity ? 100 : pixelToCm(maxX, pixelsPerCm) + shadingConfig.frameProfile.width,
+      y: maxY === -Infinity ? 100 : pixelToCm(maxY, pixelsPerCm) + shadingConfig.frameProfile.width,
+      z: frameHeight
     }
   };
   
@@ -359,7 +535,7 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
     }
   };
   
-  console.log('🎉 Enhanced 3D Pergola Model generated successfully!');
+  console.log('🎉 Bottom Shading Pergola Model generated successfully!');
   console.log(`📈 Statistics:`, {
     totalMeshes: meshes.length,
     frameBeams: meshes.filter(m => m.type === 'frame_beam').length,
