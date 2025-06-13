@@ -938,9 +938,9 @@ export const FreeDrawingCanvas = () => {
         />
       </div>
 
-      <div className="grid lg:grid-cols-12 gap-6 h-full" onKeyDown={handleKeyDown} tabIndex={0}>
-        {/* Left sidebar - controls */}
-        <div className="lg:col-span-2 space-y-4">
+      <div className="flex-1 grid grid-cols-1 xl:grid-cols-4 gap-6 p-6" onKeyDown={handleKeyDown} tabIndex={0}>
+        {/* Left sidebar - controls (1 column on xl screens) */}
+        <div className="xl:col-span-1 space-y-4">
           <AccessoriesMenu
             onAddAccessory={handleAddAccessory}
             accessoryConfig={accessoryConfig}
@@ -1024,16 +1024,16 @@ export const FreeDrawingCanvas = () => {
           </div>
         </div>
         
-        {/* Main drawing area - made wider */}
-        <div className="lg:col-span-7">
-          <div className="border rounded-lg shadow-sm bg-white p-4">
+        {/* Main drawing area (2 columns on xl screens) */}
+        <div className="xl:col-span-2">
+          <div className="border rounded-lg shadow-sm bg-white p-4 h-full">
             <h3 className="text-lg font-semibold mb-4">שרטוט חופשי עם מדידות ותוספות</h3>
             <div className="relative">
               <canvas
                 ref={canvasRef}
                 width={800}
                 height={600}
-                className="border rounded cursor-crosshair bg-white"
+                className="border rounded cursor-crosshair bg-white w-full h-auto max-w-full"
                 onMouseDown={handleMouseDown}
                 onMouseUp={handleMouseUp}
                 onMouseMove={handleMouseMove}
@@ -1081,14 +1081,20 @@ export const FreeDrawingCanvas = () => {
           </div>
         </div>
 
-        {/* Right sidebar - 3D model generation and viewer */}
-        <div className="lg:col-span-3">
-          <Generate3DButton
-            elements={elements}
-            pixelsPerCm={measurementConfig.pixelsPerCm}
-            frameColor={accessoryConfig.frameColor}
-            disabled={elements.length === 0}
-          />
+        {/* Right sidebar - 3D model generation and viewer (1 column on xl screens) */}
+        <div className="xl:col-span-1">
+          <div className="bg-white border rounded-lg shadow-sm p-4">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Box className="w-5 h-5" />
+              הדמיה תלת־ממדית
+            </h3>
+            <Generate3DButton
+              elements={elements}
+              pixelsPerCm={measurementConfig.pixelsPerCm}
+              frameColor={accessoryConfig.frameColor}
+              disabled={elements.length === 0}
+            />
+          </div>
         </div>
       </div>
     </div>
