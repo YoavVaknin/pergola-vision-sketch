@@ -205,13 +205,25 @@ export const Model3DViewer = ({ model, width = 800, height = 600 }: Model3DViewe
   if (!model || !model.meshes || model.meshes.length === 0) {
     return (
       <div 
-        className="border rounded-lg bg-gray-50 flex items-center justify-center text-gray-500"
-        style={{ width, height }}
+        className="h-full w-full border rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center text-gray-500 relative overflow-hidden"
+        style={{ minHeight: height || 400 }}
       >
-        <div className="text-center">
-          <div className="text-lg mb-2">🏗️</div>
-          <div>אין מודל תלת-ממדי להצגה</div>
-          <div className="text-sm">יש לצייר מסגרת ולייצר מודל תחילה</div>
+        {/* Background pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="w-full h-full" style={{
+            backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 20px, currentColor 20px, currentColor 21px)`
+          }}></div>
+        </div>
+        
+        {/* Content */}
+        <div className="text-center z-10 p-8">
+          <div className="text-4xl mb-4 animate-pulse">🏗️</div>
+          <h3 className="text-lg font-semibold mb-2 text-gray-700">הדמיה תלת־ממדית מתקדמת</h3>
+          <div className="text-gray-600 mb-4">יש לצייר מסגרת ולייצר מודל תחילה</div>
+          <div className="text-sm text-gray-500 bg-white/50 rounded-lg p-3 border">
+            <p className="mb-1">💡 שרטטו מסגרת פרגולה על הלוח</p>
+            <p>הצגת המודל תעודכן אוטומטית</p>
+          </div>
         </div>
       </div>
     );
