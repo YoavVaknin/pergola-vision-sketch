@@ -7,9 +7,6 @@ import { Pen, Box, ArrowLeft, Ruler, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { FreeDrawingCanvas } from "@/components/FreeDrawingCanvas";
 import { Model3DViewer } from "@/components/Model3DViewer";
-import { Generate3DButton } from "@/components/Generate3DButton";
-import { usePergolaDrawing } from "@/hooks/usePergolaDrawing";
-import { usePergolaAccessories } from "@/hooks/usePergolaAccessories";
 
 const CreateVisualization = () => {
   const navigate = useNavigate();
@@ -17,10 +14,6 @@ const CreateVisualization = () => {
   const [model3DOpen, setModel3DOpen] = useState(false);
   const [savedDrawings, setSavedDrawings] = useState<string[]>([]);
   const [saved3DModels, setSaved3DModels] = useState<string[]>([]);
-
-  // Initialize drawing hooks for 3D model generation
-  const { elements, measurementConfig, shadingConfig } = usePergolaDrawing();
-  const { accessoryConfig } = usePergolaAccessories();
 
   const handleSaveDrawing = () => {
     // Here you would implement the actual save logic
@@ -128,29 +121,12 @@ const CreateVisualization = () => {
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
                     <Box className="w-5 h-5" />
-                    הדמיה תלת־ממדית מתקדמת
+                    מודל תלת־ממדי
                   </DialogTitle>
                 </DialogHeader>
                 <div className="flex-1 overflow-hidden">
-                  <div className="h-full">
-                    <div className="mb-4">
-                      <Generate3DButton
-                        elements={elements}
-                        pixelsPerCm={measurementConfig.pixelsPerCm}
-                        frameColor={accessoryConfig.frameColor}
-                        shadingConfig={shadingConfig}
-                        disabled={elements.length === 0}
-                      />
-                    </div>
-                    
-                    {/* Large 3D viewer */}
-                    <div className="h-[500px]">
-                      <Model3DViewer 
-                        model={null} 
-                        width={undefined} 
-                        height={undefined}
-                      />
-                    </div>
+                  <div className="h-[600px]">
+                    <Model3DViewer model={null} />
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 pt-4 border-t">

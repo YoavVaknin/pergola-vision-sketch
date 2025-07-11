@@ -1102,9 +1102,39 @@ export const FreeDrawingCanvas = () => {
         </div>
       </div>
 
-      {/* Right side - Settings and Controls */}
-      <div className="flex-1 flex flex-col p-6 max-w-md">
-        <div className="space-y-4">
+      {/* Right side - 3D visualization */}
+      <div className="flex-1 flex flex-col p-6">
+        {/* 3D model viewing area - vertical format */}
+        <div className="flex-1 max-w-md mx-auto">
+          <div className="border rounded-lg shadow-sm bg-white p-4 h-full flex flex-col">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Box className="w-5 h-5" />
+              הדמיה תלת־ממדית מתקדמת
+            </h3>
+            
+            <div className="mb-4">
+              <Generate3DButton
+                elements={elements}
+                pixelsPerCm={measurementConfig.pixelsPerCm}
+                frameColor={accessoryConfig.frameColor}
+                shadingConfig={shadingConfig}
+                disabled={elements.length === 0}
+              />
+            </div>
+            
+            {/* Large 3D viewer in vertical format */}
+            <div className="flex-1 min-h-0">
+              <Model3DViewer 
+                model={null} 
+                width={undefined} 
+                height={undefined}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Settings below the 3D viewer */}
+        <div className="mt-6 max-w-md mx-auto w-full space-y-4">
           <AccessoriesMenu
             onAddAccessory={handleAddAccessory}
             accessoryConfig={accessoryConfig}
@@ -1174,7 +1204,6 @@ export const FreeDrawingCanvas = () => {
           </div>
         </div>
       </div>
-
     </div>
   );
 };
