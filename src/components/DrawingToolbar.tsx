@@ -28,30 +28,29 @@ export const DrawingToolbar = ({
   ];
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-base font-semibold">כלי שרטוט</h3>
-      
-      <div className="grid grid-cols-3 gap-2">
-        {tools.map(tool => (
-          <Button
-            key={tool.id}
-            variant={mode === tool.id ? "default" : "outline"}
-            size="sm"
-            onClick={() => onModeChange(tool.id)}
-            className="flex items-center gap-1 text-xs px-2 py-1"
-          >
-            <tool.icon className="w-3 h-3" />
-            {tool.label}
-          </Button>
-        ))}
-      </div>
+    <Card className="p-4">
+      <div className="flex flex-col gap-4">
+        <h3 className="text-lg font-semibold">כלי שרטוט</h3>
+        
+        <div className="grid grid-cols-2 gap-2">
+          {tools.map(tool => (
+            <Button
+              key={tool.id}
+              variant={mode === tool.id ? "default" : "outline"}
+              size="sm"
+              onClick={() => onModeChange(tool.id)}
+              className="flex items-center gap-2"
+            >
+              <tool.icon className="w-4 h-4" />
+              {tool.label}
+            </Button>
+          ))}
+        </div>
 
-      <div className="flex gap-2">
         {isDrawing && mode === 'frame' && (
           <Button 
             onClick={onFinishFrame}
-            size="sm"
-            className="bg-green-600 hover:bg-green-700 text-xs flex-1"
+            className="bg-green-600 hover:bg-green-700"
           >
             סיום מסגרת
           </Button>
@@ -60,13 +59,19 @@ export const DrawingToolbar = ({
         <Button 
           variant="destructive" 
           onClick={onClear}
-          size="sm"
-          className="flex items-center gap-1 text-xs"
+          className="flex items-center gap-2"
         >
-          <Trash2 className="w-3 h-3" />
-          נקה
+          <Trash2 className="w-4 h-4" />
+          נקה הכל
         </Button>
+
+        <div className="text-xs text-muted-foreground">
+          <p><strong>מסגרת:</strong> לחץ לסימון נקודות</p>
+          <p><strong>קורה:</strong> לחץ + גרור</p>
+          <p><strong>עמוד:</strong> לחץ למיקום</p>
+          <p><strong>קיר:</strong> לחץ + גרור</p>
+        </div>
       </div>
-    </div>
+    </Card>
   );
 };
