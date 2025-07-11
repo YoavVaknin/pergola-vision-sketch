@@ -54,7 +54,12 @@ const CreateVisualization = () => {
 
       <div className="container mx-auto px-4 py-8 h-[calc(100vh-120px)]">
         <div className="grid lg:grid-cols-2 gap-8 h-full">
-          {/* Left Column - Preview */}
+          {/* Left Column - Free Drawing */}
+          <div className="h-full">
+            <FreeDrawingCanvas />
+          </div>
+
+          {/* Right Column - Preview */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -105,11 +110,6 @@ const CreateVisualization = () => {
                 </CardContent>
               </Card>
             )}
-          </div>
-
-          {/* Right Column - Free Drawing */}
-          <div className="h-full">
-            <FreeDrawingCanvas />
           </div>
         </div>
 
