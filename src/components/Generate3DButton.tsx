@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Box, Download, BarChart3 } from 'lucide-react';
@@ -23,6 +23,7 @@ export const Generate3DButton: React.FC<Generate3DButtonProps> = ({
   shadingConfig,
   disabled = false
 }) => {
+  const [showViewer, setShowViewer] = useState(false);
   const {
     currentModel,
     isGenerating,
@@ -133,6 +134,15 @@ export const Generate3DButton: React.FC<Generate3DButtonProps> = ({
             <div className="space-y-2">
               <div className="flex gap-2">
                 <Button
+                  onClick={() => setShowViewer(!showViewer)}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                >
+                  <Box className="w-4 h-4 mr-1" />
+                  {showViewer ? 'הסתר הדמיה' : 'הצג הדמיה'}
+                </Button>
+                <Button
                   onClick={handleExport}
                   variant="outline"
                   size="sm"
@@ -170,7 +180,7 @@ export const Generate3DButton: React.FC<Generate3DButtonProps> = ({
         </CardContent>
       </Card>
 
-      {currentModel && (
+      {currentModel && showViewer && (
         <Model3DViewer model={currentModel} width={400} height={300} />
       )}
     </div>
