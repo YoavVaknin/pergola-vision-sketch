@@ -1,5 +1,4 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { PergolaConfig } from '@/types/pergolaConfig';
 import { DrawingData, generate3DModelFromDrawing } from '@/utils/3dModelGenerator';
 import { Point, PergolaElementType } from '@/types/pergola';
 import { useCanvasZoom } from '@/hooks/useCanvasZoom';
@@ -10,7 +9,6 @@ import { useToast } from "@/components/ui/use-toast"
 import { Model3DViewer } from './Model3DViewer';
 
 interface InteractivePergolaCanvasProps {
-  pergolaConfig: PergolaConfig;
   onDrawingChange: (drawingData: DrawingData) => void;
 }
 
@@ -47,7 +45,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   }
 };
 
-const InteractivePergolaCanvas: React.FC<InteractivePergolaCanvasProps> = ({ pergolaConfig, onDrawingChange }) => {
+const InteractivePergolaCanvas: React.FC<InteractivePergolaCanvasProps> = ({ onDrawingChange }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [drawing, setDrawing] = useState<PergolaElementType[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
