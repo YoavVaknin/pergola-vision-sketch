@@ -1,240 +1,328 @@
-import { useEffect, useRef, forwardRef } from "react";
-import { PergolaConfig } from "@/pages/CreateVisualization";
+import React, { useRef, useEffect, useState } from 'react';
+import { PergolaConfig } from '@/types/pergolaConfig';
+import { DrawingData, generate3DModelFromDrawing } from '@/utils/3dModelGenerator';
+import { Point, PergolaElementType } from '@/types/pergola';
+import { useCanvasZoom } from '@/hooks/useCanvasZoom';
+import { Button } from '@/components/ui/button';
+import { Save, RefreshCw, Download, Upload, Redo, Undo } from 'lucide-react';
+import { exportDrawingAsJSON, importDrawingFromJSON } from '@/utils/exportUtils';
+import { useToast } from "@/components/ui/use-toast"
+import { Model3DViewer } from './Model3DViewer';
 
 interface InteractivePergolaCanvasProps {
-  config: PergolaConfig;
+  pergolaConfig: PergolaConfig;
+  onDrawingChange: (drawingData: DrawingData) => void;
 }
 
-export const InteractivePergolaCanvas = forwardRef<HTMLCanvasElement, InteractivePergolaCanvasProps>(
-  ({ config }, ref) => {
-    const internalCanvasRef = useRef<HTMLCanvasElement>(null);
-    const canvasRef = (ref as React.RefObject<HTMLCanvasElement>) || internalCanvasRef;
+const styles = {
+  container: {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    minHeight: '500px',
+    backgroundColor: '#f0f0f0',
+    overflow: 'hidden',
+    cursor: 'crosshair'
+  },
+  canvas: {
+    position: 'absolute',
+    top: '0',
+    left: '0',
+    width: '100%',
+    height: '100%',
+    objectFit: 'contain',
+    cursor: 'crosshair'
+  },
+  toolbar: {
+    position: 'absolute',
+    top: '10px',
+    left: '10px',
+    zIndex: 10,
+    display: 'flex',
+    gap: '8px',
+    padding: '8px',
+    background: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: '6px',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+  }
+};
 
-    // פונקציה להמרת שמות צבעים לקודי צבע
-    const getColorCode = (colorName: string): string => {
-      const colorMap: { [key: string]: string } = {
-        "שחור": "#1f2937",
-        "לבן": "#ffffff", 
-        "אפור גרפיט": "#6b7280",
-        "עץ כהה": "#8b4513",
-        "שמנת": "#f5f5dc"
-      };
-      return colorMap[colorName] || "#1f2937";
+const InteractivePergolaCanvas: React.FC<InteractivePergolaCanvasProps> = ({ pergolaConfig, onDrawingChange }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [drawing, setDrawing] = useState<PergolaElementType[]>([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [startPoint, setStartPoint] = useState<Point | null>(null);
+  const [pixelsPerCm, setPixelsPerCm] = useState(20);
+  const [frameColor, setFrameColor] = useState('#2d4a2b');
+  const [shadingConfig, setShadingConfig] = useState({
+    enabled: true,
+    shadingDirection: 'width' as 'width' | 'length',
+    spacing: 25,
+    color: '#777777',
+    shadingProfile: { width: 5, height: 2 },
+    divisionEnabled: true,
+    divisionDirection: 'both' as 'width' | 'length' | 'both',
+    divisionSpacing: 40,
+    divisionColor: '#999999',
+    divisionProfile: { width: 8, height: 3 },
+    frameProfile: { width: 10, height: 5 }
+  });
+  const [history, setHistory] = useState<PergolaElementType[][]>([[]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const [model3D, setModel3D] = useState(null);
+  const { toast } = useToast()
+
+  const { scale, offsetX, offsetY, transformPoint, inverseTransformPoint, pan, zoomIn, zoomOut, reset } = useCanvasZoom(canvasRef);
+
+  useEffect(() => {
+    const initialDrawingData: DrawingData = {
+      elements: [],
+      pixelsPerCm: pixelsPerCm,
+      frameColor: frameColor,
+      shadingConfig: shadingConfig
     };
+    onDrawingChange(initialDrawingData);
+  }, []);
 
-    // פונקציה לחישוב מיקומי עמודים
-    const getColumnPositions = () => {
-      const positions = [];
-      const columnSize = 8; // גודל העמוד בפיקסלים
-
-      if (config.column_placement === "corners") {
-        // 4 עמודים בפינות
-        positions.push(
-          { x: 0, y: 0 },
-          { x: config.width, y: 0 },
-          { x: 0, y: config.length },
-          { x: config.width, y: config.length }
-        );
-      } else if (config.column_placement === "perimeter") {
-        // עמודים לאורך היקף - כל 200 ס״מ
-        const spacing = 200;
-        
-        // עמודים לאורך הרוחב העליון
-        for (let x = 0; x <= config.width; x += spacing) {
-          positions.push({ x: Math.min(x, config.width), y: 0 });
-        }
-        
-        // עמודים לאורך הרוחב התחתון
-        for (let x = 0; x <= config.width; x += spacing) {
-          positions.push({ x: Math.min(x, config.width), y: config.length });
-        }
-        
-        // עמודים לאורך האורך השמאלי (ללא פינות)
-        for (let y = spacing; y < config.length; y += spacing) {
-          positions.push({ x: 0, y });
-        }
-        
-        // עמודים לאורך האורך הימני (ללא פינות)
-        for (let y = spacing; y < config.length; y += spacing) {
-          positions.push({ x: config.width, y });
-        }
-      }
-
-      return positions;
-    };
-
-    useEffect(() => {
+  useEffect(() => {
+    if (canvasRef.current) {
       const canvas = canvasRef.current;
-      if (!canvas) return;
-
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // ניקוי הקנבס
+      // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
 
-      // הגדרות קנבס
-      const canvasWidth = 800;
-      const canvasHeight = 600;
-      const padding = 60;
+      // Apply zoom and pan transformations
+      ctx.translate(offsetX, offsetY);
+      ctx.scale(scale, scale);
 
-      // חישוב קנה מידה
-      const availableWidth = canvasWidth - (padding * 2);
-      const availableHeight = canvasHeight - (padding * 2);
-      
-      const scaleX = availableWidth / config.width;
-      const scaleY = availableHeight / config.length;
-      const scale = Math.min(scaleX, scaleY, 1);
-
-      // מידות הפרגולה המוצגת
-      const displayWidth = config.width * scale;
-      const displayHeight = config.length * scale;
-      
-      // מיקום מרכזי
-      const startX = (canvasWidth - displayWidth) / 2;
-      const startY = (canvasHeight - displayHeight) / 2;
-
-      // ציור רקע
-      ctx.fillStyle = '#f8f9fa';
-      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-      // ציור רשת
-      ctx.strokeStyle = '#e9ecef';
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= canvasWidth; i += 20) {
+      // Draw existing elements
+      drawing.forEach(element => {
         ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i, canvasHeight);
-        ctx.stroke();
-      }
-      for (let i = 0; i <= canvasHeight; i += 20) {
-        ctx.beginPath();
-        ctx.moveTo(0, i);
-        ctx.lineTo(canvasWidth, i);
-        ctx.stroke();
-      }
-
-      // ציור צל למלבן
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-      ctx.fillRect(startX + 3, startY + 3, displayWidth, displayHeight);
-
-      // ציור מלבן הפרגולה
-      ctx.fillStyle = 'rgba(59, 130, 246, 0.05)';
-      ctx.fillRect(startX, startY, displayWidth, displayHeight);
-
-      // מסגרת המלבן בצבע שנבחר
-      ctx.strokeStyle = getColorCode(config.color_frame);
-      ctx.lineWidth = 4;
-      ctx.strokeRect(startX, startY, displayWidth, displayHeight);
-
-      // ציור קירות
-      ctx.strokeStyle = '#374151'; // אפור כהה לקירות
-      ctx.lineWidth = 6;
-
-      if (config.wall_front) {
-        // קיר קדמי (עליון)
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(startX + displayWidth, startY);
-        ctx.stroke();
-      }
-
-      if (config.wall_back) {
-        // קיר אחורי (תחתון)
-        ctx.beginPath();
-        ctx.moveTo(startX, startY + displayHeight);
-        ctx.lineTo(startX + displayWidth, startY + displayHeight);
-        ctx.stroke();
-      }
-
-      if (config.wall_left) {
-        // קיר שמאלי
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(startX, startY + displayHeight);
-        ctx.stroke();
-      }
-
-      if (config.wall_right) {
-        // קיר ימני
-        ctx.beginPath();
-        ctx.moveTo(startX + displayWidth, startY);
-        ctx.lineTo(startX + displayWidth, startY + displayHeight);
-        ctx.stroke();
-      }
-
-      // ציור קורות הצללה בצבע שנבחר
-      ctx.strokeStyle = getColorCode(config.color_shading);
-      ctx.lineWidth = 2;
-
-      const spacingInPixels = config.beamSpacing * scale;
-
-      if (config.beamSpacing > 0) {
-        if (config.beamDirection === 0) {
-          // קורות אנכיות (מקבילות לגובה)
-          for (let x = spacingInPixels; x < displayWidth; x += spacingInPixels) {
-            ctx.beginPath();
-            ctx.moveTo(startX + x, startY);
-            ctx.lineTo(startX + x, startY + displayHeight);
-            ctx.stroke();
-          }
-        } else if (config.beamDirection === 90) {
-          // קורות אופקיות (מקבילות לרוחב)
-          for (let y = spacingInPixels; y < displayHeight; y += spacingInPixels) {
-            ctx.beginPath();
-            ctx.moveTo(startX, startY + y);
-            ctx.lineTo(startX + displayWidth, startY + y);
-            ctx.stroke();
-          }
+        switch (element.type) {
+          case 'frame':
+            const frame = element;
+            if (frame.points.length > 0) {
+              ctx.moveTo(frame.points[0].x, frame.points[0].y);
+              for (let i = 1; i < frame.points.length; i++) {
+                ctx.lineTo(frame.points[i].x, frame.points[i].y);
+              }
+              if (frame.closed) {
+                ctx.closePath();
+              }
+              ctx.strokeStyle = frameColor;
+              ctx.lineWidth = 3;
+              ctx.stroke();
+            }
+            break;
+          // Add other element types here
         }
-      }
-
-      // ציור עמודים
-      const columnPositions = getColumnPositions();
-      ctx.fillStyle = '#374151'; // אפור כהה לעמודים
-      ctx.strokeStyle = '#111827'; // מסגרת כהה יותר לעמודים
-      ctx.lineWidth = 1;
-
-      columnPositions.forEach(pos => {
-        const columnX = startX + (pos.x * scale) - 4; // מרכז העמוד
-        const columnY = startY + (pos.y * scale) - 4;
-        const columnSize = 8;
-
-        // ציור עמוד כמלבן קטן
-        ctx.fillRect(columnX, columnY, columnSize, columnSize);
-        ctx.strokeRect(columnX, columnY, columnSize, columnSize);
       });
 
-      console.log(`Drawing pergola: ${config.width}x${config.length} cm, scale: ${scale.toFixed(2)}, beams: ${config.beamSpacing}cm spacing, direction: ${config.beamDirection}°, frame color: ${config.color_frame}, shading color: ${config.color_shading}, columns: ${columnPositions.length} (${config.column_placement}), walls: front=${config.wall_front}, back=${config.wall_back}, left=${config.wall_left}, right=${config.wall_right}`);
-    }, [config.width, config.length, config.beamSpacing, config.beamDirection, config.color_frame, config.color_shading, config.columns, config.column_placement, config.wall_front, config.wall_back, config.wall_left, config.wall_right]);
+      ctx.restore();
+    }
+  }, [drawing, offsetX, offsetY, scale, frameColor]);
 
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-white rounded-lg border">
-        {/* כותרת */}
-        <div className="mb-4 text-center">
-          <h3 className="text-lg font-semibold text-foreground">
-            פרגולה {config.width}×{config.length} ס״מ
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            מסגרת {config.profile_frame} ({config.color_frame}) | מרווח קורות {config.beamSpacing} ס״מ ({config.color_shading}) | עמודים: {config.column_placement === "corners" ? "4 בפינות" : config.columns} | קירות: {[config.wall_front, config.wall_back, config.wall_left, config.wall_right].filter(Boolean).length}
-          </p>
-        </div>
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    setIsDrawing(true);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-        {/* אזור השרטוט */}
-        <canvas
-          ref={canvasRef}
-          width={800}
-          height={600}
-          className="border rounded-lg shadow-sm bg-white"
-        />
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-        {/* מידע נוסף */}
-        <div className="mt-4 text-center text-sm text-muted-foreground">
-          <p>שטח כולל: {((config.width * config.length) / 10000).toFixed(2)} מ״ר</p>
-        </div>
+    const { x: canvasX, y: canvasY } = inverseTransformPoint(x, y);
+    setStartPoint({ x: canvasX, y: canvasY });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || !startPoint) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const { x: canvasX, y: canvasY } = inverseTransformPoint(x, y);
+
+    setDrawing(prev => {
+      if (prev.length > 0) {
+        const lastElement = prev[prev.length - 1];
+        if (lastElement.type === 'frame') {
+          const updatedPoints = [...lastElement.points, { x: canvasX, y: canvasY }];
+          return [...prev.slice(0, prev.length - 1), { ...lastElement, points: updatedPoints }];
+        }
+      }
+      return prev;
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDrawing(false);
+    if (!startPoint) return;
+
+    setDrawing(prev => {
+      const newFrame = {
+        id: `frame_${Date.now()}`,
+        type: 'frame',
+        points: [startPoint]
+      };
+      return [...prev, newFrame];
+    });
+    setStartPoint(null);
+  };
+
+  const handleClosePath = () => {
+    setDrawing(prev => {
+      if (prev.length === 0) return prev;
+      const lastElement = prev[prev.length - 1];
+      if (lastElement.type === 'frame') {
+        return [...prev.slice(0, prev.length - 1), { ...lastElement, closed: true }];
+      }
+      return prev;
+    });
+  };
+
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1);
+      setDrawing(history[historyIndex - 1]);
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(historyIndex + 1);
+      setDrawing(history[historyIndex + 1]);
+    }
+  };
+
+  useEffect(() => {
+    setHistory(prev => [...prev.slice(0, historyIndex + 1), drawing]);
+    setHistoryIndex(historyIndex => historyIndex + 1);
+  }, [drawing]);
+
+  useEffect(() => {
+    const drawingData: DrawingData = {
+      elements: drawing,
+      pixelsPerCm: pixelsPerCm,
+      frameColor: frameColor,
+      shadingConfig: shadingConfig
+    };
+    onDrawingChange(drawingData);
+    setModel3D(generate3DModelFromDrawing(drawingData));
+  }, [drawing, pixelsPerCm, frameColor, shadingConfig, onDrawingChange]);
+
+  const handleReset = () => {
+    setDrawing([]);
+    reset();
+  };
+
+  const handleExport = () => {
+    const drawingData: DrawingData = {
+      elements: drawing,
+      pixelsPerCm: pixelsPerCm,
+      frameColor: frameColor,
+      shadingConfig: shadingConfig
+    };
+    const json = exportDrawingAsJSON(drawingData);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pergola_drawing.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = event.target?.result as string;
+        const importedData = importDrawingFromJSON(json);
+        setDrawing(importedData.elements);
+        setPixelsPerCm(importedData.pixelsPerCm);
+        setFrameColor(importedData.frameColor);
+        setShadingConfig(importedData.shadingConfig);
+        toast({
+          title: "הצלחה!",
+          description: "הייבוא בוצע בהצלחה.",
+        })
+      } catch (error) {
+        console.error('Error importing drawing:', error);
+        toast({
+          variant: "destructive",
+          title: "אופס! משהו השתבש.",
+          description: "הקובץ לא תקין.",
+        })
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.toolbar}>
+        <Button size="icon" onClick={zoomIn} aria-label="Zoom In">
+          <PlusCircle className="h-4 w-4" />
+        </Button>
+        <Button size="icon" onClick={zoomOut} aria-label="Zoom Out">
+          <PlusCircle className="h-4 w-4 rotate-180" />
+        </Button>
+        <Button size="icon" onClick={pan} aria-label="Pan">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-move"><path d="M5 9V5H9"/><path d="M15 9V5h4"/><path d="M5 15H9v4"/><path d="M15 15h4v4"/><path d="M9 15H5"/><path d="M15 9h-4"/><path d="M9 9H5"/><path d="M15 15h-4"/></svg>
+        </Button>
+        <Button size="icon" onClick={handleUndo} disabled={historyIndex <= 0} aria-label="Undo">
+          <Undo className="h-4 w-4" />
+        </Button>
+        <Button size="icon" onClick={handleRedo} disabled={historyIndex >= history.length - 1} aria-label="Redo">
+          <Redo className="h-4 w-4" />
+        </Button>
+        <Button size="icon" onClick={handleReset} aria-label="Reset">
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+        <Button size="icon" onClick={handleExport} aria-label="Export">
+          <Download className="h-4 w-4" />
+        </Button>
+        <Button size="icon" aria-label="Import">
+          <label htmlFor="import-file-input">
+            <Upload className="h-4 w-4" />
+          </label>
+          <input
+            id="import-file-input"
+            type="file"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={handleImport}
+          />
+        </Button>
+        <Button size="icon" onClick={handleClosePath} aria-label="Close Path">
+          <Save className="h-4 w-4" />
+        </Button>
       </div>
-    );
-  }
-);
+      <canvas
+        ref={canvasRef}
+        style={styles.canvas}
+        width={1200}
+        height={800}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+      />
+      <Model3DViewer model={model3D} />
+    </div>
+  );
+};
 
-InteractivePergolaCanvas.displayName = "InteractivePergolaCanvas";
+export default InteractivePergolaCanvas;

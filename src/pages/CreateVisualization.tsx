@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { PergolaForm } from "@/components/PergolaForm";
 import { FreeDrawingCanvas } from "@/components/FreeDrawingCanvas";
 import { Model3DViewer } from "@/components/Model3DViewer";
+import { PergolaConfig } from "@/types/pergolaConfig";
 
 const CreateVisualization = () => {
   const navigate = useNavigate();
@@ -15,6 +16,22 @@ const CreateVisualization = () => {
   const [model3DOpen, setModel3DOpen] = useState(false);
   const [savedDrawings, setSavedDrawings] = useState<string[]>([]);
   const [saved3DModels, setSaved3DModels] = useState<string[]>([]);
+  
+  // Add pergola config state
+  const [pergolaConfig, setPergolaConfig] = useState<PergolaConfig>({
+    width: 400,
+    height: 250,
+    depth: 300,
+    beamDirection: 'width',
+    beamSpacing: 50,
+    wallLeft: false,
+    wallRight: false,
+    wallFront: false,
+    wallBack: false,
+    profileFrame: '10x5',
+    profileShading: '5x2',
+    profileDivision: '8x3'
+  });
 
   const handleSaveDrawing = () => {
     // Here you would implement the actual save logic
@@ -67,7 +84,10 @@ const CreateVisualization = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <PergolaForm />
+                <PergolaForm 
+                  config={pergolaConfig} 
+                  onConfigChange={setPergolaConfig} 
+                />
               </CardContent>
             </Card>
 

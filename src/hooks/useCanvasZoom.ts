@@ -88,6 +88,13 @@ export const useCanvasZoom = (
     
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
+    
+    // Add null checks for rect
+    if (!rect || typeof rect.left === 'undefined' || typeof rect.top === 'undefined') {
+      console.warn('Canvas rect is invalid:', rect);
+      return;
+    }
+    
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
     

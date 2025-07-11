@@ -1,13 +1,15 @@
-
-import { useEffect, useRef } from "react";
-import { PergolaConfig } from "@/pages/CreateVisualization";
+import React, { useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { PergolaConfig } from '@/types/pergolaConfig';
 
 interface PergolaCanvasProps {
   config: PergolaConfig;
+  onDrawingChange: (drawingData: any) => void;
 }
 
-export const PergolaCanvas = ({ config }: PergolaCanvasProps) => {
+export const PergolaCanvas: React.FC<PergolaCanvasProps> = ({ config, onDrawingChange }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawingDataRef = useRef<any>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -16,157 +18,61 @@ export const PergolaCanvas = ({ config }: PergolaCanvasProps) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // ניקוי הקנבס
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Set canvas dimensions based on config
+    canvas.width = config.width;
+    canvas.height = config.height;
 
-    // חישוב קנה מידה
-    const padding = 60;
-    const availableWidth = canvas.width - (padding * 2);
-    const availableHeight = canvas.height - (padding * 2);
-    
-    const scaleX = availableWidth / config.width;
-    const scaleY = availableHeight / config.length;
-    const scale = Math.min(scaleX, scaleY, 1); // מקסימום קנה מידה 1:1
+    // Initial drawing data
+    drawingDataRef.current = {
+      elements: [],
+      pixelsPerCm: 10,
+      frameColor: 'green',
+      shadingConfig: {
+        enabled: true,
+        shadingDirection: 'width',
+        spacing: 20,
+        color: 'red',
+        shadingProfile: { width: 2, height: 5 },
+        divisionEnabled: true,
+        divisionDirection: 'length',
+        divisionSpacing: 30,
+        divisionColor: 'blue',
+        divisionProfile: { width: 3, height: 8 }
+      }
+    };
 
-    // מיקום מרכזי
-    const scaledWidth = config.width * scale;
-    const scaledLength = config.length * scale;
-    const startX = (canvas.width - scaledWidth) / 2;
-    const startY = (canvas.height - scaledLength) / 2;
-
-    // רקע
-    ctx.fillStyle = '#f8f9fa';
+    // Example drawing
+    ctx.fillStyle = 'lightgrey';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // משבצות רקע (רשת)
-    ctx.strokeStyle = '#e9ecef';
-    ctx.lineWidth = 1;
-    const gridSize = 20;
-    for (let x = 0; x <= canvas.width; x += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
-    }
-    for (let y = 0; y <= canvas.height; y += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
-    }
+    // Notify parent component
+    onDrawingChange(drawingDataRef.current);
 
-    // מסגרת הפרגולה
-    ctx.strokeStyle = '#1f2937';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(startX, startY, scaledWidth, scaledLength);
+  }, [config, onDrawingChange]);
 
-    // צללה למסגרת
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-    ctx.fillRect(startX + 3, startY + 3, scaledWidth, scaledLength);
+  const handleExport = () => {
+    if (!canvasRef.current) return;
 
-    // מילוי פנימי של המסגרת
-    ctx.fillStyle = 'rgba(59, 130, 246, 0.05)';
-    ctx.fillRect(startX, startY, scaledWidth, scaledLength);
+    const canvas = canvasRef.current;
+    const dataURL = canvas.toDataURL('image/png');
 
-    // קורות הצללה
-    ctx.strokeStyle = '#f97316';
-    ctx.lineWidth = 3;
-    
-    const numBeams = Math.floor(config.width / config.beamSpacing) + 1;
-    const actualSpacing = config.width / (numBeams - 1);
+    // Create a temporary link element
+    const link = document.createElement('a');
+    link.href = dataURL;
+    link.download = 'pergola_design.png'; // Set the filename
+    document.body.appendChild(link);
 
-    for (let i = 0; i < numBeams; i++) {
-      const x = startX + (i * actualSpacing * scale);
-      
-      // קורה
-      ctx.beginPath();
-      ctx.moveTo(x, startY);
-      ctx.lineTo(x, startY + scaledLength);
-      ctx.stroke();
+    // Programmatically click the link to trigger the download
+    link.click();
 
-      // צללה לקורה
-      ctx.strokeStyle = 'rgba(249, 115, 22, 0.3)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x + 2, startY);
-      ctx.lineTo(x + 2, startY + scaledLength);
-      ctx.stroke();
-      
-      ctx.strokeStyle = '#f97316';
-      ctx.lineWidth = 3;
-    }
-
-    // מידות וחץ מדידה - רוחב
-    ctx.fillStyle = '#374151';
-    ctx.font = '12px Arial';
-    ctx.textAlign = 'center';
-    
-    // חץ עליון - רוחב
-    const arrowY = startY - 30;
-    drawArrow(ctx, startX, arrowY, startX + scaledWidth, arrowY);
-    ctx.fillText(`${config.width} ס״מ`, startX + scaledWidth / 2, arrowY - 8);
-
-    // חץ צדדי - אורך
-    const arrowX = startX + scaledWidth + 30;
-    drawArrow(ctx, arrowX, startY, arrowX, startY + scaledLength);
-    ctx.save();
-    ctx.translate(arrowX + 15, startY + scaledLength / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = 'center';
-    ctx.fillText(`${config.length} ס״מ`, 0, 0);
-    ctx.restore();
-
-    // כותרת
-    ctx.fillStyle = '#1f2937';
-    ctx.font = 'bold 16px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`פרגולה ${config.width}×${config.length} ס״מ`, canvas.width / 2, 25);
-    
-    // פרטים נוספים
-    ctx.font = '12px Arial';
-    ctx.fillText(`${numBeams} קורות | מרווח ${config.beamSpacing} ס״מ | מסגרת ${config.profile_frame}`, canvas.width / 2, 45);
-
-  }, [config]);
-
-  // פונקציה לציור חץ
-  const drawArrow = (ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) => {
-    const arrowLength = 8;
-    const angle = Math.atan2(y2 - y1, x2 - x1);
-
-    // קו מרכזי
-    ctx.strokeStyle = '#374151';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-
-    // חץ התחלה
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x1 + arrowLength * Math.cos(angle - Math.PI / 6), y1 + arrowLength * Math.sin(angle - Math.PI / 6));
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x1 + arrowLength * Math.cos(angle + Math.PI / 6), y1 + arrowLength * Math.sin(angle + Math.PI / 6));
-    ctx.stroke();
-
-    // חץ סיום
-    ctx.beginPath();
-    ctx.moveTo(x2, y2);
-    ctx.lineTo(x2 - arrowLength * Math.cos(angle - Math.PI / 6), y2 - arrowLength * Math.sin(angle - Math.PI / 6));
-    ctx.moveTo(x2, y2);
-    ctx.lineTo(x2 - arrowLength * Math.cos(angle + Math.PI / 6), y2 - arrowLength * Math.sin(angle + Math.PI / 6));
-    ctx.stroke();
+    // Remove the link from the document
+    document.body.removeChild(link);
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-white rounded-lg border">
-      <canvas
-        ref={canvasRef}
-        width={800}
-        height={600}
-        className="max-w-full max-h-full border rounded-lg shadow-sm"
-        style={{ background: 'white' }}
-      />
+    <div>
+      <canvas ref={canvasRef} />
+      <Button onClick={handleExport}>Export to PNG</Button>
     </div>
   );
 };

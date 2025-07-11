@@ -1,3 +1,4 @@
+
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid, PerspectiveCamera } from '@react-three/drei';
 import { Model3D, Mesh3D } from '@/utils/3dModelGenerator';
@@ -12,6 +13,12 @@ interface Model3DViewerProps {
 // Enhanced mesh component with better geometry handling
 const Mesh3DComponent = ({ mesh }: { mesh: Mesh3D }) => {
   const { geometry, position, rotation, color, material, type } = mesh;
+  
+  // Add null checks for geometry
+  if (!geometry || typeof geometry.width === 'undefined' || typeof geometry.height === 'undefined' || typeof geometry.depth === 'undefined') {
+    console.warn('Invalid geometry data:', geometry);
+    return null;
+  }
   
   const threeRotation: [number, number, number] = [rotation.x, rotation.y, rotation.z];
   const threePosition: [number, number, number] = [position.x, position.y, position.z];
@@ -61,6 +68,12 @@ const Mesh3DComponent = ({ mesh }: { mesh: Mesh3D }) => {
 };
 
 const Scene = ({ model }: { model: Model3D }) => {
+  // Add null checks for model and its properties
+  if (!model || !model.boundingBox || !model.metadata || !model.metadata.dimensions) {
+    console.warn('Invalid model data:', model);
+    return null;
+  }
+
   // Calculate optimal camera positioning based on model dimensions
   const bounds = model.boundingBox;
   const center = {
@@ -161,8 +174,8 @@ const Scene = ({ model }: { model: Model3D }) => {
         fadeStrength={0.8}
       />
       
-      {/* Render all pergola components */}
-      {model.meshes.map((mesh) => (
+      {/* Render all pergola components with null checks */}
+      {model.meshes && model.meshes.map((mesh) => (
         <Mesh3DComponent key={mesh.id} mesh={mesh} />
       ))}
       
@@ -189,7 +202,7 @@ const Scene = ({ model }: { model: Model3D }) => {
 };
 
 export const Model3DViewer = ({ model, width = 800, height = 600 }: Model3DViewerProps) => {
-  if (!model || model.meshes.length === 0) {
+  if (!model || !model.meshes || model.meshes.length === 0) {
     return (
       <div 
         className="border rounded-lg bg-gray-50 flex items-center justify-center text-gray-500"
@@ -229,7 +242,7 @@ export const Model3DViewer = ({ model, width = 800, height = 600 }: Model3DViewe
         רכיבי פרגולה: {model.meshes.filter(m => m.type === 'frame_beam').length} קורות מסגרת | 
         {model.meshes.filter(m => m.type === 'shading_slat').length} רצועות הצללה | 
         {model.meshes.filter(m => m.type === 'column').length} עמודים |
-        מימדים: {model.metadata.dimensions.width.toFixed(0)}×{model.metadata.dimensions.depth.toFixed(0)}×{model.metadata.dimensions.height.toFixed(0)} ס"מ
+        מימדים: {model.metadata?.dimensions ? `${model.metadata.dimensions.width.toFixed(0)}×${model.metadata.dimensions.depth.toFixed(0)}×${model.metadata.dimensions.height.toFixed(0)} ס"מ` : 'לא זמין'}
       </div>
     </div>
   );
