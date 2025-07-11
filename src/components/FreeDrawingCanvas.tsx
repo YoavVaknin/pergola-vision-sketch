@@ -1132,11 +1132,6 @@ export const FreeDrawingCanvas = () => {
             onConfigChange={updateAccessoryConfig}
             accessoryCount={accessoryCount}
           />
-          
-          <ShadingConfigComponent
-            config={shadingConfig}
-            onConfigChange={updateShadingConfig}
-          />
 
           <div className="p-4 bg-white rounded-lg shadow-sm border">
             <h4 className="font-semibold mb-3 text-sm">הגדרות מדידה</h4>
@@ -1194,6 +1189,14 @@ export const FreeDrawingCanvas = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Pergola Settings - Below Canvas */}
+      <div className="mt-4">
+        <ShadingConfigComponent
+          config={shadingConfig}
+          onConfigChange={updateShadingConfig}
+        />
       </div>
     </div>
   );
