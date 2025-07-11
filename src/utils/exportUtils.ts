@@ -1,6 +1,21 @@
 import jsPDF from 'jspdf';
 import { PergolaConfig } from '@/types/pergolaConfig';
 
+export interface DrawingData {
+  elements: any[];
+  pixelsPerCm: number;
+  frameColor: string;
+  shadingConfig: any;
+}
+
+export const exportDrawingAsJSON = (drawingData: DrawingData): string => {
+  return JSON.stringify(drawingData, null, 2);
+};
+
+export const importDrawingFromJSON = (json: string): DrawingData => {
+  return JSON.parse(json);
+};
+
 export const exportToPDF = (drawingData: any, pergolaConfig: PergolaConfig) => {
   const pdf = new jsPDF({
     orientation: 'landscape',

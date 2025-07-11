@@ -4,7 +4,7 @@ import { DrawingData, generate3DModelFromDrawing } from '@/utils/3dModelGenerato
 import { Point, PergolaElementType } from '@/types/pergola';
 import { useCanvasZoom } from '@/hooks/useCanvasZoom';
 import { Button } from '@/components/ui/button';
-import { Save, RefreshCw, Download, Upload, Redo, Undo } from 'lucide-react';
+import { Save, RefreshCw, Download, Upload, Redo, Undo, Plus, Minus, Move } from 'lucide-react';
 import { exportDrawingAsJSON, importDrawingFromJSON } from '@/utils/exportUtils';
 import { useToast } from "@/components/ui/use-toast"
 import { Model3DViewer } from './Model3DViewer';
@@ -14,9 +14,9 @@ interface InteractivePergolaCanvasProps {
   onDrawingChange: (drawingData: DrawingData) => void;
 }
 
-const styles = {
+const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    position: 'relative',
+    position: 'relative' as const,
     width: '100%',
     height: '100%',
     minHeight: '500px',
@@ -25,16 +25,16 @@ const styles = {
     cursor: 'crosshair'
   },
   canvas: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: '0',
     left: '0',
     width: '100%',
     height: '100%',
-    objectFit: 'contain',
+    objectFit: 'contain' as const,
     cursor: 'crosshair'
   },
   toolbar: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: '10px',
     left: '10px',
     zIndex: 10,
@@ -65,7 +65,9 @@ const InteractivePergolaCanvas: React.FC<InteractivePergolaCanvasProps> = ({ per
     divisionSpacing: 40,
     divisionColor: '#999999',
     divisionProfile: { width: 8, height: 3 },
-    frameProfile: { width: 10, height: 5 }
+    frameProfile: { width: 10, height: 5 },
+    direction: 0,
+    pergolaModel: 'bottom_shading' as 'bottom_shading' | 'top_shading' | 't_model'
   });
   const [history, setHistory] = useState<PergolaElementType[][]>([[]]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -169,8 +171,9 @@ const InteractivePergolaCanvas: React.FC<InteractivePergolaCanvasProps> = ({ per
     setDrawing(prev => {
       const newFrame = {
         id: `frame_${Date.now()}`,
-        type: 'frame',
-        points: [startPoint]
+        type: 'frame' as const,
+        points: [startPoint],
+        closed: false
       };
       return [...prev, newFrame];
     });
@@ -275,13 +278,13 @@ const InteractivePergolaCanvas: React.FC<InteractivePergolaCanvasProps> = ({ per
     <div style={styles.container}>
       <div style={styles.toolbar}>
         <Button size="icon" onClick={zoomIn} aria-label="Zoom In">
-          <PlusCircle className="h-4 w-4" />
+          <Plus className="h-4 w-4" />
         </Button>
         <Button size="icon" onClick={zoomOut} aria-label="Zoom Out">
-          <PlusCircle className="h-4 w-4 rotate-180" />
+          <Minus className="h-4 w-4" />
         </Button>
-        <Button size="icon" onClick={pan} aria-label="Pan">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-move"><path d="M5 9V5H9"/><path d="M15 9V5h4"/><path d="M5 15H9v4"/><path d="M15 15h4v4"/><path d="M9 15H5"/><path d="M15 9h-4"/><path d="M9 9H5"/><path d="M15 15h-4"/></svg>
+        <Button size="icon" onClick={() => {}} aria-label="Pan">
+          <Move className="h-4 w-4" />
         </Button>
         <Button size="icon" onClick={handleUndo} disabled={historyIndex <= 0} aria-label="Undo">
           <Undo className="h-4 w-4" />
