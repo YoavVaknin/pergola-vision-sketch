@@ -16,6 +16,8 @@ import { Generate3DButton } from './Generate3DButton';
 import { Model3DViewer } from './Model3DViewer';
 import { Button } from '@/components/ui/button';
 
+import { use3DModel } from '@/hooks/use3DModel';
+
 export const FreeDrawingCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -84,6 +86,9 @@ export const FreeDrawingCanvas = () => {
     setHoveredAccessory
   } = usePergolaAccessories();
 
+  // 3D Model generation
+  const { currentModel, generateModel } = use3DModel();
+
   // Canvas zoom and pan functionality
   const canvasTransform = useCanvasZoom(canvasRef, 1, 0.1, 10);
 
@@ -105,6 +110,16 @@ export const FreeDrawingCanvas = () => {
     const defaultPosition = getDefaultPosition(canvas.width, canvas.height);
     addAccessory(type, defaultPosition);
   }, [addAccessory, getDefaultPosition]);
+
+  // Auto-generate 3D model when elements change
+  useEffect(() => {
+    if (elements.length > 0) {
+      const hasCompleteFrame = elements.some(el => el.type === 'frame');
+      if (hasCompleteFrame) {
+        generateModel(elements, measurementConfig.pixelsPerCm, accessoryConfig.frameColor, shadingConfig);
+      }
+    }
+  }, [elements, measurementConfig.pixelsPerCm, accessoryConfig.frameColor, shadingConfig, generateModel]);
 
   // Fixed coordinate transformation function
   const getCanvasPoint = useCallback((clientX: number, clientY: number): Point => {
@@ -1169,6 +1184,23 @@ export const FreeDrawingCanvas = () => {
             <p>תאורה: {accessoryCount.light || 0}</p>
             <p>מאווררים: {accessoryCount.fan || 0}</p>
             <p>זום: {Math.round(canvasTransform.scale * 100)}%</p>
+          </div>
+        </div>
+
+        {/* 3D Preview */}
+        <div className="p-4 bg-muted rounded-lg mt-4">
+          <h4 className="font-semibold mb-2">תצוגה מקדימה תלת-ממדית</h4>
+          <div className="relative h-64 bg-white rounded-lg overflow-hidden border">
+            <Model3DViewer 
+              model={currentModel} 
+              width={undefined} 
+              height={undefined}
+            />
+            {!currentModel && (
+              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+                צייר מסגרת כדי לראות הדמיה תלת-ממדית
+              </div>
+            )}
           </div>
         </div>
       </div>
