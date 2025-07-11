@@ -22,20 +22,20 @@ const Index = () => {
 
         {/* כרטיסי פעולות */}
         <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-          {/* יצירת שרטוט חדש */}
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/draw')}>
+          {/* יצירת הדמיה חדשה */}
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/create')}>
             <CardHeader className="text-center">
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <PlusCircle className="w-8 h-8 text-primary" />
               </div>
-              <CardTitle className="text-xl">שרטוט פרגולה חדשה</CardTitle>
+              <CardTitle className="text-xl">יצירת הדמיה חדשה</CardTitle>
               <CardDescription>
-                התחל בשרטוט פרגולה חדשה עם כלי השרטוט החופשי שלנו
+                התחל בעיצוב פרגולה חדשה עם כלי השרטוט האינטראקטיביים שלנו
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full" onClick={() => navigate('/draw')}>
-                התחל שרטוט
+              <Button className="w-full" onClick={() => navigate('/create')}>
+                התחל עכשיו
               </Button>
             </CardContent>
           </Card>
