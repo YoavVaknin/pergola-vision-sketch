@@ -112,8 +112,14 @@ export const FreeDrawingCanvas = () => {
     if (!canvas) return { x: 0, y: 0 };
     
     const rect = canvas.getBoundingClientRect();
-    const screenX = clientX - rect.left;
-    const screenY = clientY - rect.top;
+    
+    // Calculate the proper scaling ratios to account for canvas scaling
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    // Get screen coordinates relative to canvas element
+    const screenX = (clientX - rect.left) * scaleX;
+    const screenY = (clientY - rect.top) * scaleY;
     
     // Transform screen coordinates to canvas coordinates accounting for zoom and pan
     return canvasTransform.inverseTransformPoint(screenX, screenY);
