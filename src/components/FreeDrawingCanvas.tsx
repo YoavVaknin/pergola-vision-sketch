@@ -11,11 +11,10 @@ import { AccessoriesMenu } from './AccessoriesMenu';
 import { LengthInput } from './LengthInput';
 import { DimensionEditor } from './DimensionEditor';
 import { getMidpoint, getPolygonCentroid, formatMeasurement, formatArea, calculateRealDistance } from '@/utils/measurementUtils';
-import { Lightbulb, Fan, Box, ZoomIn, ZoomOut, RotateCcw, Eye } from 'lucide-react';
+import { Lightbulb, Fan, Box, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Generate3DButton } from './Generate3DButton';
 import { Model3DViewer } from './Model3DViewer';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export const FreeDrawingCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -29,7 +28,6 @@ export const FreeDrawingCanvas = () => {
   const [alignmentGuides, setAlignmentGuides] = useState<AlignmentGuide[]>([]);
   const [alignmentSnapPoint, setAlignmentSnapPoint] = useState<Point | null>(null);
   const [hoveredCorner, setHoveredCorner] = useState<{ elementId: string; cornerIndex: number } | null>(null);
-  const [is3DDialogOpen, setIs3DDialogOpen] = useState(false);
   
   const {
     elements,
@@ -1104,59 +1102,39 @@ export const FreeDrawingCanvas = () => {
         </div>
       </div>
 
-      {/* Right side - Settings and 3D Dialog */}
-      <div className="flex-1 flex flex-col p-6 max-w-md mx-auto">
-        <div className="space-y-4">
-          {/* 3D Visualization Dialog Trigger */}
-          <div className="border rounded-lg shadow-sm bg-white p-4">
+      {/* Right side - 3D visualization */}
+      <div className="flex-1 flex flex-col p-6">
+        {/* 3D model viewing area - vertical format */}
+        <div className="flex-1 max-w-md mx-auto">
+          <div className="border rounded-lg shadow-sm bg-white p-4 h-full flex flex-col">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Box className="w-5 h-5" />
               הדמיה תלת־ממדית מתקדמת
             </h3>
             
-            <Dialog open={is3DDialogOpen} onOpenChange={setIs3DDialogOpen}>
-              <DialogTrigger asChild>
-                <Button 
-                  className="w-full" 
-                  variant="outline"
-                  disabled={elements.length === 0}
-                >
-                  <Eye className="w-4 h-4 mr-2" />
-                  הצג הדמיה תלת־ממדית
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl w-full h-[80vh]">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Box className="w-5 h-5" />
-                    הדמיה תלת־ממדית מתקדמת
-                  </DialogTitle>
-                </DialogHeader>
-                
-                <div className="flex flex-col h-full">
-                  <div className="mb-4">
-                    <Generate3DButton
-                      elements={elements}
-                      pixelsPerCm={measurementConfig.pixelsPerCm}
-                      frameColor={accessoryConfig.frameColor}
-                      shadingConfig={shadingConfig}
-                      disabled={elements.length === 0}
-                    />
-                  </div>
-                  
-                  {/* Large 3D viewer */}
-                  <div className="flex-1 min-h-0">
-                    <Model3DViewer 
-                      model={null} 
-                      width={undefined} 
-                      height={undefined}
-                    />
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <div className="mb-4">
+              <Generate3DButton
+                elements={elements}
+                pixelsPerCm={measurementConfig.pixelsPerCm}
+                frameColor={accessoryConfig.frameColor}
+                shadingConfig={shadingConfig}
+                disabled={elements.length === 0}
+              />
+            </div>
+            
+            {/* Large 3D viewer in vertical format */}
+            <div className="flex-1 min-h-0">
+              <Model3DViewer 
+                model={null} 
+                width={undefined} 
+                height={undefined}
+              />
+            </div>
           </div>
+        </div>
 
+        {/* Settings below the 3D viewer */}
+        <div className="mt-6 max-w-md mx-auto w-full space-y-4">
           <AccessoriesMenu
             onAddAccessory={handleAddAccessory}
             accessoryConfig={accessoryConfig}
