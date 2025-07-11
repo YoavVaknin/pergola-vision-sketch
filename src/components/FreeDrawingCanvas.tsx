@@ -1085,25 +1085,7 @@ export const FreeDrawingCanvas = () => {
           </div>
         </div>
 
-        {/* Statistics */}
-        <div className="p-4 bg-muted rounded-lg">
-          <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
-          <div className="text-sm space-y-1">
-            <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
-            <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
-            <p>הצללה: {elements.filter(e => e.type === 'shading').length}</p>
-            <p>חלוקה: {elements.filter(e => e.type === 'division').length}</p>
-            <p>עמודים: {elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</p>
-            <p>קירות: {elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</p>
-            <p>תאורה: {accessoryCount.light || 0}</p>
-            <p>מאווררים: {accessoryCount.fan || 0}</p>
-            <p>זום: {Math.round(canvasTransform.scale * 100)}%</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Right side - Settings and Controls */}
-      <div className="flex-1 flex flex-col p-6 max-w-md">
+        {/* Pergola Settings and Accessories */}
         <div className="space-y-4">
           <AccessoriesMenu
             onAddAccessory={handleAddAccessory}
@@ -1171,6 +1153,22 @@ export const FreeDrawingCanvas = () => {
                 />
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Statistics */}
+        <div className="p-4 bg-muted rounded-lg mt-4">
+          <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
+          <div className="text-sm space-y-1">
+            <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
+            <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
+            <p>הצללה: {elements.filter(e => e.type === 'shading').length}</p>
+            <p>חלוקה: {elements.filter(e => e.type === 'division').length}</p>
+            <p>עמודים: {elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</p>
+            <p>קירות: {elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</p>
+            <p>תאורה: {accessoryCount.light || 0}</p>
+            <p>מאווררים: {accessoryCount.fan || 0}</p>
+            <p>זום: {Math.round(canvasTransform.scale * 100)}%</p>
           </div>
         </div>
       </div>
