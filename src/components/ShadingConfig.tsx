@@ -15,20 +15,20 @@ interface ShadingConfigProps {
 
 export const ShadingConfigComponent: React.FC<ShadingConfigProps> = ({ config, onConfigChange }) => {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">הגדרות פרגולה</CardTitle>
+    <Card className="w-full">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-xl font-bold text-primary">הגדרות פרגולה</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         {/* Pergola Model Selection */}
-        <div className="space-y-2">
-          <Label>דגם פרגולה</Label>
+        <div className="space-y-3">
+          <Label className="text-base font-semibold">דגם פרגולה</Label>
           <Select
             value={config.pergolaModel}
             onValueChange={(value: any) => onConfigChange({ pergolaModel: value })}
           >
-            <SelectTrigger>
-              <SelectValue />
+            <SelectTrigger className="h-11">
+              <SelectValue placeholder="בחר דגם פרגולה" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="bottom_shading">הצללה תחתונה</SelectItem>
@@ -38,14 +38,14 @@ export const ShadingConfigComponent: React.FC<ShadingConfigProps> = ({ config, o
           </Select>
         </div>
 
-        <Separator />
+        <Separator className="my-4" />
 
         {/* Frame Profile */}
-        <div className="space-y-3">
-          <Label className="font-medium">פרופיל מסגרת</Label>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label className="text-sm">רוחב (ס"מ)</Label>
+        <div className="space-y-4">
+          <Label className="text-base font-semibold">פרופיל מסגרת</Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">רוחב (ס"מ)</Label>
               <Input
                 type="number"
                 value={config.frameProfile.width}
@@ -53,11 +53,13 @@ export const ShadingConfigComponent: React.FC<ShadingConfigProps> = ({ config, o
                   frameProfile: { ...config.frameProfile, width: Number(e.target.value) }
                 })}
                 min="1"
-                step="0.1"
+                max="50"
+                step="0.5"
+                className="h-10"
               />
             </div>
-            <div>
-              <Label className="text-sm">גובה (ס"מ)</Label>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">גובה (ס"מ)</Label>
               <Input
                 type="number"
                 value={config.frameProfile.height}
@@ -65,16 +67,20 @@ export const ShadingConfigComponent: React.FC<ShadingConfigProps> = ({ config, o
                   frameProfile: { ...config.frameProfile, height: Number(e.target.value) }
                 })}
                 min="1"
-                step="0.1"
+                max="50"
+                step="0.5"
+                className="h-10"
               />
             </div>
           </div>
         </div>
 
+        <Separator className="my-4" />
+
         {/* Division Beams */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label className="font-medium">קורות חלוקה</Label>
+            <Label className="text-base font-semibold">קורות חלוקה</Label>
             <Switch
               checked={config.divisionEnabled}
               onCheckedChange={(checked) => onConfigChange({ divisionEnabled: checked })}
@@ -82,10 +88,10 @@ export const ShadingConfigComponent: React.FC<ShadingConfigProps> = ({ config, o
           </div>
           
           {config.divisionEnabled && (
-            <>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-sm">רוחב (ס"מ)</Label>
+            <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">רוחב (ס"מ)</Label>
                   <Input
                     type="number"
                     value={config.divisionProfile.width}
@@ -93,11 +99,13 @@ export const ShadingConfigComponent: React.FC<ShadingConfigProps> = ({ config, o
                       divisionProfile: { ...config.divisionProfile, width: Number(e.target.value) }
                     })}
                     min="1"
-                    step="0.1"
+                    max="30"
+                    step="0.5"
+                    className="h-10"
                   />
                 </div>
-                <div>
-                  <Label className="text-sm">גובה (ס"מ)</Label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">גובה (ס"מ)</Label>
                   <Input
                     type="number"
                     value={config.divisionProfile.height}
@@ -105,55 +113,71 @@ export const ShadingConfigComponent: React.FC<ShadingConfigProps> = ({ config, o
                       divisionProfile: { ...config.divisionProfile, height: Number(e.target.value) }
                     })}
                     min="1"
-                    step="0.1"
+                    max="30"
+                    step="0.5"
+                    className="h-10"
                   />
                 </div>
               </div>
               
-              <div>
-                <Label className="text-sm">מרווח (ס"מ)</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">מרווח בין קורות (ס"מ)</Label>
                 <Input
                   type="number"
                   value={config.divisionSpacing}
                   onChange={(e) => onConfigChange({ divisionSpacing: Number(e.target.value) })}
                   min="10"
-                  step="1"
+                  max="200"
+                  step="5"
+                  className="h-10"
                 />
               </div>
               
-              <div>
-                <Label className="text-sm">כיוון</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">כיוון הקורות</Label>
                 <Select
                   value={config.divisionDirection}
                   onValueChange={(value: any) => onConfigChange({ divisionDirection: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="width">לרוחב</SelectItem>
                     <SelectItem value="length">לאורך</SelectItem>
-                    <SelectItem value="both">שניהם</SelectItem>
+                    <SelectItem value="both">שני הכיוונים</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
-              <div>
-                <Label className="text-sm">צבע</Label>
-                <Input
-                  type="color"
-                  value={config.divisionColor}
-                  onChange={(e) => onConfigChange({ divisionColor: e.target.value })}
-                />
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">צבע הקורות</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={config.divisionColor}
+                    onChange={(e) => onConfigChange({ divisionColor: e.target.value })}
+                    className="w-16 h-10 p-1"
+                  />
+                  <Input
+                    type="text"
+                    value={config.divisionColor}
+                    onChange={(e) => onConfigChange({ divisionColor: e.target.value })}
+                    className="h-10"
+                    placeholder="#000000"
+                  />
+                </div>
               </div>
-            </>
+            </div>
           )}
         </div>
 
+        <Separator className="my-4" />
+
         {/* Shading Slats */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label className="font-medium">קורות הצללה</Label>
+            <Label className="text-base font-semibold">קורות הצללה</Label>
             <Switch
               checked={config.enabled}
               onCheckedChange={(checked) => onConfigChange({ enabled: checked })}
@@ -161,10 +185,10 @@ export const ShadingConfigComponent: React.FC<ShadingConfigProps> = ({ config, o
           </div>
           
           {config.enabled && (
-            <>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-sm">רוחב (ס"מ)</Label>
+            <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">רוחב (ס"מ)</Label>
                   <Input
                     type="number"
                     value={config.shadingProfile.width}
@@ -172,11 +196,13 @@ export const ShadingConfigComponent: React.FC<ShadingConfigProps> = ({ config, o
                       shadingProfile: { ...config.shadingProfile, width: Number(e.target.value) }
                     })}
                     min="1"
-                    step="0.1"
+                    max="20"
+                    step="0.5"
+                    className="h-10"
                   />
                 </div>
-                <div>
-                  <Label className="text-sm">גובה (ס"מ)</Label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">גובה (ס"מ)</Label>
                   <Input
                     type="number"
                     value={config.shadingProfile.height}
@@ -184,29 +210,33 @@ export const ShadingConfigComponent: React.FC<ShadingConfigProps> = ({ config, o
                       shadingProfile: { ...config.shadingProfile, height: Number(e.target.value) }
                     })}
                     min="1"
-                    step="0.1"
+                    max="20"
+                    step="0.5"
+                    className="h-10"
                   />
                 </div>
               </div>
               
-              <div>
-                <Label className="text-sm">מרווח (ס"מ)</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">מרווח בין קורות (ס"מ)</Label>
                 <Input
                   type="number"
                   value={config.spacing}
                   onChange={(e) => onConfigChange({ spacing: Number(e.target.value) })}
                   min="1"
+                  max="100"
                   step="1"
+                  className="h-10"
                 />
               </div>
               
-              <div>
-                <Label className="text-sm">כיוון</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">כיוון הקורות</Label>
                 <Select
                   value={config.shadingDirection}
                   onValueChange={(value: any) => onConfigChange({ shadingDirection: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -216,15 +246,25 @@ export const ShadingConfigComponent: React.FC<ShadingConfigProps> = ({ config, o
                 </Select>
               </div>
               
-              <div>
-                <Label className="text-sm">צבע</Label>
-                <Input
-                  type="color"
-                  value={config.color}
-                  onChange={(e) => onConfigChange({ color: e.target.value })}
-                />
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">צבע הקורות</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={config.color}
+                    onChange={(e) => onConfigChange({ color: e.target.value })}
+                    className="w-16 h-10 p-1"
+                  />
+                  <Input
+                    type="text"
+                    value={config.color}
+                    onChange={(e) => onConfigChange({ color: e.target.value })}
+                    className="h-10"
+                    placeholder="#000000"
+                  />
+                </div>
               </div>
-            </>
+            </div>
           )}
         </div>
       </CardContent>
