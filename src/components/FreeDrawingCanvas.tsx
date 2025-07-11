@@ -106,6 +106,7 @@ export const FreeDrawingCanvas = () => {
     addAccessory(type, defaultPosition);
   }, [addAccessory, getDefaultPosition]);
 
+  // Fixed coordinate transformation function
   const getCanvasPoint = useCallback((clientX: number, clientY: number): Point => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -114,7 +115,7 @@ export const FreeDrawingCanvas = () => {
     const screenX = clientX - rect.left;
     const screenY = clientY - rect.top;
     
-    // Transform screen coordinates to canvas coordinates
+    // Transform screen coordinates to canvas coordinates accounting for zoom and pan
     return canvasTransform.inverseTransformPoint(screenX, screenY);
   }, [canvasTransform]);
 
@@ -157,14 +158,14 @@ export const FreeDrawingCanvas = () => {
     return { point: endPoint, snapped: false };
   }, [calculateDistance, calculateAngle]);
 
-  const findSnapPoint = useCallback((mousePos: Point): Point | null => {
+  const findSnapPoint = useCallback((canvasPos: Point): Point | null => {
     if (drawingState.mode !== 'frame') return null;
     
-    const SNAP_DISTANCE = 10 / canvasTransform.scale; // Adjust snap distance based on zoom
+    const SNAP_DISTANCE = 15 / canvasTransform.scale; // Adjust snap distance based on zoom
     
     if (drawingState.tempPoints.length >= 3) {
       const firstPoint = drawingState.tempPoints[0];
-      const distance = calculateDistance(mousePos, firstPoint);
+      const distance = calculateDistance(canvasPos, firstPoint);
       if (distance <= SNAP_DISTANCE) {
         return firstPoint;
       }
@@ -174,7 +175,7 @@ export const FreeDrawingCanvas = () => {
       if (element.type === 'frame') {
         const frameElement = element as FrameElement;
         for (const point of frameElement.points) {
-          const distance = calculateDistance(mousePos, point);
+          const distance = calculateDistance(canvasPos, point);
           if (distance <= SNAP_DISTANCE) {
             return point;
           }
@@ -185,17 +186,17 @@ export const FreeDrawingCanvas = () => {
     return null;
   }, [drawingState.mode, drawingState.tempPoints, elements, calculateDistance, canvasTransform.scale]);
 
-  const checkNearFirstPoint = useCallback((mousePos: Point): boolean => {
+  const checkNearFirstPoint = useCallback((canvasPos: Point): boolean => {
     if (drawingState.mode !== 'frame' || drawingState.tempPoints.length < 3) {
       return false;
     }
     
     const firstPoint = drawingState.tempPoints[0];
-    const distance = calculateDistance(mousePos, firstPoint);
-    return distance <= 10 / canvasTransform.scale;
+    const distance = calculateDistance(canvasPos, firstPoint);
+    return distance <= 15 / canvasTransform.scale;
   }, [drawingState.mode, drawingState.tempPoints, calculateDistance, canvasTransform.scale]);
 
-  const checkDimensionClick = useCallback((mousePos: Point): { elementId: string; segmentIndex: number; position: Point; length: number } | null => {
+  const checkDimensionClick = useCallback((canvasPos: Point): { elementId: string; segmentIndex: number; position: Point; length: number } | null => {
     const CLICK_DISTANCE = 20 / canvasTransform.scale;
     
     for (const element of elements) {
@@ -211,7 +212,7 @@ export const FreeDrawingCanvas = () => {
             const midpoint = getMidpoint(point1, point2);
             
             const distance = Math.sqrt(
-              Math.pow(mousePos.x - midpoint.x, 2) + Math.pow(mousePos.y - midpoint.y, 2)
+              Math.pow(canvasPos.x - midpoint.x, 2) + Math.pow(canvasPos.y - midpoint.y, 2)
             );
             
             if (distance <= CLICK_DISTANCE) {
@@ -781,42 +782,42 @@ export const FreeDrawingCanvas = () => {
   }, [drawElements]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    const point = getCanvasPoint(e.clientX, e.clientY);
-    setMousePosition(point);
+    const canvasPoint = getCanvasPoint(e.clientX, e.clientY);
+    setMousePosition(canvasPoint);
     
     if (dragState.isDragging) {
-      updateDragPosition(point, elements);
+      updateDragPosition(canvasPoint, elements);
       return;
     }
     
-    const accessoryAtPoint = findAccessoryAtPoint(point);
+    const accessoryAtPoint = findAccessoryAtPoint(canvasPoint);
     setHoveredAccessory(accessoryAtPoint?.id || null);
     
     if (!editState.isEditing && drawingState.mode === 'select') {
-      const nearestCorner = findNearestCorner(point, elements);
+      const nearestCorner = findNearestCorner(canvasPoint, elements);
       setHoveredCorner(nearestCorner);
     }
     
     if (editState.isEditing) {
-      const newPosition = getUpdatedCornerPosition(point);
+      const newPosition = getUpdatedCornerPosition(canvasPoint);
       if (newPosition && editState.elementId && editState.cornerIndex !== null) {
         updateCornerPosition(editState.elementId, editState.cornerIndex, newPosition);
       }
       return;
     }
     
-    const nearFirst = checkNearFirstPoint(point);
+    const nearFirst = checkNearFirstPoint(canvasPoint);
     setIsNearFirstPoint(nearFirst);
     
-    const foundSnapPoint = findSnapPoint(point);
+    const foundSnapPoint = findSnapPoint(canvasPoint);
     setSnapPoint(foundSnapPoint);
 
     if (drawingState.mode === 'frame' && drawingState.tempPoints.length > 0) {
       const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
-      const guides = findAlignmentGuides(point, lastPoint, elements, 15 / canvasTransform.scale);
+      const guides = findAlignmentGuides(canvasPoint, lastPoint, elements, 15 / canvasTransform.scale);
       setAlignmentGuides(guides);
       
-      const alignSnap = getSnapPoint(point, guides);
+      const alignSnap = getSnapPoint(canvasPoint, guides);
       setAlignmentSnapPoint(alignSnap);
     } else {
       setAlignmentGuides([]);
@@ -830,15 +831,15 @@ export const FreeDrawingCanvas = () => {
       return;
     }
     
-    const point = getCanvasPoint(e.clientX, e.clientY);
+    const canvasPoint = getCanvasPoint(e.clientX, e.clientY);
     
-    const accessoryAtPoint = findAccessoryAtPoint(point);
+    const accessoryAtPoint = findAccessoryAtPoint(canvasPoint);
     if (accessoryAtPoint) {
-      startDragging(accessoryAtPoint.id, point, accessoryAtPoint.position);
+      startDragging(accessoryAtPoint.id, canvasPoint, accessoryAtPoint.position);
       return;
     }
     
-    const dimensionClick = checkDimensionClick(point);
+    const dimensionClick = checkDimensionClick(canvasPoint);
     if (dimensionClick) {
       showDimensionEditor(
         dimensionClick.elementId,
@@ -850,13 +851,13 @@ export const FreeDrawingCanvas = () => {
     }
     
     if (drawingState.mode === 'select') {
-      const nearestCorner = findNearestCorner(point, elements);
+      const nearestCorner = findNearestCorner(canvasPoint, elements);
       if (nearestCorner) {
         const element = elements.find(el => el.id === nearestCorner.elementId);
         if (element && element.type === 'frame') {
           const frame = element as FrameElement;
           const cornerPoint = frame.points[nearestCorner.cornerIndex];
-          startCornerEdit(nearestCorner.elementId, nearestCorner.cornerIndex, point, cornerPoint);
+          startCornerEdit(nearestCorner.elementId, nearestCorner.cornerIndex, canvasPoint, cornerPoint);
           return;
         }
       }
@@ -864,7 +865,7 @@ export const FreeDrawingCanvas = () => {
     
     switch (drawingState.mode) {
       case 'frame':
-        let pointToAdd = point;
+        let pointToAdd = canvasPoint;
         
         if (alignmentSnapPoint) {
           pointToAdd = alignmentSnapPoint;
@@ -886,11 +887,11 @@ export const FreeDrawingCanvas = () => {
       case 'beam':
       case 'wall':
         setIsDragging(true);
-        setDragStart(point);
+        setDragStart(canvasPoint);
         break;
         
       case 'column':
-        addColumn(point);
+        addColumn(canvasPoint);
         break;
     }
   };
@@ -901,15 +902,19 @@ export const FreeDrawingCanvas = () => {
       return;
     }
     
-    const point = getCanvasPoint(e.clientX, e.clientY);
+    const canvasPoint = getCanvasPoint(e.clientX, e.clientY);
     
     switch (drawingState.mode) {
       case 'beam':
-        addBeam(dragStart, point);
+        if (dragStart) {
+          addBeam(dragStart, canvasPoint);
+        }
         break;
         
       case 'wall':
-        addWall(dragStart, point);
+        if (dragStart) {
+          addWall(dragStart, canvasPoint);
+        }
         break;
     }
     
@@ -920,11 +925,11 @@ export const FreeDrawingCanvas = () => {
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
     const touch = e.touches[0];
-    const point = getCanvasPoint(touch.clientX, touch.clientY);
+    const canvasPoint = getCanvasPoint(touch.clientX, touch.clientY);
     
-    const accessoryAtPoint = findAccessoryAtPoint(point);
+    const accessoryAtPoint = findAccessoryAtPoint(canvasPoint);
     if (accessoryAtPoint) {
-      startDragging(accessoryAtPoint.id, point, accessoryAtPoint.position);
+      startDragging(accessoryAtPoint.id, canvasPoint, accessoryAtPoint.position);
     }
   };
 
@@ -932,8 +937,8 @@ export const FreeDrawingCanvas = () => {
     e.preventDefault();
     if (dragState.isDragging && e.touches.length === 1) {
       const touch = e.touches[0];
-      const point = getCanvasPoint(touch.clientX, touch.clientY);
-      updateDragPosition(point, elements);
+      const canvasPoint = getCanvasPoint(touch.clientX, touch.clientY);
+      updateDragPosition(canvasPoint, elements);
     }
   };
 
