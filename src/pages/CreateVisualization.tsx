@@ -41,83 +41,9 @@ const CreateVisualization = () => {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Left Column - Drawing Tools */}
-          <div className="space-y-6">
-            {/* Free Drawing Modal Trigger */}
-            <Dialog open={freeDrawingOpen} onOpenChange={setFreeDrawingOpen}>
-              <DialogTrigger asChild>
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardHeader className="text-center">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Pen className="w-8 h-8 text-green-600" />
-                    </div>
-                    <CardTitle className="text-xl">שרטוט חופשי</CardTitle>
-                    <CardDescription>
-                      שרטט בצורה חופשית את הפרגולה שלך
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button className="w-full">
-                      פתח חלון שרטוט
-                    </Button>
-                  </CardContent>
-                </Card>
-              </DialogTrigger>
-              <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Pen className="w-5 h-5" />
-                    שרטוט חופשי
-                  </DialogTitle>
-                </DialogHeader>
-                  <div className="flex-1 overflow-hidden">
-                    <FreeDrawingCanvas />
-                  </div>
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                  <Button variant="outline" onClick={() => setFreeDrawingOpen(false)}>
-                    סגור
-                  </Button>
-                  <Button onClick={handleSaveDrawing} className="flex items-center gap-2">
-                    <Save className="w-4 h-4" />
-                    שמור שרטוט
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            {/* 3D Model Modal Trigger */}
-            <Dialog open={model3DOpen} onOpenChange={setModel3DOpen}>
-              <DialogTrigger asChild>
-                
-              </DialogTrigger>
-              <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Box className="w-5 h-5" />
-                    מודל תלת־ממדי
-                  </DialogTitle>
-                </DialogHeader>
-                <div className="flex-1 overflow-hidden">
-                  <div className="h-[600px]">
-                    <Model3DViewer model={null} />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                  <Button variant="outline" onClick={() => setModel3DOpen(false)}>
-                    סגור
-                  </Button>
-                  <Button onClick={handleSave3DModel} className="flex items-center gap-2">
-                    <Save className="w-4 h-4" />
-                    שמור מודל
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {/* Right Column - Saved Items */}
-          
+        {/* Free Drawing Canvas - Full Width */}
+        <div className="w-full">
+          <FreeDrawingCanvas />
         </div>
       </div>
     </div>;
