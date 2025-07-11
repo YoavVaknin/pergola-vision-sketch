@@ -1,200 +1,223 @@
-import { useState, useRef } from "react";
-import { Card } from "@/components/ui/card";
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Home, Save, Download, FileText } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { PlusCircle, Pen, Box, ArrowLeft, Settings, Ruler, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PergolaForm } from "@/components/PergolaForm";
-import { InteractivePergolaCanvas } from "@/components/InteractivePergolaCanvas";
-import { usePergola } from "@/hooks/usePergola";
-import { exportCanvasAsPNG, exportAsPDF } from "@/utils/exportUtils";
-
-export interface PergolaConfig {
-  width: number;
-  length: number;
-  beamSpacing: number;
-  beamDirection: number;
-  profile_frame: string;
-  profile_division: string;
-  profile_shading: string;
-  color_frame: string;
-  color_division: string;
-  color_shading: string;
-  columns: number;
-  column_placement: string;
-  wall_front: boolean;
-  wall_back: boolean;
-  wall_left: boolean;
-  wall_right: boolean;
-}
+import { FreeDrawingCanvas } from "@/components/FreeDrawingCanvas";
+import { Model3DViewer } from "@/components/Model3DViewer";
 
 const CreateVisualization = () => {
   const navigate = useNavigate();
-  const { saveDesign } = usePergola();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  
-  const [config, setConfig] = useState<PergolaConfig>({
-    width: 400,
-    length: 300,
-    beamSpacing: 50,
-    beamDirection: 0,
-    profile_frame: "10/5",
-    profile_division: "4/2",
-    profile_shading: "4/2",
-    color_frame: "שחור",
-    color_division: "אפור גרפיט",
-    color_shading: "עץ כהה",
-    columns: 4,
-    column_placement: "corners",
-    wall_front: false,
-    wall_back: false,
-    wall_left: false,
-    wall_right: false
-  });
+  const [freeDrawingOpen, setFreeDrawingOpen] = useState(false);
+  const [model3DOpen, setModel3DOpen] = useState(false);
+  const [savedDrawings, setSavedDrawings] = useState<string[]>([]);
+  const [saved3DModels, setSaved3DModels] = useState<string[]>([]);
 
-  const handleConfigChange = (newConfig: Partial<PergolaConfig>) => {
-    setConfig(prev => ({ ...prev, ...newConfig }));
+  const handleSaveDrawing = () => {
+    // Here you would implement the actual save logic
+    // For now, just add a placeholder
+    setSavedDrawings(prev => [...prev, `שרטוט ${prev.length + 1}`]);
+    setFreeDrawingOpen(false);
   };
 
-  const handleSaveDesign = () => {
-    saveDesign.mutate({
-      width: config.width,
-      height: config.length,
-      profile_frame: config.profile_frame,
-      profile_division: config.profile_division,
-      profile_shading: config.profile_shading,
-      beam_spacing: config.beamSpacing,
-      beam_direction: config.beamDirection,
-      color_frame: config.color_frame,
-      color_division: config.color_division,
-      color_shading: config.color_shading,
-      wall_front: config.wall_front,
-      wall_back: config.wall_back,
-      wall_left: config.wall_left,
-      wall_right: config.wall_right
-    });
-  };
-
-  const handleExportPNG = () => {
-    exportCanvasAsPNG(canvasRef, `pergola-${config.width}x${config.length}`);
-  };
-
-  const handleExportPDF = () => {
-    exportAsPDF(canvasRef, config, `pergola-${config.width}x${config.length}`);
+  const handleSave3DModel = () => {
+    // Here you would implement the actual save logic
+    // For now, just add a placeholder
+    setSaved3DModels(prev => [...prev, `מודל ${prev.length + 1}`]);
+    setModel3DOpen(false);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* כותרת עליונה */}
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => navigate('/')}
-                className="flex items-center gap-2"
-              >
-                <Home className="w-4 h-4" />
-                חזור לדף הבית
-              </Button>
-              <div className="h-6 w-px bg-border"></div>
-              <h1 className="text-2xl font-bold text-foreground">
-                יצירת הדמיה חדשה
-              </h1>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/free-drawing')}
-                className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white border-none hover:from-purple-600 hover:to-pink-600"
-              >
-                <ArrowRight className="w-4 h-4" />
-                שרטוט חופשי
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">שלב 1 מתוך 3</span>
-              <div className="flex gap-1">
-                <div className="w-8 h-2 bg-primary rounded-full"></div>
-                <div className="w-8 h-2 bg-muted rounded-full"></div>
-                <div className="w-8 h-2 bg-muted rounded-full"></div>
-              </div>
-            </div>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              חזור לדף הבית
+            </Button>
+            <div className="h-6 w-px bg-border"></div>
+            <h1 className="text-2xl font-bold text-foreground">
+              עיצוב פרגולה
+            </h1>
           </div>
         </div>
       </div>
 
-      {/* תוכן ראשי */}
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-3 gap-6 h-full">
-          {/* טופס פרמטרים */}
-          <div className="lg:col-span-1">
-            <Card className="p-6 h-fit">
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold mb-2">פרמטרי הפרגולה</h2>
-                <p className="text-sm text-muted-foreground">
-                  הזן את המידות והמפרט של הפרגולה לקבלת הדמיה מדויקת
-                </p>
-              </div>
-              <PergolaForm config={config} onConfigChange={handleConfigChange} />
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Left Column - Parametric Design */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  עיצוב פרמטרי
+                </CardTitle>
+                <CardDescription>
+                  הגדר את המאפיינים הבסיסיים של הפרגולה
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PergolaForm />
+              </CardContent>
             </Card>
-          </div>
 
-          {/* אזור השרטוט */}
-          <div className="lg:col-span-2">
-            <Card className="p-6 h-full">
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-xl font-semibold">תצוגה מקדימה אינטראקטיבית</h2>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleExportPNG}
-                      className="flex items-center gap-2"
-                    >
-                      <Download className="w-4 h-4" />
-                      PNG
+            {/* Free Drawing Modal Trigger */}
+            <Dialog open={freeDrawingOpen} onOpenChange={setFreeDrawingOpen}>
+              <DialogTrigger asChild>
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader className="text-center">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Pen className="w-8 h-8 text-green-600" />
+                    </div>
+                    <CardTitle className="text-xl">שרטוט חופשי</CardTitle>
+                    <CardDescription>
+                      שרטט בצורה חופשית את הפרגולה שלך
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button className="w-full">
+                      פתח חלון שרטוט
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleExportPDF}
-                      className="flex items-center gap-2"
-                    >
-                      <FileText className="w-4 h-4" />
-                      PDF
+                  </CardContent>
+                </Card>
+              </DialogTrigger>
+              <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Pen className="w-5 h-5" />
+                    שרטוט חופשי
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="flex-1 overflow-hidden">
+                  <FreeDrawingCanvas />
+                </div>
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setFreeDrawingOpen(false)}>
+                    סגור
+                  </Button>
+                  <Button onClick={handleSaveDrawing} className="flex items-center gap-2">
+                    <Save className="w-4 h-4" />
+                    שמור שרטוט
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* 3D Model Modal Trigger */}
+            <Dialog open={model3DOpen} onOpenChange={setModel3DOpen}>
+              <DialogTrigger asChild>
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader className="text-center">
+                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Box className="w-8 h-8 text-purple-600" />
+                    </div>
+                    <CardTitle className="text-xl">מודל תלת־ממדי</CardTitle>
+                    <CardDescription>
+                      צור והצג מודל תלת־ממדי של הפרגולה
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button className="w-full">
+                      פתח חלון מודל 3D
                     </Button>
+                  </CardContent>
+                </Card>
+              </DialogTrigger>
+              <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Box className="w-5 h-5" />
+                    מודל תלת־ממדי
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="flex-1 overflow-hidden">
+                  <div className="h-[600px]">
+                    <Model3DViewer model={null} />
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  הדמיה חיה של הפרגולה בהתאם לפרמטרים שהוזנו - מתעדכנת בזמן אמת
-                </p>
-              </div>
-              <InteractivePergolaCanvas ref={canvasRef} config={config} />
-            </Card>
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setModel3DOpen(false)}>
+                    סגור
+                  </Button>
+                  <Button onClick={handleSave3DModel} className="flex items-center gap-2">
+                    <Save className="w-4 h-4" />
+                    שמור מודל
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
-        </div>
 
-        {/* כפתורי פעולה */}
-        <div className="flex justify-between mt-6">
-          <Button variant="outline" onClick={() => navigate('/')}>
-            ביטול
-          </Button>
-          <div className="flex gap-3">
-            <Button 
-              variant="outline"
-              onClick={handleSaveDesign}
-              disabled={saveDesign.isPending}
-              className="flex items-center gap-2"
-            >
-              <Save className="w-4 h-4" />
-              {saveDesign.isPending ? "שומר..." : "שמור הדמיה"}
-            </Button>
-            <Button className="flex items-center gap-2">
-              המשך לשלב הבא
-              <ArrowRight className="w-4 h-4" />
-            </Button>
+          {/* Right Column - Saved Items */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Ruler className="w-5 h-5" />
+                  תצוגה מקדימה
+                </CardTitle>
+                <CardDescription>
+                  כאן תוצג התצוגה המקדימה של הפרגולה
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 bg-muted rounded-lg flex items-center justify-center">
+                  <p className="text-muted-foreground">תצוגה מקדימה תופיע כאן</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Saved Drawings */}
+            {savedDrawings.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>שרטוטים שמורים</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    {savedDrawings.map((drawing, index) => (
+                      <div key={index} className="p-4 border rounded-lg bg-white">
+                        <div className="h-24 bg-gray-100 rounded mb-2 flex items-center justify-center">
+                          <Pen className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <p className="text-sm font-medium">{drawing}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Saved 3D Models */}
+            {saved3DModels.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>מודלים תלת־ממדיים שמורים</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    {saved3DModels.map((model, index) => (
+                      <div key={index} className="p-4 border rounded-lg bg-white">
+                        <div className="h-24 bg-gray-100 rounded mb-2 flex items-center justify-center">
+                          <Box className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <p className="text-sm font-medium">{model}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
