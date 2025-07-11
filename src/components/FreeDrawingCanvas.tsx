@@ -1102,6 +1102,79 @@ export const FreeDrawingCanvas = () => {
         </div>
       </div>
 
+      {/* Right side - Settings and Controls */}
+      <div className="flex-1 flex flex-col p-6 max-w-md">
+        <div className="space-y-4">
+          <AccessoriesMenu
+            onAddAccessory={handleAddAccessory}
+            accessoryConfig={accessoryConfig}
+            onConfigChange={updateAccessoryConfig}
+            accessoryCount={accessoryCount}
+          />
+          
+          <ShadingConfigComponent
+            config={shadingConfig}
+            onConfigChange={updateShadingConfig}
+          />
+
+          <div className="p-4 bg-muted rounded-lg">
+            <h4 className="font-semibold mb-2">הגדרות מדידה</h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm">הצג אורכים</label>
+                <input
+                  type="checkbox"
+                  checked={measurementConfig.showLengths}
+                  onChange={(e) => updateMeasurementConfig({ showLengths: e.target.checked })}
+                  className="rounded"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm">הצג שטח</label>
+                <input
+                  type="checkbox"
+                  checked={measurementConfig.showArea}
+                  onChange={(e) => updateMeasurementConfig({ showArea: e.target.checked })}
+                  className="rounded"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm">הצג זוויות</label>
+                <input
+                  type="checkbox"
+                  checked={measurementConfig.showAngles}
+                  onChange={(e) => updateMeasurementConfig({ showAngles: e.target.checked })}
+                  className="rounded"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm">יחידת מדידה</label>
+                <select
+                  value={measurementConfig.unit}
+                  onChange={(e) => updateMeasurementConfig({ unit: e.target.value as any })}
+                  className="text-sm border rounded px-2 py-1"
+                >
+                  <option value="cm">ס״מ</option>
+                  <option value="mm">מ״מ</option>
+                  <option value="m">מטר</option>
+                </select>
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm">סקלה (פיקסלים/ס״מ)</label>
+                <input
+                  type="number"
+                  value={measurementConfig.pixelsPerCm}
+                  onChange={(e) => updateMeasurementConfig({ pixelsPerCm: parseFloat(e.target.value) || 2 })}
+                  className="text-sm border rounded px-2 py-1 w-16"
+                  min="0.1"
+                  step="0.1"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 };

@@ -8,10 +8,8 @@ import { useNavigate } from "react-router-dom";
 import { FreeDrawingCanvas } from "@/components/FreeDrawingCanvas";
 import { Model3DViewer } from "@/components/Model3DViewer";
 import { Generate3DButton } from "@/components/Generate3DButton";
-import { AccessoriesMenu } from "@/components/AccessoriesMenu";
-import { ShadingConfigComponent } from "@/components/ShadingConfig";
 import { usePergolaDrawing } from "@/hooks/usePergolaDrawing";
-import { usePergolaAccessories, AccessoryType } from "@/hooks/usePergolaAccessories";
+import { usePergolaAccessories } from "@/hooks/usePergolaAccessories";
 
 const CreateVisualization = () => {
   const navigate = useNavigate();
@@ -20,26 +18,9 @@ const CreateVisualization = () => {
   const [savedDrawings, setSavedDrawings] = useState<string[]>([]);
   const [saved3DModels, setSaved3DModels] = useState<string[]>([]);
 
-  // Initialize drawing and accessories hooks
-  const { elements, measurementConfig, updateMeasurementConfig, shadingConfig, updateShadingConfig } = usePergolaDrawing();
-  const { 
-    accessories, 
-    accessoryConfig, 
-    updateAccessoryConfig, 
-    addAccessory 
-  } = usePergolaAccessories();
-
-  const handleAddAccessory = (type: AccessoryType) => {
-    // For the popup version, we'll add accessories at a default position
-    const defaultPosition = { x: 100, y: 100 };
-    addAccessory(type, defaultPosition);
-  };
-
-  // Calculate accessory counts
-  const accessoryCount = accessories.reduce((count, acc) => {
-    count[acc.type] = (count[acc.type] || 0) + 1;
-    return count;
-  }, {} as Record<AccessoryType, number>);
+  // Initialize drawing hooks for 3D model generation
+  const { elements, measurementConfig, shadingConfig } = usePergolaDrawing();
+  const { accessoryConfig } = usePergolaAccessories();
 
   const handleSaveDrawing = () => {
     // Here you would implement the actual save logic
@@ -151,98 +132,24 @@ const CreateVisualization = () => {
                   </DialogTitle>
                 </DialogHeader>
                 <div className="flex-1 overflow-hidden">
-                  <div className="flex gap-6 h-full">
-                    {/* Left side - 3D Model Viewer */}
-                    <div className="flex-1">
-                      <div className="mb-4">
-                        <Generate3DButton
-                          elements={elements}
-                          pixelsPerCm={measurementConfig.pixelsPerCm}
-                          frameColor={accessoryConfig.frameColor}
-                          shadingConfig={shadingConfig}
-                          disabled={elements.length === 0}
-                        />
-                      </div>
-                      
-                      {/* Large 3D viewer */}
-                      <div className="h-[500px]">
-                        <Model3DViewer 
-                          model={null} 
-                          width={undefined} 
-                          height={undefined}
-                        />
-                      </div>
+                  <div className="h-full">
+                    <div className="mb-4">
+                      <Generate3DButton
+                        elements={elements}
+                        pixelsPerCm={measurementConfig.pixelsPerCm}
+                        frameColor={accessoryConfig.frameColor}
+                        shadingConfig={shadingConfig}
+                        disabled={elements.length === 0}
+                      />
                     </div>
-
-                    {/* Right side - Settings */}
-                    <div className="w-80 space-y-4 overflow-y-auto">
-                      <AccessoriesMenu
-                        onAddAccessory={handleAddAccessory}
-                        accessoryConfig={accessoryConfig}
-                        onConfigChange={updateAccessoryConfig}
-                        accessoryCount={accessoryCount}
+                    
+                    {/* Large 3D viewer */}
+                    <div className="h-[500px]">
+                      <Model3DViewer 
+                        model={null} 
+                        width={undefined} 
+                        height={undefined}
                       />
-                      
-                      <ShadingConfigComponent
-                        config={shadingConfig}
-                        onConfigChange={updateShadingConfig}
-                      />
-
-                      <div className="p-4 bg-muted rounded-lg">
-                        <h4 className="font-semibold mb-2">הגדרות מדידה</h4>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm">הצג אורכים</label>
-                            <input
-                              type="checkbox"
-                              checked={measurementConfig.showLengths}
-                              onChange={(e) => updateMeasurementConfig({ showLengths: e.target.checked })}
-                              className="rounded"
-                            />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm">הצג שטח</label>
-                            <input
-                              type="checkbox"
-                              checked={measurementConfig.showArea}
-                              onChange={(e) => updateMeasurementConfig({ showArea: e.target.checked })}
-                              className="rounded"
-                            />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm">הצג זוויות</label>
-                            <input
-                              type="checkbox"
-                              checked={measurementConfig.showAngles}
-                              onChange={(e) => updateMeasurementConfig({ showAngles: e.target.checked })}
-                              className="rounded"
-                            />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm">יחידת מדידה</label>
-                            <select
-                              value={measurementConfig.unit}
-                              onChange={(e) => updateMeasurementConfig({ unit: e.target.value as any })}
-                              className="text-sm border rounded px-2 py-1"
-                            >
-                              <option value="cm">ס״מ</option>
-                              <option value="mm">מ״מ</option>
-                              <option value="m">מטר</option>
-                            </select>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm">סקלה (פיקסלים/ס״מ)</label>
-                            <input
-                              type="number"
-                              value={measurementConfig.pixelsPerCm}
-                              onChange={(e) => updateMeasurementConfig({ pixelsPerCm: parseFloat(e.target.value) || 2 })}
-                              className="text-sm border rounded px-2 py-1 w-16"
-                              min="0.1"
-                              step="0.1"
-                            />
-                          </div>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
