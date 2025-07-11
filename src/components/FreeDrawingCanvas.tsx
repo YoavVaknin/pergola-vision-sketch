@@ -984,8 +984,8 @@ export const FreeDrawingCanvas = () => {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-blue-50 to-indigo-100" onKeyDown={handleKeyDown} tabIndex={0}>
-      {/* Left sidebar - Drawing tools */}
-      <div className="w-80 bg-white border-r border-gray-200 p-4 overflow-y-auto">
+      {/* Main content area - Drawing tools and canvas */}
+      <div className="flex-1 bg-white p-6 overflow-y-auto">
         {/* Drawing toolbar */}
         <div className="mb-6">
           <DrawingToolbar
