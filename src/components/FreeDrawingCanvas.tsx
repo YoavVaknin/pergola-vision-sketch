@@ -983,11 +983,11 @@ export const FreeDrawingCanvas = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-blue-50 to-indigo-100" onKeyDown={handleKeyDown} tabIndex={0}>
-      {/* Left sidebar - Drawing tools */}
-      <div className="w-80 bg-white border-r border-gray-200 p-4 overflow-y-auto">
-        {/* Drawing toolbar */}
-        <div className="mb-6">
+    <div className="h-screen flex bg-gray-50" onKeyDown={handleKeyDown} tabIndex={0}>
+      {/* Left panel - Tools and canvas */}
+      <div className="flex-[2] flex flex-col gap-4 p-4">
+        {/* Toolbar */}
+        <div className="bg-white rounded-lg shadow-sm border p-4">
           <DrawingToolbar
             mode={drawingState.mode}
             onModeChange={setMode}
@@ -997,144 +997,135 @@ export const FreeDrawingCanvas = () => {
           />
         </div>
 
-        {/* Free drawing canvas with zoom controls */}
-        <div className="border rounded-lg shadow-sm bg-white p-4 mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold">שרטוט חופשי</h3>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={canvasTransform.zoomOut}
-                title="הקטנה"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {Math.round(canvasTransform.scale * 100)}%
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={canvasTransform.zoomIn}
-                title="הגדלה"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={canvasTransform.reset}
-                title="איפוס תצוגה"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </Button>
+        {/* Canvas area */}
+        <div className="flex-1 bg-white rounded-lg shadow-sm border overflow-hidden">
+          <div className="h-full flex flex-col">
+            {/* Canvas header */}
+            <div className="bg-gray-50 border-b p-3 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">שרטוט חופשי</h3>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={canvasTransform.zoomOut}
+                  title="הקטנה"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground min-w-[50px] text-center">
+                  {Math.round(canvasTransform.scale * 100)}%
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={canvasTransform.zoomIn}
+                  title="הגדלה"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={canvasTransform.reset}
+                  title="איפוס תצוגה"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-          <div className="relative">
-            <canvas
-              ref={canvasRef}
-              width={400}
-              height={300}
-              className="border rounded bg-white w-full h-auto max-w-full"
-              onMouseDown={handleMouseDown}
-              onMouseUp={handleMouseUp}
-              onMouseMove={handleMouseMove}
-              onDoubleClick={handleDoubleClick}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              style={{ 
-                cursor: getCursor(),
-                touchAction: 'none'
-              }}
-            />
             
-            <LengthInput
-              visible={lengthInputState.visible}
-              position={lengthInputState.position}
-              currentLength={lengthInputState.targetLength}
-              unit={measurementConfig.unit}
-              onSubmit={handleLengthSubmit}
-              onCancel={hideLengthInput}
-            />
+            {/* Canvas */}
+            <div className="flex-1 relative bg-white">
+              <canvas
+                ref={canvasRef}
+                width={800}
+                height={600}
+                className="w-full h-full"
+                onMouseDown={handleMouseDown}
+                onMouseUp={handleMouseUp}
+                onMouseMove={handleMouseMove}
+                onDoubleClick={handleDoubleClick}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                style={{ 
+                  cursor: getCursor(),
+                  touchAction: 'none'
+                }}
+              />
+              
+              <LengthInput
+                visible={lengthInputState.visible}
+                position={lengthInputState.position}
+                currentLength={lengthInputState.targetLength}
+                unit={measurementConfig.unit}
+                onSubmit={handleLengthSubmit}
+                onCancel={hideLengthInput}
+              />
+              
+              <DimensionEditor
+                visible={dimensionEditState.visible}
+                position={dimensionEditState.position}
+                currentValue={dimensionEditState.currentLength}
+                unit={measurementConfig.unit}
+                onSubmit={handleDimensionEdit}
+                onCancel={hideDimensionEditor}
+              />
+            </div>
             
-            <DimensionEditor
-              visible={dimensionEditState.visible}
-              position={dimensionEditState.position}
-              currentValue={dimensionEditState.currentLength}
-              unit={measurementConfig.unit}
-              onSubmit={handleDimensionEdit}
-              onCancel={hideDimensionEditor}
-            />
-          </div>
-          
-          <div className="mt-4 text-sm text-muted-foreground">
-            <p><strong>הוראות:</strong></p>
-            <p>• <strong>זום:</strong> גלגלת עכבר או כפתורי זום</p>
-            <p>• <strong>תזוזה:</strong> Ctrl+לחיצה וגרירה או עכבר אמצעי</p>
-            <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
-            <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
-            <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
-            <p>• <span className="text-green-600">יישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
-            <p>• <strong>תוספות:</strong> בחר תוספות מהתפריט השמאלי להוספה למרכז הפרגולה</p>
-            <p>• <strong>גרירת תוספות:</strong> לחץ וגרור תוספות לשינוי מיקום (תמיכה במסכי מגע)</p>
-            <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
-            <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
-            <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
-          </div>
-        </div>
-
-        {/* Statistics */}
-        <div className="p-4 bg-muted rounded-lg">
-          <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
-          <div className="text-sm space-y-1">
-            <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
-            <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
-            <p>הצללה: {elements.filter(e => e.type === 'shading').length}</p>
-            <p>חלוקה: {elements.filter(e => e.type === 'division').length}</p>
-            <p>עמודים: {elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</p>
-            <p>קירות: {elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</p>
-            <p>תאורה: {accessoryCount.light || 0}</p>
-            <p>מאווררים: {accessoryCount.fan || 0}</p>
-            <p>זום: {Math.round(canvasTransform.scale * 100)}%</p>
+            {/* Canvas footer */}
+            <div className="bg-gray-50 border-t p-2 text-xs text-muted-foreground">
+              <div className="grid grid-cols-3 gap-2">
+                <span><strong>זום:</strong> גלגלת עכבר</span>
+                <span><strong>תזוזה:</strong> Ctrl+גרירה</span>
+                <span><strong>Tab:</strong> אורך מדויק</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Right side - 3D visualization */}
-      <div className="flex-1 flex flex-col p-6">
-        {/* 3D model viewing area - vertical format */}
-        <div className="flex-1 max-w-md mx-auto">
-          <div className="border rounded-lg shadow-sm bg-white p-4 h-full flex flex-col">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Box className="w-5 h-5" />
-              הדמיה תלת־ממדית מתקדמת
-            </h3>
-            
-            <div className="mb-4">
-              <Generate3DButton
-                elements={elements}
-                pixelsPerCm={measurementConfig.pixelsPerCm}
-                frameColor={accessoryConfig.frameColor}
-                shadingConfig={shadingConfig}
-                disabled={elements.length === 0}
-              />
-            </div>
-            
-            {/* Large 3D viewer in vertical format */}
-            <div className="flex-1 min-h-0">
-              <Model3DViewer 
-                model={null} 
-                width={undefined} 
-                height={undefined}
-              />
+      {/* Right panel - 3D and settings */}
+      <div className="w-96 flex flex-col gap-4 p-4">
+        {/* 3D Visualization */}
+        <div className="bg-white rounded-lg shadow-sm border p-4 flex-1">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Box className="w-5 h-5" />
+            הדמיה תלת־ממדית
+          </h3>
+          
+          <div className="mb-4">
+            <Generate3DButton
+              elements={elements}
+              pixelsPerCm={measurementConfig.pixelsPerCm}
+              frameColor={accessoryConfig.frameColor}
+              shadingConfig={shadingConfig}
+              disabled={elements.length === 0}
+            />
+          </div>
+          
+          <div className="h-64 mb-4">
+            <Model3DViewer 
+              model={null} 
+              width={undefined} 
+              height={256}
+            />
+          </div>
+
+          {/* Statistics */}
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <h4 className="font-semibold mb-2 text-sm">סטטיסטיקות</h4>
+            <div className="text-xs space-y-1 grid grid-cols-2 gap-1">
+              <span>מסגרות: {elements.filter(e => e.type === 'frame').length}</span>
+              <span>קורות: {elements.filter(e => e.type === 'beam').length}</span>
+              <span>עמודים: {elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</span>
+              <span>תאורה: {accessoryCount.light || 0}</span>
             </div>
           </div>
         </div>
 
-        {/* Settings below the 3D viewer */}
-        <div className="mt-6 max-w-md mx-auto w-full space-y-4">
+        {/* Settings panels - scrollable */}
+        <div className="space-y-4 max-h-96 overflow-y-auto">
           <AccessoriesMenu
             onAddAccessory={handleAddAccessory}
             accessoryConfig={accessoryConfig}
@@ -1147,8 +1138,8 @@ export const FreeDrawingCanvas = () => {
             onConfigChange={updateShadingConfig}
           />
 
-          <div className="p-4 bg-muted rounded-lg">
-            <h4 className="font-semibold mb-2">הגדרות מדידה</h4>
+          <div className="p-4 bg-white rounded-lg shadow-sm border">
+            <h4 className="font-semibold mb-3 text-sm">הגדרות מדידה</h4>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-sm">הצג אורכים</label>
