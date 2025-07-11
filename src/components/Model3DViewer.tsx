@@ -205,9 +205,15 @@ export const Model3DViewer = ({ model, width = 800, height = 600 }: Model3DViewe
   if (!model || !model.meshes || model.meshes.length === 0) {
     return (
       <div 
-        className="w-full h-full bg-muted rounded-lg"
+        className="border rounded-lg bg-gray-50 flex items-center justify-center text-gray-500"
         style={{ width, height }}
-      />
+      >
+        <div className="text-center">
+          <div className="text-lg mb-2">🏗️</div>
+          <div>אין מודל תלת-ממדי להצגה</div>
+          <div className="text-sm">יש לצייר מסגרת ולייצר מודל תחילה</div>
+        </div>
+      </div>
     );
   }
 
