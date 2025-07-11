@@ -984,7 +984,7 @@ export const FreeDrawingCanvas = () => {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-blue-50 to-indigo-100" onKeyDown={handleKeyDown} tabIndex={0}>
-      {/* Left sidebar - Drawing tools and settings */}
+      {/* Left sidebar - Drawing tools */}
       <div className="w-80 bg-white border-r border-gray-200 p-4 overflow-y-auto">
         {/* Drawing toolbar */}
         <div className="mb-6">
@@ -997,8 +997,114 @@ export const FreeDrawingCanvas = () => {
           />
         </div>
 
-        {/* Accessories and Settings */}
-        <div className="space-y-4 mb-6">
+        {/* Free drawing canvas with zoom controls */}
+        <div className="border rounded-lg shadow-sm bg-white p-4 mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold">שרטוט חופשי</h3>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={canvasTransform.zoomOut}
+                title="הקטנה"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {Math.round(canvasTransform.scale * 100)}%
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={canvasTransform.zoomIn}
+                title="הגדלה"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={canvasTransform.reset}
+                title="איפוס תצוגה"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="relative">
+            <canvas
+              ref={canvasRef}
+              width={400}
+              height={300}
+              className="border rounded bg-white w-full h-auto max-w-full"
+              onMouseDown={handleMouseDown}
+              onMouseUp={handleMouseUp}
+              onMouseMove={handleMouseMove}
+              onDoubleClick={handleDoubleClick}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              style={{ 
+                cursor: getCursor(),
+                touchAction: 'none'
+              }}
+            />
+            
+            <LengthInput
+              visible={lengthInputState.visible}
+              position={lengthInputState.position}
+              currentLength={lengthInputState.targetLength}
+              unit={measurementConfig.unit}
+              onSubmit={handleLengthSubmit}
+              onCancel={hideLengthInput}
+            />
+            
+            <DimensionEditor
+              visible={dimensionEditState.visible}
+              position={dimensionEditState.position}
+              currentValue={dimensionEditState.currentLength}
+              unit={measurementConfig.unit}
+              onSubmit={handleDimensionEdit}
+              onCancel={hideDimensionEditor}
+            />
+          </div>
+          
+          <div className="mt-4 text-sm text-muted-foreground">
+            <p><strong>הוראות:</strong></p>
+            <p>• <strong>זום:</strong> גלגלת עכבר או כפתורי זום</p>
+            <p>• <strong>תזוזה:</strong> Ctrl+לחיצה וגרירה או עכבר אמצעי</p>
+            <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
+            <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
+            <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
+            <p>• <span className="text-green-600">יישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
+            <p>• <strong>תוספות:</strong> בחר תוספות מהתפריט השמאלי להוספה למרכז הפרגולה</p>
+            <p>• <strong>גרירת תוספות:</strong> לחץ וגרור תוספות לשינוי מיקום (תמיכה במסכי מגע)</p>
+            <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
+            <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
+            <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
+          </div>
+        </div>
+
+        {/* Statistics */}
+        <div className="p-4 bg-muted rounded-lg">
+          <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
+          <div className="text-sm space-y-1">
+            <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
+            <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
+            <p>הצללה: {elements.filter(e => e.type === 'shading').length}</p>
+            <p>חלוקה: {elements.filter(e => e.type === 'division').length}</p>
+            <p>עמודים: {elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</p>
+            <p>קירות: {elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</p>
+            <p>תאורה: {accessoryCount.light || 0}</p>
+            <p>מאווררים: {accessoryCount.fan || 0}</p>
+            <p>זום: {Math.round(canvasTransform.scale * 100)}%</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right side - Settings and Controls */}
+      <div className="flex-1 flex flex-col p-6 max-w-md">
+        <div className="space-y-4">
           <AccessoriesMenu
             onAddAccessory={handleAddAccessory}
             accessoryConfig={accessoryConfig}
@@ -1067,117 +1173,8 @@ export const FreeDrawingCanvas = () => {
             </div>
           </div>
         </div>
-
-        {/* Instructions */}
-        <div className="p-4 bg-blue-50 rounded-lg mb-4">
-          <h4 className="font-semibold mb-2">הוראות שימוש</h4>
-          <div className="text-sm text-muted-foreground space-y-1">
-            <p>• <strong>זום:</strong> גלגלת עכבר או כפתורי זום</p>
-            <p>• <strong>תזוזה:</strong> Ctrl+לחיצה וגרירה או עכבר אמצעי</p>
-            <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
-            <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
-            <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
-            <p>• <span className="text-green-600">יישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
-            <p>• <strong>תוספות:</strong> בחר תוספות מהתפריט השמאלי להוספה למרכז הפרגולה</p>
-            <p>• <strong>גרירת תוספות:</strong> לחץ וגרור תוספות לשינוי מיקום (תמיכה במסכי מגע)</p>
-            <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
-            <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
-            <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
-          </div>
-        </div>
-
-        {/* Statistics */}
-        <div className="p-4 bg-muted rounded-lg">
-          <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
-          <div className="text-sm space-y-1">
-            <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
-            <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
-            <p>הצללה: {elements.filter(e => e.type === 'shading').length}</p>
-            <p>חלוקה: {elements.filter(e => e.type === 'division').length}</p>
-            <p>עמודים: {elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</p>
-            <p>קירות: {elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</p>
-            <p>תאורה: {accessoryCount.light || 0}</p>
-            <p>מאווררים: {accessoryCount.fan || 0}</p>
-            <p>זום: {Math.round(canvasTransform.scale * 100)}%</p>
-          </div>
-        </div>
       </div>
 
-      {/* Main canvas area */}
-      <div className="flex-1 p-6">
-        {/* Free drawing canvas with zoom controls */}
-        <div className="border rounded-lg shadow-sm bg-white p-4 h-full">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold">שרטוט חופשי</h3>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={canvasTransform.zoomOut}
-                title="הקטנה"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {Math.round(canvasTransform.scale * 100)}%
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={canvasTransform.zoomIn}
-                title="הגדלה"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={canvasTransform.reset}
-                title="איפוס תצוגה"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-          <div className="relative h-[calc(100%-60px)]">
-            <canvas
-              ref={canvasRef}
-              width={800}
-              height={600}
-              className="border rounded bg-white w-full h-full"
-              onMouseDown={handleMouseDown}
-              onMouseUp={handleMouseUp}
-              onMouseMove={handleMouseMove}
-              onDoubleClick={handleDoubleClick}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              style={{ 
-                cursor: getCursor(),
-                touchAction: 'none'
-              }}
-            />
-            
-            <LengthInput
-              visible={lengthInputState.visible}
-              position={lengthInputState.position}
-              currentLength={lengthInputState.targetLength}
-              unit={measurementConfig.unit}
-              onSubmit={handleLengthSubmit}
-              onCancel={hideLengthInput}
-            />
-            
-            <DimensionEditor
-              visible={dimensionEditState.visible}
-              position={dimensionEditState.position}
-              currentValue={dimensionEditState.currentLength}
-              unit={measurementConfig.unit}
-              onSubmit={handleDimensionEdit}
-              onCancel={hideDimensionEditor}
-            />
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
