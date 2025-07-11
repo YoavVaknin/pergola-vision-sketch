@@ -986,8 +986,8 @@ export const FreeDrawingCanvas = () => {
     <div className="h-screen flex bg-gray-50" onKeyDown={handleKeyDown} tabIndex={0}>
       {/* Left panel - Tools and canvas */}
       <div className="flex-[2] flex flex-col gap-4 p-4">
-        {/* Toolbar */}
-        <div className="bg-white rounded-lg shadow-sm border p-4">
+        {/* Compact toolbar */}
+        <div className="bg-white rounded-lg shadow-sm border p-3">
           <DrawingToolbar
             mode={drawingState.mode}
             onModeChange={setMode}
@@ -995,6 +995,52 @@ export const FreeDrawingCanvas = () => {
             isDrawing={drawingState.tempPoints.length >= 3}
             onFinishFrame={finishFrame}
           />
+        </div>
+
+        {/* Pergola Settings - New section */}
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <h3 className="text-base font-semibold mb-3">הגדרות פרגולה</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-gray-600">רוחב (ס"מ)</label>
+              <input 
+                type="number" 
+                className="w-full text-sm border rounded px-2 py-1 mt-1" 
+                placeholder="400"
+                min="100"
+                step="10"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-gray-600">עומק (ס"מ)</label>
+              <input 
+                type="number" 
+                className="w-full text-sm border rounded px-2 py-1 mt-1" 
+                placeholder="300"
+                min="100"
+                step="10"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-gray-600">גובה (ס"מ)</label>
+              <input 
+                type="number" 
+                className="w-full text-sm border rounded px-2 py-1 mt-1" 
+                placeholder="250"
+                min="200"
+                step="10"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-gray-600">זווית נטייה</label>
+              <select className="w-full text-sm border rounded px-2 py-1 mt-1">
+                <option value="0">0° (שטוח)</option>
+                <option value="5">5°</option>
+                <option value="10">10°</option>
+                <option value="15">15°</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* Canvas area */}
