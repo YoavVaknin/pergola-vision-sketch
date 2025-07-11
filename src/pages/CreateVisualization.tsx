@@ -64,44 +64,23 @@ const CreateVisualization = () => {
                   </CardContent>
                 </Card>
               </DialogTrigger>
-              <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full">
-                <DialogHeader className="pb-4">
-                  <DialogTitle className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Pen className="w-5 h-5" />
-                      שרטוט חופשי - עיצוב פרגולה
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setFreeDrawingOpen(false)}
-                      className="flex items-center gap-2"
-                    >
-                      סגור
-                    </Button>
+              <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Pen className="w-5 h-5" />
+                    שרטוט חופשי
                   </DialogTitle>
                 </DialogHeader>
-                
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  <FreeDrawingCanvas />
-                </div>
-                
-                <div className="flex justify-center gap-4 pt-4 border-t bg-muted/30 rounded-lg p-4 mt-4">
-                  <Button 
-                    onClick={handleSaveDrawing} 
-                    className="flex items-center gap-2 px-6"
-                    size="lg"
-                  >
+                  <div className="flex-1 overflow-hidden">
+                    <FreeDrawingCanvas />
+                  </div>
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setFreeDrawingOpen(false)}>
+                    סגור
+                  </Button>
+                  <Button onClick={handleSaveDrawing} className="flex items-center gap-2">
                     <Save className="w-4 h-4" />
                     שמור שרטוט
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setFreeDrawingOpen(false)}
-                    size="lg"
-                    className="px-6"
-                  >
-                    סגור ללא שמירה
                   </Button>
                 </div>
               </DialogContent>
