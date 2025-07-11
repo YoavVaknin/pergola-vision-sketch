@@ -4,15 +4,17 @@ import { usePergolaDrawing } from '@/hooks/usePergolaDrawing';
 import { useSmartAlignment, AlignmentGuide } from '@/hooks/useSmartAlignment';
 import { useCornerEditing } from '@/hooks/useCornerEditing';
 import { usePergolaAccessories, AccessoryType, PergolaAccessory } from '@/hooks/usePergolaAccessories';
+import { useCanvasZoom } from '@/hooks/useCanvasZoom';
 import { DrawingToolbar } from './DrawingToolbar';
 import { ShadingConfigComponent } from './ShadingConfig';
 import { AccessoriesMenu } from './AccessoriesMenu';
 import { LengthInput } from './LengthInput';
 import { DimensionEditor } from './DimensionEditor';
 import { getMidpoint, getPolygonCentroid, formatMeasurement, formatArea, calculateRealDistance } from '@/utils/measurementUtils';
-import { Lightbulb, Fan, Box } from 'lucide-react';
+import { Lightbulb, Fan, Box, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Generate3DButton } from './Generate3DButton';
 import { Model3DViewer } from './Model3DViewer';
+import { Button } from '@/components/ui/button';
 
 export const FreeDrawingCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -82,6 +84,9 @@ export const FreeDrawingCanvas = () => {
     setHoveredAccessory
   } = usePergolaAccessories();
 
+  // Canvas zoom and pan functionality
+  const canvasTransform = useCanvasZoom(canvasRef, 1, 0.1, 10);
+
   // Calculate accessory counts
   const accessoryCount = accessories.reduce((acc, accessory) => {
     acc[accessory.type] = (acc[accessory.type] || 0) + 1;
@@ -106,11 +111,12 @@ export const FreeDrawingCanvas = () => {
     if (!canvas) return { x: 0, y: 0 };
     
     const rect = canvas.getBoundingClientRect();
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
-    };
-  }, []);
+    const screenX = clientX - rect.left;
+    const screenY = clientY - rect.top;
+    
+    // Transform screen coordinates to canvas coordinates
+    return canvasTransform.inverseTransformPoint(screenX, screenY);
+  }, [canvasTransform]);
 
   const calculateDistance = useCallback((point1: Point, point2: Point): number => {
     const dx = point1.x - point2.x;
@@ -154,7 +160,7 @@ export const FreeDrawingCanvas = () => {
   const findSnapPoint = useCallback((mousePos: Point): Point | null => {
     if (drawingState.mode !== 'frame') return null;
     
-    const SNAP_DISTANCE = 10;
+    const SNAP_DISTANCE = 10 / canvasTransform.scale; // Adjust snap distance based on zoom
     
     if (drawingState.tempPoints.length >= 3) {
       const firstPoint = drawingState.tempPoints[0];
@@ -177,7 +183,7 @@ export const FreeDrawingCanvas = () => {
     }
     
     return null;
-  }, [drawingState.mode, drawingState.tempPoints, elements, calculateDistance]);
+  }, [drawingState.mode, drawingState.tempPoints, elements, calculateDistance, canvasTransform.scale]);
 
   const checkNearFirstPoint = useCallback((mousePos: Point): boolean => {
     if (drawingState.mode !== 'frame' || drawingState.tempPoints.length < 3) {
@@ -186,10 +192,12 @@ export const FreeDrawingCanvas = () => {
     
     const firstPoint = drawingState.tempPoints[0];
     const distance = calculateDistance(mousePos, firstPoint);
-    return distance <= 10;
-  }, [drawingState.mode, drawingState.tempPoints, calculateDistance]);
+    return distance <= 10 / canvasTransform.scale;
+  }, [drawingState.mode, drawingState.tempPoints, calculateDistance, canvasTransform.scale]);
 
   const checkDimensionClick = useCallback((mousePos: Point): { elementId: string; segmentIndex: number; position: Point; length: number } | null => {
+    const CLICK_DISTANCE = 20 / canvasTransform.scale;
+    
     for (const element of elements) {
       if (element.type === 'frame') {
         const frame = element as FrameElement;
@@ -206,7 +214,7 @@ export const FreeDrawingCanvas = () => {
               Math.pow(mousePos.x - midpoint.x, 2) + Math.pow(mousePos.y - midpoint.y, 2)
             );
             
-            if (distance <= 20) {
+            if (distance <= CLICK_DISTANCE) {
               return {
                 elementId: element.id,
                 segmentIndex: i,
@@ -219,7 +227,7 @@ export const FreeDrawingCanvas = () => {
       }
     }
     return null;
-  }, [elements]);
+  }, [elements, canvasTransform.scale]);
 
   const drawMeasurementText = useCallback((ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: {
     fontSize?: number;
@@ -236,27 +244,28 @@ export const FreeDrawingCanvas = () => {
       clickable = false
     } = options;
 
-    ctx.font = `${fontSize}px Arial`;
+    const scaledFontSize = fontSize / canvasTransform.scale;
+    ctx.font = `${scaledFontSize}px Arial`;
     ctx.textAlign = align;
     ctx.textBaseline = 'middle';
 
     if (background) {
       const metrics = ctx.measureText(text);
-      const padding = clickable ? 6 : 4;
+      const padding = (clickable ? 6 : 4) / canvasTransform.scale;
       const bgWidth = metrics.width + padding * 2;
-      const bgHeight = fontSize + padding * 2;
+      const bgHeight = scaledFontSize + padding * 2;
       
       ctx.fillStyle = clickable ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255, 255, 255, 0.9)';
       ctx.fillRect(x - bgWidth / 2, y - bgHeight / 2, bgWidth, bgHeight);
       
       ctx.strokeStyle = clickable ? '#3b82f6' : '#e5e7eb';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1 / canvasTransform.scale;
       ctx.strokeRect(x - bgWidth / 2, y - bgHeight / 2, bgWidth, bgHeight);
     }
 
     ctx.fillStyle = clickable ? '#3b82f6' : color;
     ctx.fillText(text, x, y);
-  }, []);
+  }, [canvasTransform.scale]);
 
   const drawAccessories = useCallback((ctx: CanvasRenderingContext2D) => {
     accessories.forEach(accessory => {
@@ -265,9 +274,9 @@ export const FreeDrawingCanvas = () => {
       
       if (isDragged) {
         ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-        ctx.shadowBlur = 8;
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 2;
+        ctx.shadowBlur = 8 / canvasTransform.scale;
+        ctx.shadowOffsetX = 2 / canvasTransform.scale;
+        ctx.shadowOffsetY = 2 / canvasTransform.scale;
       }
       
       ctx.globalAlpha = isDragged ? 0.7 : 1;
@@ -275,19 +284,21 @@ export const FreeDrawingCanvas = () => {
       ctx.fillStyle = accessory.color || '#000000';
       ctx.strokeStyle = accessory.color || '#000000';
       
+      const scaledSize = (accessory.size || 12) / canvasTransform.scale;
+      
       switch (accessory.type) {
         case 'light':
           ctx.fillStyle = accessory.color || '#fbbf24';
           ctx.beginPath();
-          ctx.arc(accessory.position.x, accessory.position.y, (accessory.size || 12) / 2, 0, 2 * Math.PI);
+          ctx.arc(accessory.position.x, accessory.position.y, scaledSize / 2, 0, 2 * Math.PI);
           ctx.fill();
           
           ctx.strokeStyle = accessory.color || '#fbbf24';
-          ctx.lineWidth = 2;
+          ctx.lineWidth = 2 / canvasTransform.scale;
           for (let i = 0; i < 8; i++) {
             const angle = (i * Math.PI) / 4;
-            const startRadius = (accessory.size || 12) / 2 + 2;
-            const endRadius = (accessory.size || 12) / 2 + 6;
+            const startRadius = scaledSize / 2 + 2 / canvasTransform.scale;
+            const endRadius = scaledSize / 2 + 6 / canvasTransform.scale;
             ctx.beginPath();
             ctx.moveTo(
               accessory.position.x + Math.cos(angle) * startRadius,
@@ -304,14 +315,14 @@ export const FreeDrawingCanvas = () => {
         case 'fan':
           ctx.fillStyle = accessory.color || '#6b7280';
           ctx.beginPath();
-          ctx.arc(accessory.position.x, accessory.position.y, 4, 0, 2 * Math.PI);
+          ctx.arc(accessory.position.x, accessory.position.y, 4 / canvasTransform.scale, 0, 2 * Math.PI);
           ctx.fill();
           
           ctx.strokeStyle = accessory.color || '#6b7280';
-          ctx.lineWidth = 3;
+          ctx.lineWidth = 3 / canvasTransform.scale;
           for (let i = 0; i < 4; i++) {
             const angle = (i * Math.PI) / 2;
-            const bladeLength = (accessory.size || 20) / 2;
+            const bladeLength = scaledSize / 2;
             ctx.beginPath();
             ctx.moveTo(accessory.position.x, accessory.position.y);
             ctx.lineTo(
@@ -323,7 +334,7 @@ export const FreeDrawingCanvas = () => {
           break;
           
         case 'column':
-          const columnSize = accessory.size || 8;
+          const columnSize = scaledSize;
           ctx.fillStyle = accessory.color || '#374151';
           ctx.fillRect(
             accessory.position.x - columnSize / 2,
@@ -335,19 +346,19 @@ export const FreeDrawingCanvas = () => {
           
         case 'wall':
           ctx.strokeStyle = accessory.color || '#111827';
-          ctx.lineWidth = accessory.size || 6;
-          const wallLength = 60;
+          ctx.lineWidth = scaledSize;
+          const wallLength = 60 / canvasTransform.scale;
           ctx.beginPath();
           ctx.moveTo(accessory.position.x - wallLength / 2, accessory.position.y);
           ctx.lineTo(accessory.position.x + wallLength / 2, accessory.position.y);
           ctx.stroke();
           
           ctx.strokeStyle = '#9ca3af';
-          ctx.lineWidth = 1;
-          for (let i = -wallLength / 2; i < wallLength / 2; i += 10) {
+          ctx.lineWidth = 1 / canvasTransform.scale;
+          for (let i = -wallLength / 2; i < wallLength / 2; i += 10 / canvasTransform.scale) {
             ctx.beginPath();
-            ctx.moveTo(accessory.position.x + i, accessory.position.y - 3);
-            ctx.lineTo(accessory.position.x + i, accessory.position.y + 3);
+            ctx.moveTo(accessory.position.x + i, accessory.position.y - 3 / canvasTransform.scale);
+            ctx.lineTo(accessory.position.x + i, accessory.position.y + 3 / canvasTransform.scale);
             ctx.stroke();
           }
           break;
@@ -355,23 +366,23 @@ export const FreeDrawingCanvas = () => {
       
       if (isHovered && !isDragged) {
         ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 2 / canvasTransform.scale;
+        ctx.setLineDash([3 / canvasTransform.scale, 3 / canvasTransform.scale]);
         ctx.beginPath();
         
-        let hoverRadius = 20;
+        let hoverRadius = 20 / canvasTransform.scale;
         switch (accessory.type) {
           case 'light':
-            hoverRadius = (accessory.size || 12) / 2 + 8;
+            hoverRadius = scaledSize / 2 + 8 / canvasTransform.scale;
             break;
           case 'fan':
-            hoverRadius = (accessory.size || 20) / 2 + 8;
+            hoverRadius = scaledSize / 2 + 8 / canvasTransform.scale;
             break;
           case 'column':
-            hoverRadius = (accessory.size || 8) / 2 + 8;
+            hoverRadius = scaledSize / 2 + 8 / canvasTransform.scale;
             break;
           case 'wall':
-            hoverRadius = 35;
+            hoverRadius = 35 / canvasTransform.scale;
             break;
         }
         
@@ -386,7 +397,7 @@ export const FreeDrawingCanvas = () => {
       ctx.shadowOffsetY = 0;
       ctx.globalAlpha = 1;
     });
-  }, [accessories, hoveredAccessoryId, dragState]);
+  }, [accessories, hoveredAccessoryId, dragState, canvasTransform.scale]);
 
   const drawElements = useCallback(() => {
     const canvas = canvasRef.current;
@@ -395,33 +406,55 @@ export const FreeDrawingCanvas = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Save the current context state
+    ctx.save();
     
-    // Grid
+    // Apply zoom and pan transformations
+    ctx.scale(canvasTransform.scale, canvasTransform.scale);
+    ctx.translate(canvasTransform.offsetX / canvasTransform.scale, canvasTransform.offsetY / canvasTransform.scale);
+
+    // Clear with transformed coordinates
+    const inverseScale = 1 / canvasTransform.scale;
+    ctx.clearRect(
+      -canvasTransform.offsetX * inverseScale, 
+      -canvasTransform.offsetY * inverseScale, 
+      canvas.width * inverseScale, 
+      canvas.height * inverseScale
+    );
+    
+    // Grid with zoom-adjusted spacing
+    const gridSize = 20;
+    const adjustedGridSize = gridSize / canvasTransform.scale;
     ctx.strokeStyle = '#f3f4f6';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= canvas.width; i += 20) {
+    ctx.lineWidth = 1 / canvasTransform.scale;
+    
+    const startX = Math.floor(-canvasTransform.offsetX / canvasTransform.scale / adjustedGridSize) * adjustedGridSize;
+    const endX = startX + (canvas.width / canvasTransform.scale) + adjustedGridSize;
+    const startY = Math.floor(-canvasTransform.offsetY / canvasTransform.scale / adjustedGridSize) * adjustedGridSize;
+    const endY = startY + (canvas.height / canvasTransform.scale) + adjustedGridSize;
+    
+    for (let i = startX; i <= endX; i += adjustedGridSize) {
       ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i, canvas.height);
+      ctx.moveTo(i, startY);
+      ctx.lineTo(i, endY);
       ctx.stroke();
     }
-    for (let i = 0; i <= canvas.height; i += 20) {
+    for (let i = startY; i <= endY; i += adjustedGridSize) {
       ctx.beginPath();
-      ctx.moveTo(0, i);
-      ctx.lineTo(canvas.width, i);
+      ctx.moveTo(startX, i);
+      ctx.lineTo(endX, i);
       ctx.stroke();
     }
 
     alignmentGuides.forEach(guide => {
       if (guide.lineType === 'extension') {
         ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 1 / canvasTransform.scale;
+        ctx.setLineDash([3 / canvasTransform.scale, 3 / canvasTransform.scale]);
       } else {
         ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([5, 2]);
+        ctx.lineWidth = 1 / canvasTransform.scale;
+        ctx.setLineDash([5 / canvasTransform.scale, 2 / canvasTransform.scale]);
       }
       
       ctx.beginPath();
@@ -432,7 +465,7 @@ export const FreeDrawingCanvas = () => {
       
       ctx.fillStyle = guide.lineType === 'extension' ? '#3b82f6' : '#10b981';
       ctx.beginPath();
-      ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 3, 0, 2 * Math.PI);
+      ctx.arc(guide.targetPoint.x, guide.targetPoint.y, 3 / canvasTransform.scale, 0, 2 * Math.PI);
       ctx.fill();
     });
 
@@ -443,7 +476,7 @@ export const FreeDrawingCanvas = () => {
         case 'frame':
           const frame = element as FrameElement;
           if (frame.points.length > 1) {
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 3 / canvasTransform.scale;
             ctx.beginPath();
             ctx.moveTo(frame.points[0].x, frame.points[0].y);
             frame.points.slice(1).forEach(point => {
@@ -477,7 +510,7 @@ export const FreeDrawingCanvas = () => {
                 const point = frame.points[index];
                 const angleText = `${angle.toFixed(0)}°`;
                 
-                const offset = 15;
+                const offset = 15 / canvasTransform.scale;
                 drawMeasurementText(ctx, angleText, point.x + offset, point.y - offset, {
                   fontSize: 10,
                   color: '#059669'
@@ -502,12 +535,13 @@ export const FreeDrawingCanvas = () => {
             
             ctx.fillStyle = isBeingEdited ? '#f59e0b' : (isHovered ? '#10b981' : '#ef4444');
             ctx.beginPath();
-            ctx.arc(point.x, point.y, isHovered || isBeingEdited ? 6 : 4, 0, 2 * Math.PI);
+            const pointRadius = (isHovered || isBeingEdited ? 6 : 4) / canvasTransform.scale;
+            ctx.arc(point.x, point.y, pointRadius, 0, 2 * Math.PI);
             ctx.fill();
             
             if (isHovered || isBeingEdited) {
               ctx.strokeStyle = isBeingEdited ? '#d97706' : '#059669';
-              ctx.lineWidth = 2;
+              ctx.lineWidth = 2 / canvasTransform.scale;
               ctx.stroke();
             }
           });
@@ -515,7 +549,7 @@ export const FreeDrawingCanvas = () => {
           
         case 'beam':
           const beam = element as BeamElement;
-          ctx.lineWidth = beam.width;
+          ctx.lineWidth = beam.width / canvasTransform.scale;
           ctx.beginPath();
           ctx.moveTo(beam.start.x, beam.start.y);
           ctx.lineTo(beam.end.x, beam.end.y);
@@ -525,7 +559,7 @@ export const FreeDrawingCanvas = () => {
         case 'shading':
           const shading = element as ShadingElement;
           ctx.strokeStyle = shading.color || '#8b4513';
-          ctx.lineWidth = shading.width || 2;
+          ctx.lineWidth = (shading.width || 2) / canvasTransform.scale;
           ctx.setLineDash([]);
           ctx.beginPath();
           ctx.moveTo(shading.start.x, shading.start.y);
@@ -536,7 +570,7 @@ export const FreeDrawingCanvas = () => {
         case 'division':
           const division = element as DivisionElement;
           ctx.strokeStyle = division.color || '#f97316';
-          ctx.lineWidth = division.width || 3;
+          ctx.lineWidth = (division.width || 3) / canvasTransform.scale;
           ctx.setLineDash([]);
           ctx.beginPath();
           ctx.moveTo(division.start.x, division.start.y);
@@ -547,17 +581,18 @@ export const FreeDrawingCanvas = () => {
         case 'column':
           const column = element as ColumnElement;
           ctx.fillStyle = element.color || '#374151';
+          const columnSize = column.size / canvasTransform.scale;
           ctx.fillRect(
-            column.position.x - column.size / 2,
-            column.position.y - column.size / 2,
-            column.size,
-            column.size
+            column.position.x - columnSize / 2,
+            column.position.y - columnSize / 2,
+            columnSize,
+            columnSize
           );
           break;
           
         case 'wall':
           const wall = element as WallElement;
-          ctx.lineWidth = wall.height;
+          ctx.lineWidth = wall.height / canvasTransform.scale;
           ctx.beginPath();
           ctx.moveTo(wall.start.x, wall.start.y);
           ctx.lineTo(wall.end.x, wall.end.y);
@@ -573,49 +608,50 @@ export const FreeDrawingCanvas = () => {
                        accessorySnapPoint.type === 'midpoint' ? '#3b82f6' : '#f59e0b';
       ctx.fillStyle = accessorySnapPoint.type === 'corner' ? 'rgba(16, 185, 129, 0.2)' : 
                      accessorySnapPoint.type === 'midpoint' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(245, 158, 11, 0.2)';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2 / canvasTransform.scale;
       
       ctx.beginPath();
-      ctx.arc(accessorySnapPoint.position.x, accessorySnapPoint.position.y, 8, 0, 2 * Math.PI);
+      ctx.arc(accessorySnapPoint.position.x, accessorySnapPoint.position.y, 8 / canvasTransform.scale, 0, 2 * Math.PI);
       ctx.fill();
       ctx.stroke();
       
-      ctx.setLineDash([3, 3]);
-      ctx.lineWidth = 1;
+      ctx.setLineDash([3 / canvasTransform.scale, 3 / canvasTransform.scale]);
+      ctx.lineWidth = 1 / canvasTransform.scale;
       ctx.beginPath();
       
-      ctx.moveTo(accessorySnapPoint.position.x - 15, accessorySnapPoint.position.y);
-      ctx.lineTo(accessorySnapPoint.position.x + 15, accessorySnapPoint.position.y);
-      ctx.moveTo(accessorySnapPoint.position.x, accessorySnapPoint.position.y - 15);
-      ctx.lineTo(accessorySnapPoint.position.x, accessorySnapPoint.position.y + 15);
+      const crossSize = 15 / canvasTransform.scale;
+      ctx.moveTo(accessorySnapPoint.position.x - crossSize, accessorySnapPoint.position.y);
+      ctx.lineTo(accessorySnapPoint.position.x + crossSize, accessorySnapPoint.position.y);
+      ctx.moveTo(accessorySnapPoint.position.x, accessorySnapPoint.position.y - crossSize);
+      ctx.lineTo(accessorySnapPoint.position.x, accessorySnapPoint.position.y + crossSize);
       ctx.stroke();
       ctx.setLineDash([]);
       
       ctx.fillStyle = accessorySnapPoint.type === 'corner' ? '#10b981' : 
                      accessorySnapPoint.type === 'midpoint' ? '#3b82f6' : '#f59e0b';
-      ctx.font = '10px Arial';
+      ctx.font = `${10 / canvasTransform.scale}px Arial`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const snapText = accessorySnapPoint.type === 'corner' ? 'פינה' : 
                       accessorySnapPoint.type === 'midpoint' ? 'אמצע' : 'מרכז';
-      ctx.fillText(snapText, accessorySnapPoint.position.x, accessorySnapPoint.position.y - 20);
+      ctx.fillText(snapText, accessorySnapPoint.position.x, accessorySnapPoint.position.y - 20 / canvasTransform.scale);
     }
 
     if (snapPoint && drawingState.mode === 'frame') {
       ctx.strokeStyle = '#22c55e';
       ctx.fillStyle = 'rgba(34, 197, 94, 0.2)';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2 / canvasTransform.scale;
       
       ctx.beginPath();
-      ctx.arc(snapPoint.x, snapPoint.y, 8, 0, 2 * Math.PI);
+      ctx.arc(snapPoint.x, snapPoint.y, 8 / canvasTransform.scale, 0, 2 * Math.PI);
       ctx.fill();
       ctx.stroke();
       
       ctx.strokeStyle = '#22c55e';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
+      ctx.lineWidth = 1 / canvasTransform.scale;
+      ctx.setLineDash([3 / canvasTransform.scale, 3 / canvasTransform.scale]);
       ctx.beginPath();
-      ctx.arc(snapPoint.x, snapPoint.y, 12, 0, 2 * Math.PI);
+      ctx.arc(snapPoint.x, snapPoint.y, 12 / canvasTransform.scale, 0, 2 * Math.PI);
       ctx.stroke();
       ctx.setLineDash([]);
     }
@@ -623,18 +659,18 @@ export const FreeDrawingCanvas = () => {
     if (alignmentSnapPoint) {
       ctx.strokeStyle = '#3b82f6';
       ctx.fillStyle = 'rgba(59, 130, 246, 0.3)';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2 / canvasTransform.scale;
       
       ctx.beginPath();
-      ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 6, 0, 2 * Math.PI);
+      ctx.arc(alignmentSnapPoint.x, alignmentSnapPoint.y, 6 / canvasTransform.scale, 0, 2 * Math.PI);
       ctx.fill();
       ctx.stroke();
     }
 
     if (drawingState.mode === 'frame' && drawingState.tempPoints.length > 0) {
       ctx.strokeStyle = '#10b981';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 5]);
+      ctx.lineWidth = 2 / canvasTransform.scale;
+      ctx.setLineDash([5 / canvasTransform.scale, 5 / canvasTransform.scale]);
       
       if (drawingState.tempPoints.length > 1) {
         ctx.beginPath();
@@ -651,29 +687,29 @@ export const FreeDrawingCanvas = () => {
           if (isNearFirstPoint) {
             ctx.fillStyle = '#22c55e';
             ctx.strokeStyle = '#16a34a';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2 / canvasTransform.scale;
             ctx.beginPath();
-            ctx.arc(point.x, point.y, 8, 0, 2 * Math.PI);
+            ctx.arc(point.x, point.y, 8 / canvasTransform.scale, 0, 2 * Math.PI);
             ctx.fill();
             ctx.stroke();
             
             ctx.strokeStyle = '#22c55e';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([3, 3]);
+            ctx.lineWidth = 1 / canvasTransform.scale;
+            ctx.setLineDash([3 / canvasTransform.scale, 3 / canvasTransform.scale]);
             ctx.beginPath();
-            ctx.arc(point.x, point.y, 12, 0, 2 * Math.PI);
+            ctx.arc(point.x, point.y, 12 / canvasTransform.scale, 0, 2 * Math.PI);
             ctx.stroke();
             ctx.setLineDash([]);
           } else {
             ctx.fillStyle = '#10b981';
             ctx.beginPath();
-            ctx.arc(point.x, point.y, 6, 0, 2 * Math.PI);
+            ctx.arc(point.x, point.y, 6 / canvasTransform.scale, 0, 2 * Math.PI);
             ctx.fill();
           }
         } else {
           ctx.fillStyle = '#10b981';
           ctx.beginPath();
-          ctx.arc(point.x, point.y, 6, 0, 2 * Math.PI);
+          ctx.arc(point.x, point.y, 6 / canvasTransform.scale, 0, 2 * Math.PI);
           ctx.fill();
         }
       });
@@ -704,8 +740,8 @@ export const FreeDrawingCanvas = () => {
         }
         
         ctx.strokeStyle = lineColor;
-        ctx.lineWidth = lineWidth;
-        ctx.setLineDash(lineDash);
+        ctx.lineWidth = lineWidth / canvasTransform.scale;
+        ctx.setLineDash(lineDash.map(d => d / canvasTransform.scale));
         ctx.beginPath();
         ctx.moveTo(lastPoint.x, lastPoint.y);
         ctx.lineTo(targetPoint.x, targetPoint.y);
@@ -717,7 +753,7 @@ export const FreeDrawingCanvas = () => {
           const lengthText = formatMeasurement(currentLength, measurementConfig.unit);
           const midpoint = getMidpoint(lastPoint, targetPoint);
           
-          drawMeasurementText(ctx, lengthText, midpoint.x, midpoint.y - 15, {
+          drawMeasurementText(ctx, lengthText, midpoint.x, midpoint.y - 15 / canvasTransform.scale, {
             fontSize: 12,
             color: '#059669',
             background: true
@@ -727,15 +763,18 @@ export const FreeDrawingCanvas = () => {
         if (isAngleSnapped && angleSnapPoint) {
           ctx.fillStyle = '#f59e0b';
           ctx.strokeStyle = '#d97706';
-          ctx.lineWidth = 1;
+          ctx.lineWidth = 1 / canvasTransform.scale;
           ctx.beginPath();
-          ctx.arc(angleSnapPoint.x, angleSnapPoint.y, 4, 0, 2 * Math.PI);
+          ctx.arc(angleSnapPoint.x, angleSnapPoint.y, 4 / canvasTransform.scale, 0, 2 * Math.PI);
           ctx.fill();
           ctx.stroke();
         }
       }
     }
-  }, [elements, drawingState, mousePosition, snapPoint, angleSnapPoint, isAngleSnapped, alignmentGuides, alignmentSnapPoint, hoveredCorner, editState, measurementConfig, accessoryConfig, drawMeasurementText, drawAccessories, accessorySnapPoint, dragState]);
+
+    // Restore the context state
+    ctx.restore();
+  }, [elements, drawingState, mousePosition, snapPoint, angleSnapPoint, isAngleSnapped, alignmentGuides, alignmentSnapPoint, hoveredCorner, editState, measurementConfig, accessoryConfig, drawMeasurementText, drawAccessories, accessorySnapPoint, dragState, canvasTransform]);
 
   useEffect(() => {
     drawElements();
@@ -774,7 +813,7 @@ export const FreeDrawingCanvas = () => {
 
     if (drawingState.mode === 'frame' && drawingState.tempPoints.length > 0) {
       const lastPoint = drawingState.tempPoints[drawingState.tempPoints.length - 1];
-      const guides = findAlignmentGuides(point, lastPoint, elements, 15);
+      const guides = findAlignmentGuides(point, lastPoint, elements, 15 / canvasTransform.scale);
       setAlignmentGuides(guides);
       
       const alignSnap = getSnapPoint(point, guides);
@@ -786,6 +825,11 @@ export const FreeDrawingCanvas = () => {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Skip if this is a pan operation (middle mouse or ctrl+click)
+    if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
+      return;
+    }
+    
     const point = getCanvasPoint(e.clientX, e.clientY);
     
     const accessoryAtPoint = findAccessoryAtPoint(point);
@@ -929,8 +973,8 @@ export const FreeDrawingCanvas = () => {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-blue-50 to-indigo-100" onKeyDown={handleKeyDown} tabIndex={0}>
-      {/* Left sidebar - Drawing and tools */}
-      <div className="w-1/3 bg-white border-r border-gray-200 p-4 overflow-y-auto">
+      {/* Left sidebar - Drawing tools */}
+      <div className="w-80 bg-white border-r border-gray-200 p-4 overflow-y-auto">
         {/* Drawing toolbar */}
         <div className="mb-6">
           <DrawingToolbar
@@ -942,15 +986,46 @@ export const FreeDrawingCanvas = () => {
           />
         </div>
 
-        {/* Free drawing canvas */}
+        {/* Free drawing canvas with zoom controls */}
         <div className="border rounded-lg shadow-sm bg-white p-4 mb-6">
-          <h3 className="text-lg font-semibold mb-4">שרטוט חופשי</h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold">שרטוט חופשי</h3>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={canvasTransform.zoomOut}
+                title="הקטנה"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {Math.round(canvasTransform.scale * 100)}%
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={canvasTransform.zoomIn}
+                title="הגדלה"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={canvasTransform.reset}
+                title="איפוס תצוגה"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
           <div className="relative">
             <canvas
               ref={canvasRef}
               width={400}
               height={300}
-              className="border rounded cursor-crosshair bg-white w-full h-auto max-w-full"
+              className="border rounded bg-white w-full h-auto max-w-full"
               onMouseDown={handleMouseDown}
               onMouseUp={handleMouseUp}
               onMouseMove={handleMouseMove}
@@ -985,6 +1060,8 @@ export const FreeDrawingCanvas = () => {
           
           <div className="mt-4 text-sm text-muted-foreground">
             <p><strong>הוראות:</strong></p>
+            <p>• <strong>זום:</strong> גלגלת עכבר או כפתורי זום</p>
+            <p>• <strong>תזוזה:</strong> Ctrl+לחיצה וגרירה או עכבר אמצעי</p>
             <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
             <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
             <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
@@ -1009,11 +1086,12 @@ export const FreeDrawingCanvas = () => {
             <p>קירות: {elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</p>
             <p>תאורה: {accessoryCount.light || 0}</p>
             <p>מאווררים: {accessoryCount.fan || 0}</p>
+            <p>זום: {Math.round(canvasTransform.scale * 100)}%</p>
           </div>
         </div>
       </div>
 
-      {/* Right side - 3D visualization and settings */}
+      {/* Right side - 3D visualization */}
       <div className="flex-1 flex flex-col p-6">
         {/* 3D model viewing area - vertical format */}
         <div className="flex-1 max-w-md mx-auto">

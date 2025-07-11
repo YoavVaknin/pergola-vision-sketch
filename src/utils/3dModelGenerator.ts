@@ -1,3 +1,4 @@
+
 import { Point, PergolaElementType, FrameElement, ShadingElement, DivisionElement, ShadingConfig } from '@/types/pergola';
 
 export interface Vector3D {
@@ -141,13 +142,13 @@ const isPointInsidePolygon = (point: Point, polygon: Point[]): boolean => {
   return inside;
 };
 
-// Create shading slats aligned with frame bottom
+// Create shading slats aligned with frame bottom - FIXED Z POSITION
 const createBottomShadingSlats = (
   framePoints: Point[],
   config: ShadingConfig,
   pixelsPerCm: number,
   id: string,
-  frameHeight: number
+  frameBaseZ: number
 ): Mesh3D[] => {
   if (!config.enabled || framePoints.length < 3) {
     console.log('Shading disabled or insufficient frame points');
@@ -165,12 +166,12 @@ const createBottomShadingSlats = (
   console.log('Creating bottom shading slats:', {
     direction: config.shadingDirection,
     spacing: config.spacing,
-    bounds: { minX, maxX, minY, maxY }
+    bounds: { minX, maxX, minY, maxY },
+    frameBaseZ
   });
 
-  // Z position for shading slats - aligned with bottom of frame
-  const frameBottomZ = frameHeight - config.frameProfile.height;
-  const slatZPosition = frameBottomZ;
+  // FIXED: Shading slats at exact same Z as frame base
+  const slatZPosition = frameBaseZ;
 
   if (config.shadingDirection === 'width') {
     // Shading slats along width (vertical orientation)
@@ -292,13 +293,13 @@ const createBottomShadingSlats = (
   return slats;
 };
 
-// Create division beams positioned above shading slats
+// Create division beams positioned above shading slats - FIXED Z POSITION
 const createDivisionBeams = (
   framePoints: Point[],
   config: ShadingConfig,
   pixelsPerCm: number,
   id: string,
-  frameHeight: number
+  frameBaseZ: number
 ): Mesh3D[] => {
   if (!config.divisionEnabled || framePoints.length < 3) {
     console.log('Division beams disabled or insufficient frame points');
@@ -316,12 +317,12 @@ const createDivisionBeams = (
   console.log('Creating division beams:', {
     direction: config.divisionDirection,
     spacing: config.divisionSpacing,
-    bounds: { minX, maxX, minY, maxY }
+    bounds: { minX, maxX, minY, maxY },
+    frameBaseZ
   });
 
-  // Z position for division beams - positioned on top of shading slats
-  const frameBottomZ = frameHeight - config.frameProfile.height;
-  const divisionZPosition = frameBottomZ + config.shadingProfile.height;
+  // FIXED: Division beams positioned exactly above shading slats
+  const divisionZPosition = frameBaseZ + config.shadingProfile.height;
 
   // Create division beams along width
   if (config.divisionDirection === 'width' || config.divisionDirection === 'both') {
@@ -443,7 +444,7 @@ const createSupportColumn = (
 };
 
 export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D => {
-  console.log('🚀 Starting enhanced 3D pergola generation - Bottom Shading Model');
+  console.log('🚀 Starting enhanced 3D pergola generation - Fixed Bottom Shading Model');
   
   const { elements, pixelsPerCm, frameColor, shadingConfig } = drawingData;
   const frameHeight = 250; // cm - pergola height
@@ -453,6 +454,9 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
   let minY = Infinity, maxY = -Infinity;
   
   console.log(`📊 Processing ${elements.length} elements for bottom shading pergola`);
+
+  // FIXED: Calculate base Z position for frame (frame sits at bottom)
+  const frameBaseZ = 0;
 
   elements.forEach((element, index) => {
     console.log(`🔨 Processing element ${index}: ${element.type} (ID: ${element.id})`);
@@ -476,35 +480,33 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
           minY = Math.min(minY, start.y, end.y);
           maxY = Math.max(maxY, start.y, end.y);
           
-          // Create main structural beam at proper Z position
-          const frameZPosition = frameHeight - shadingConfig.frameProfile.height;
-          
+          // FIXED: Create main structural beam at base Z position
           const beam = createPergolaBeam(
             `${element.id}_beam_${i}`,
             start,
             end,
             pixelsPerCm,
-            frameZPosition,
+            frameBaseZ,
             shadingConfig.frameProfile,
             frameColor || '#2d4a2b',
             'frame_beam'
           );
           
           meshes.push(beam);
-          console.log(`✅ Added frame beam segment ${i} at Z=${frameZPosition}`);
+          console.log(`✅ Added frame beam segment ${i} at Z=${frameBaseZ}`);
         }
 
         // Generate shading slats and division beams for closed frames only
         if (frame.closed && frame.points.length >= 3) {
           console.log('🌞 Generating shading and division elements for closed frame');
           
-          // Generate shading slats aligned with frame bottom
+          // Generate shading slats aligned with frame base (same Z level)
           const shadingSlats = createBottomShadingSlats(
             frame.points,
             shadingConfig,
             pixelsPerCm,
             element.id,
-            frameHeight
+            frameBaseZ
           );
           meshes.push(...shadingSlats);
           
@@ -514,7 +516,7 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
             shadingConfig,
             pixelsPerCm,
             element.id,
-            frameHeight
+            frameBaseZ
           );
           meshes.push(...divisionBeams);
         }
@@ -529,16 +531,19 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
   });
   
   // Calculate realistic bounding box in 3D space
+  const totalHeight = frameBaseZ + shadingConfig.frameProfile.height + 
+                      (shadingConfig.divisionEnabled ? shadingConfig.divisionProfile.height : 0);
+  
   const boundingBox = {
     min: {
       x: minX === Infinity ? 0 : pixelToCm(minX, pixelsPerCm) - shadingConfig.frameProfile.width,
       y: minY === Infinity ? 0 : pixelToCm(minY, pixelsPerCm) - shadingConfig.frameProfile.width,
-      z: 0
+      z: frameBaseZ
     },
     max: {
       x: maxX === -Infinity ? 100 : pixelToCm(maxX, pixelsPerCm) + shadingConfig.frameProfile.width,
       y: maxY === -Infinity ? 100 : pixelToCm(maxY, pixelsPerCm) + shadingConfig.frameProfile.width,
-      z: frameHeight
+      z: totalHeight
     }
   };
   
@@ -560,14 +565,16 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
     }
   };
   
-  console.log('🎉 Bottom Shading Pergola Model generated successfully!');
+  console.log('🎉 Fixed Bottom Shading Pergola Model generated successfully!');
   console.log(`📈 Statistics:`, {
     totalMeshes: meshes.length,
     frameBeams: meshes.filter(m => m.type === 'frame_beam').length,
     divisionBeams: meshes.filter(m => m.type === 'division_beam').length,
     shadingSlats: meshes.filter(m => m.type === 'shading_slat').length,
     columns: meshes.filter(m => m.type === 'column').length,
-    dimensions
+    dimensions,
+    frameBaseZ,
+    totalHeight
   });
   
   return model;
