@@ -16,8 +16,6 @@ import { Generate3DButton } from './Generate3DButton';
 import { Model3DViewer } from './Model3DViewer';
 import { Button } from '@/components/ui/button';
 
-import { use3DModel } from '@/hooks/use3DModel';
-
 export const FreeDrawingCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -86,9 +84,6 @@ export const FreeDrawingCanvas = () => {
     setHoveredAccessory
   } = usePergolaAccessories();
 
-  // 3D Model generation
-  const { currentModel, generateModel } = use3DModel();
-
   // Canvas zoom and pan functionality
   const canvasTransform = useCanvasZoom(canvasRef, 1, 0.1, 10);
 
@@ -110,16 +105,6 @@ export const FreeDrawingCanvas = () => {
     const defaultPosition = getDefaultPosition(canvas.width, canvas.height);
     addAccessory(type, defaultPosition);
   }, [addAccessory, getDefaultPosition]);
-
-  // Auto-generate 3D model when elements change
-  useEffect(() => {
-    if (elements.length > 0) {
-      const hasCompleteFrame = elements.some(el => el.type === 'frame');
-      if (hasCompleteFrame) {
-        generateModel(elements, measurementConfig.pixelsPerCm, accessoryConfig.frameColor, shadingConfig);
-      }
-    }
-  }, [elements, measurementConfig.pixelsPerCm, accessoryConfig.frameColor, shadingConfig, generateModel]);
 
   // Fixed coordinate transformation function
   const getCanvasPoint = useCallback((clientX: number, clientY: number): Point => {
@@ -999,8 +984,8 @@ export const FreeDrawingCanvas = () => {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-blue-50 to-indigo-100" onKeyDown={handleKeyDown} tabIndex={0}>
-      {/* Main content area - Drawing tools and canvas */}
-      <div className="flex-1 bg-white p-6 overflow-y-auto">
+      {/* Left sidebar - Drawing tools */}
+      <div className="w-80 bg-white border-r border-gray-200 p-4 overflow-y-auto">
         {/* Drawing toolbar */}
         <div className="mb-6">
           <DrawingToolbar
@@ -1100,7 +1085,25 @@ export const FreeDrawingCanvas = () => {
           </div>
         </div>
 
-        {/* Pergola Settings and Accessories */}
+        {/* Statistics */}
+        <div className="p-4 bg-muted rounded-lg">
+          <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
+          <div className="text-sm space-y-1">
+            <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
+            <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
+            <p>הצללה: {elements.filter(e => e.type === 'shading').length}</p>
+            <p>חלוקה: {elements.filter(e => e.type === 'division').length}</p>
+            <p>עמודים: {elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</p>
+            <p>קירות: {elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</p>
+            <p>תאורה: {accessoryCount.light || 0}</p>
+            <p>מאווררים: {accessoryCount.fan || 0}</p>
+            <p>זום: {Math.round(canvasTransform.scale * 100)}%</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right side - Settings and Controls */}
+      <div className="flex-1 flex flex-col p-6 max-w-md">
         <div className="space-y-4">
           <AccessoriesMenu
             onAddAccessory={handleAddAccessory}
@@ -1168,39 +1171,6 @@ export const FreeDrawingCanvas = () => {
                 />
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Statistics */}
-        <div className="p-4 bg-muted rounded-lg mt-4">
-          <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
-          <div className="text-sm space-y-1">
-            <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
-            <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
-            <p>הצללה: {elements.filter(e => e.type === 'shading').length}</p>
-            <p>חלוקה: {elements.filter(e => e.type === 'division').length}</p>
-            <p>עמודים: {elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</p>
-            <p>קירות: {elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</p>
-            <p>תאורה: {accessoryCount.light || 0}</p>
-            <p>מאווררים: {accessoryCount.fan || 0}</p>
-            <p>זום: {Math.round(canvasTransform.scale * 100)}%</p>
-          </div>
-        </div>
-
-        {/* 3D Preview */}
-        <div className="p-4 bg-muted rounded-lg mt-4">
-          <h4 className="font-semibold mb-2">תצוגה מקדימה תלת-ממדית</h4>
-          <div className="relative h-64 bg-white rounded-lg overflow-hidden border">
-            <Model3DViewer 
-              model={currentModel} 
-              width={undefined} 
-              height={undefined}
-            />
-            {!currentModel && (
-              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-                צייר מסגרת כדי לראות הדמיה תלת-ממדית
-              </div>
-            )}
           </div>
         </div>
       </div>
