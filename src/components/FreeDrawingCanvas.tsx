@@ -984,126 +984,134 @@ export const FreeDrawingCanvas = () => {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-blue-50 to-indigo-100" onKeyDown={handleKeyDown} tabIndex={0}>
-      {/* Left sidebar - Drawing tools */}
-      <div className="w-80 bg-white border-r border-gray-200 p-4 overflow-y-auto">
-        {/* Drawing toolbar */}
-        <div className="mb-6">
-          <DrawingToolbar
-            mode={drawingState.mode}
-            onModeChange={setMode}
-            onClear={clearAll}
-            isDrawing={drawingState.tempPoints.length >= 3}
-            onFinishFrame={finishFrame}
-          />
-        </div>
+      {/* Full-width container - Drawing tools and controls */}
+      <div className="w-full bg-white border-r border-gray-200 p-6 overflow-y-auto">
+        
+        {/* Main Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Column 1 - Drawing Tools */}
+          <div className="space-y-6">
+            <div className="border rounded-lg shadow-sm bg-white p-4">
+              <h3 className="text-lg font-semibold mb-4">כלי שרטוט</h3>
+              <DrawingToolbar
+                mode={drawingState.mode}
+                onModeChange={setMode}
+                onClear={clearAll}
+                isDrawing={drawingState.tempPoints.length >= 3}
+                onFinishFrame={finishFrame}
+              />
+            </div>
 
-        {/* Free drawing canvas with zoom controls */}
-        <div className="border rounded-lg shadow-sm bg-white p-4 mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold">שרטוט חופשי</h3>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={canvasTransform.zoomOut}
-                title="הקטנה"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {Math.round(canvasTransform.scale * 100)}%
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={canvasTransform.zoomIn}
-                title="הגדלה"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={canvasTransform.reset}
-                title="איפוס תצוגה"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </Button>
+            <AccessoriesMenu
+              onAddAccessory={handleAddAccessory}
+              accessoryConfig={accessoryConfig}
+              onConfigChange={updateAccessoryConfig}
+              accessoryCount={accessoryCount}
+            />
+
+            <ShadingConfigComponent
+              config={shadingConfig}
+              onConfigChange={updateShadingConfig}
+            />
+          </div>
+
+          {/* Column 2 - Free Drawing Canvas */}
+          <div className="lg:col-span-2">
+            <div className="border rounded-lg shadow-sm bg-white p-4 h-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">שרטוט חופשי</h3>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={canvasTransform.zoomOut}
+                    title="הקטנה"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {Math.round(canvasTransform.scale * 100)}%
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={canvasTransform.zoomIn}
+                    title="הגדלה"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={canvasTransform.reset}
+                    title="איפוס תצוגה"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="relative mb-4">
+                <canvas
+                  ref={canvasRef}
+                  width={600}
+                  height={400}
+                  className="border rounded bg-white w-full h-auto max-w-full"
+                  onMouseDown={handleMouseDown}
+                  onMouseUp={handleMouseUp}
+                  onMouseMove={handleMouseMove}
+                  onDoubleClick={handleDoubleClick}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  style={{ 
+                    cursor: getCursor(),
+                    touchAction: 'none'
+                  }}
+                />
+                
+                <LengthInput
+                  visible={lengthInputState.visible}
+                  position={lengthInputState.position}
+                  currentLength={lengthInputState.targetLength}
+                  unit={measurementConfig.unit}
+                  onSubmit={handleLengthSubmit}
+                  onCancel={hideLengthInput}
+                />
+                
+                <DimensionEditor
+                  visible={dimensionEditState.visible}
+                  position={dimensionEditState.position}
+                  currentValue={dimensionEditState.currentLength}
+                  unit={measurementConfig.unit}
+                  onSubmit={handleDimensionEdit}
+                  onCancel={hideDimensionEditor}
+                />
+              </div>
+              
+              <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
+                <p><strong>הוראות מהירות:</strong></p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-1 mt-2">
+                  <p>• <strong>זום:</strong> גלגלת עכבר</p>
+                  <p>• <strong>תזוזה:</strong> Ctrl+גרירה</p>
+                  <p>• <strong>סנאפ:</strong> הקרבה לנקודות</p>
+                  <p>• <strong>Tab:</strong> קלט אורך מדויק</p>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="relative">
-            <canvas
-              ref={canvasRef}
-              width={400}
-              height={300}
-              className="border rounded bg-white w-full h-auto max-w-full"
-              onMouseDown={handleMouseDown}
-              onMouseUp={handleMouseUp}
-              onMouseMove={handleMouseMove}
-              onDoubleClick={handleDoubleClick}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              style={{ 
-                cursor: getCursor(),
-                touchAction: 'none'
-              }}
-            />
-            
-            <LengthInput
-              visible={lengthInputState.visible}
-              position={lengthInputState.position}
-              currentLength={lengthInputState.targetLength}
-              unit={measurementConfig.unit}
-              onSubmit={handleLengthSubmit}
-              onCancel={hideLengthInput}
-            />
-            
-            <DimensionEditor
-              visible={dimensionEditState.visible}
-              position={dimensionEditState.position}
-              currentValue={dimensionEditState.currentLength}
-              unit={measurementConfig.unit}
-              onSubmit={handleDimensionEdit}
-              onCancel={hideDimensionEditor}
-            />
-          </div>
-          
-          <div className="mt-4 text-sm text-muted-foreground">
-            <p><strong>הוראות:</strong></p>
-            <p>• <strong>זום:</strong> גלגלת עכבר או כפתורי זום</p>
-            <p>• <strong>תזוזה:</strong> Ctrl+לחיצה וגרירה או עכבר אמצעי</p>
-            <p>• מסגרת: לחץ לסימון נקודות, הקרב לנקודה קיימת לסנאפ אוטומטי</p>
-            <p>• <span className="text-amber-600">יישור זווית:</span> קווים בזווית נעולה (0°, 45°, 90°) בכתום מקווקו</p>
-            <p>• <span className="text-blue-600">יישור הרחבה:</span> קווי עזר כחולים מיישרים לקצות קווים קיימים</p>
-            <p>• <span className="text-green-600">יישור מקביל:</span> קווי עזר ירוקים מיישרים למרכז קווים מקבילים</p>
-            <p>• <strong>תוספות:</strong> בחר תוספות מהתפריט השמאלי להוספה למרכז הפרגולה</p>
-            <p>• <strong>גרירת תוספות:</strong> לחץ וגרור תוספות לשינוי מיקום (תמיכה במסכי מגע)</p>
-            <p>• <strong>עריכת פינות:</strong> במצב בחירה, לחץ וגרור פינות לשינוי מיקום</p>
-            <p>• <strong>עריכת מידות:</strong> לחץ על מספר המידה בכחול לשינוי אורך הקו</p>
-            <p>• <strong>Tab:</strong> פתח קלט לאורך מדויק במהלך השרטוט</p>
-          </div>
         </div>
 
-        {/* Pergola Settings and Accessories */}
-        <div className="space-y-4">
-          <AccessoriesMenu
-            onAddAccessory={handleAddAccessory}
-            accessoryConfig={accessoryConfig}
-            onConfigChange={updateAccessoryConfig}
-            accessoryCount={accessoryCount}
-          />
+        {/* Bottom Grid - Settings and Statistics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           
-          <ShadingConfigComponent
-            config={shadingConfig}
-            onConfigChange={updateShadingConfig}
-          />
-
-          <div className="p-4 bg-muted rounded-lg">
-            <h4 className="font-semibold mb-2">הגדרות מדידה</h4>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-sm">הצג אורכים</label>
+          {/* Measurement Settings */}
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="font-semibold mb-3 text-blue-800">הגדרות מדידה</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center justify-between bg-white rounded p-2">
+                <label className="text-sm font-medium">הצג אורכים</label>
                 <input
                   type="checkbox"
                   checked={measurementConfig.showLengths}
@@ -1111,8 +1119,8 @@ export const FreeDrawingCanvas = () => {
                   className="rounded"
                 />
               </div>
-              <div className="flex items-center justify-between">
-                <label className="text-sm">הצג שטח</label>
+              <div className="flex items-center justify-between bg-white rounded p-2">
+                <label className="text-sm font-medium">הצג שטח</label>
                 <input
                   type="checkbox"
                   checked={measurementConfig.showArea}
@@ -1120,8 +1128,8 @@ export const FreeDrawingCanvas = () => {
                   className="rounded"
                 />
               </div>
-              <div className="flex items-center justify-between">
-                <label className="text-sm">הצג זוויות</label>
+              <div className="flex items-center justify-between bg-white rounded p-2">
+                <label className="text-sm font-medium">הצג זוויות</label>
                 <input
                   type="checkbox"
                   checked={measurementConfig.showAngles}
@@ -1129,48 +1137,76 @@ export const FreeDrawingCanvas = () => {
                   className="rounded"
                 />
               </div>
-              <div className="flex items-center justify-between">
-                <label className="text-sm">יחידת מדידה</label>
+              <div className="flex items-center justify-between bg-white rounded p-2">
+                <label className="text-sm font-medium">יחידת מדידה</label>
                 <select
                   value={measurementConfig.unit}
                   onChange={(e) => updateMeasurementConfig({ unit: e.target.value as any })}
-                  className="text-sm border rounded px-2 py-1"
+                  className="text-sm border rounded px-2 py-1 bg-white"
                 >
                   <option value="cm">ס״מ</option>
                   <option value="mm">מ״מ</option>
                   <option value="m">מטר</option>
                 </select>
               </div>
-              <div className="flex items-center justify-between">
-                <label className="text-sm">סקלה (פיקסלים/ס״מ)</label>
+              <div className="col-span-2 flex items-center justify-between bg-white rounded p-2">
+                <label className="text-sm font-medium">סקלה (פיקסלים/ס״מ)</label>
                 <input
                   type="number"
                   value={measurementConfig.pixelsPerCm}
                   onChange={(e) => updateMeasurementConfig({ pixelsPerCm: parseFloat(e.target.value) || 2 })}
-                  className="text-sm border rounded px-2 py-1 w-16"
+                  className="text-sm border rounded px-2 py-1 w-20 bg-white"
                   min="0.1"
                   step="0.1"
                 />
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Statistics */}
-        <div className="p-4 bg-muted rounded-lg mt-4">
-          <h4 className="font-semibold mb-2">סטטיסטיקות</h4>
-          <div className="text-sm space-y-1">
-            <p>מסגרות: {elements.filter(e => e.type === 'frame').length}</p>
-            <p>קורות: {elements.filter(e => e.type === 'beam').length}</p>
-            <p>הצללה: {elements.filter(e => e.type === 'shading').length}</p>
-            <p>חלוקה: {elements.filter(e => e.type === 'division').length}</p>
-            <p>עמודים: {elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</p>
-            <p>קירות: {elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</p>
-            <p>תאורה: {accessoryCount.light || 0}</p>
-            <p>מאווררים: {accessoryCount.fan || 0}</p>
-            <p>זום: {Math.round(canvasTransform.scale * 100)}%</p>
+          {/* Statistics */}
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+            <h4 className="font-semibold mb-3 text-green-800">סטטיסטיקות פרויקט</h4>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="flex justify-between bg-white rounded p-2">
+                <span className="font-medium">מסגרות:</span>
+                <span className="text-green-600 font-bold">{elements.filter(e => e.type === 'frame').length}</span>
+              </div>
+              <div className="flex justify-between bg-white rounded p-2">
+                <span className="font-medium">קורות:</span>
+                <span className="text-green-600 font-bold">{elements.filter(e => e.type === 'beam').length}</span>
+              </div>
+              <div className="flex justify-between bg-white rounded p-2">
+                <span className="font-medium">הצללה:</span>
+                <span className="text-green-600 font-bold">{elements.filter(e => e.type === 'shading').length}</span>
+              </div>
+              <div className="flex justify-between bg-white rounded p-2">
+                <span className="font-medium">חלוקה:</span>
+                <span className="text-green-600 font-bold">{elements.filter(e => e.type === 'division').length}</span>
+              </div>
+              <div className="flex justify-between bg-white rounded p-2">
+                <span className="font-medium">עמודים:</span>
+                <span className="text-green-600 font-bold">{elements.filter(e => e.type === 'column').length + (accessoryCount.column || 0)}</span>
+              </div>
+              <div className="flex justify-between bg-white rounded p-2">
+                <span className="font-medium">קירות:</span>
+                <span className="text-green-600 font-bold">{elements.filter(e => e.type === 'wall').length + (accessoryCount.wall || 0)}</span>
+              </div>
+              <div className="flex justify-between bg-white rounded p-2">
+                <span className="font-medium">תאורה:</span>
+                <span className="text-green-600 font-bold">{accessoryCount.light || 0}</span>
+              </div>
+              <div className="flex justify-between bg-white rounded p-2">
+                <span className="font-medium">מאווררים:</span>
+                <span className="text-green-600 font-bold">{accessoryCount.fan || 0}</span>
+              </div>
+            </div>
+            <div className="mt-3 text-center bg-white rounded p-2">
+              <span className="text-sm font-medium">זום נוכחי: </span>
+              <span className="text-blue-600 font-bold">{Math.round(canvasTransform.scale * 100)}%</span>
+            </div>
           </div>
         </div>
+        
       </div>
 
     </div>
