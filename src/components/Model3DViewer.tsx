@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Settings, Edit3, Eye, EyeOff } from 'lucide-react';
+import { Settings, Eye, EyeOff } from 'lucide-react';
 
 interface Model3DViewerProps {
   model: Model3D | null;
@@ -15,17 +15,11 @@ interface Model3DViewerProps {
   height?: number;
 }
 
-// Interactive mesh component with selection capability
-const InteractiveMesh3DComponent = ({
-  mesh,
-  isSelected,
-  onSelect,
-  editMode
+// Simple mesh component without interaction
+const Mesh3DComponent = ({
+  mesh
 }: {
   mesh: Mesh3D;
-  isSelected: boolean;
-  onSelect: (meshId: string) => void;
-  editMode: boolean;
 }) => {
   const {
     geometry,
@@ -48,20 +42,9 @@ const InteractiveMesh3DComponent = ({
     return <boxGeometry args={[geometry.width, geometry.height, geometry.depth]} />;
   };
 
-  // Improved materials for different components
+  // Simple materials for different components
   const getMaterialProps = () => {
     const baseColor = new THREE.Color(color);
-    
-    // Apply selection highlight
-    if (isSelected) {
-      return {
-        color: new THREE.Color('#ffff00'), // Yellow highlight
-        roughness: 0.1,
-        metalness: 0.9,
-        envMapIntensity: 2.0,
-        emissive: new THREE.Color('#333300')
-      };
-    }
     
     switch (type) {
       case 'frame_beam':
@@ -95,34 +78,15 @@ const InteractiveMesh3DComponent = ({
     }
   };
 
-  const handleClick = (e: any) => {
-    if (editMode) {
-      e.stopPropagation();
-      onSelect(mesh.id);
-    }
-  };
-  
   return (
     <mesh 
       position={threePosition} 
       rotation={threeRotation} 
       castShadow 
       receiveShadow
-      onClick={handleClick}
-      onPointerEnter={(e) => editMode && (e.object.userData.hovered = true)}
-      onPointerLeave={(e) => editMode && (e.object.userData.hovered = false)}
     >
       {createGeometry()}
       <meshStandardMaterial {...getMaterialProps()} />
-      
-      {/* Show info label when selected */}
-      {isSelected && (
-        <Html position={[0, 0, geometry.height / 2 + 10]}>
-          <div className="bg-black text-white px-2 py-1 rounded text-xs pointer-events-none">
-            {type}: {mesh.id}
-          </div>
-        </Html>
-      )}
     </mesh>
   );
 };
@@ -130,15 +94,9 @@ const InteractiveMesh3DComponent = ({
 
 const Scene = ({
   model,
-  editMode,
-  selectedMesh,
-  onMeshSelect,
   showAxes
 }: {
   model: Model3D;
-  editMode: boolean;
-  selectedMesh: string | null;
-  onMeshSelect: (meshId: string) => void;
   showAxes: boolean;
 }) => {
   if (!model || !model.boundingBox || !model.metadata || !model.metadata.dimensions) {
@@ -199,15 +157,11 @@ const Scene = ({
         shadow-camera-bottom={-300}
       />
       
-      
       {/* Render all pergola components */}
       {model.meshes && model.meshes.map(mesh => (
-        <InteractiveMesh3DComponent 
+        <Mesh3DComponent 
           key={mesh.id} 
           mesh={mesh} 
-          isSelected={selectedMesh === mesh.id}
-          onSelect={onMeshSelect}
-          editMode={editMode}
         />
       ))}
       
@@ -240,12 +194,10 @@ export const Model3DViewer = ({
   width = 800,
   height = 600
 }: Model3DViewerProps) => {
-  const [editMode, setEditMode] = useState(false);
-  const [selectedMesh, setSelectedMesh] = useState<string | null>(null);
   const [showAxes, setShowAxes] = useState(true);
   
 
-  const selectedMeshData = selectedMesh ? model?.meshes.find(m => m.id === selectedMesh) : null;
+  
 
 
   if (!model || !model.meshes || model.meshes.length === 0) {
@@ -270,22 +222,9 @@ export const Model3DViewer = ({
       <div className="bg-gray-50 px-3 py-2 border-b flex items-center justify-between">
         <div>
           <h4 className="text-sm font-medium text-gray-700">הדמיה תלת-ממדית - פרגולה</h4>
-          <p className="text-xs text-gray-500">
-            {editMode ? 'מצב עריכה - לחץ על רכיבים לבחירתם' : 'הדמיה אינטראקטיבית'}
-          </p>
+          <p className="text-xs text-gray-500">הדמיה אינטראקטיבית</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant={editMode ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setEditMode(!editMode);
-              setSelectedMesh(null);
-            }}
-          >
-            <Edit3 className="w-4 h-4 mr-1" />
-            {editMode ? 'סיים עריכה' : 'מצב עריכה'}
-          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -299,63 +238,18 @@ export const Model3DViewer = ({
         </div>
       </div>
       
-      <div className="flex">
-        {/* 3D Canvas */}
-        <div style={{ width: editMode ? width - 300 : width, height }} className="flex-1">
-          <Canvas
-            shadows
-            camera={{ position: [100, 100, 100], fov: 40 }}
-            style={{ background: 'linear-gradient(to bottom, #87ceeb, #f0f8ff)' }}
-          >
-            <Scene 
-              model={model}
-              editMode={editMode}
-              selectedMesh={selectedMesh}
-              onMeshSelect={setSelectedMesh}
-              showAxes={showAxes}
-            />
-          </Canvas>
-        </div>
-        
-        {/* Side panel in edit mode */}
-        {editMode && (
-          <div className="w-80 border-r bg-gray-50 p-4 overflow-y-auto">
-            <h5 className="font-medium mb-3">כלי עריכה</h5>
-            
-            {selectedMeshData ? (
-              <Card className="mb-4">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">רכיב נבחר</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{selectedMeshData.type}</Badge>
-                    <span className="text-xs text-gray-600">{selectedMeshData.id}</span>
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    מיקום: X:{selectedMeshData.position.x.toFixed(1)}, Y:{selectedMeshData.position.y.toFixed(1)}, Z:{selectedMeshData.position.z.toFixed(1)}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    מימדים: {selectedMeshData.geometry.width.toFixed(1)} × {selectedMeshData.geometry.height.toFixed(1)} × {selectedMeshData.geometry.depth.toFixed(1)} ס"מ
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <p className="text-sm text-gray-500 mb-4">לחץ על רכיב כדי לבחור אותו</p>
-            )}
-
-
-            <div className="mt-4 pt-4 border-t">
-              <h6 className="text-sm font-medium mb-2">מידע על המודל</h6>
-              <div className="space-y-1 text-xs text-gray-600">
-                <div>קורות מסגרת: {model.meshes.filter(m => m.type === 'frame_beam').length}</div>
-                <div>רצועות הצללה: {model.meshes.filter(m => m.type === 'shading_slat').length}</div>
-                <div>עמודים: {model.meshes.filter(m => m.type === 'column').length}</div>
-                <div>סה"כ רכיבים: {model.meshes.length}</div>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* 3D Canvas */}
+      <div style={{ width, height }} className="w-full">
+        <Canvas
+          shadows
+          camera={{ position: [100, 100, 100], fov: 40 }}
+          style={{ background: 'linear-gradient(to bottom, #87ceeb, #f0f8ff)' }}
+        >
+          <Scene 
+            model={model}
+            showAxes={showAxes}
+          />
+        </Canvas>
       </div>
       
       {/* Footer */}
