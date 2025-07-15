@@ -273,6 +273,7 @@ const Scene = ({
         enableZoom 
         enablePan 
         enableRotate={editMode ? false : true}
+        // No angle restrictions for full 360° rotation
         minDistance={Math.max(10, maxDimension * 0.3)}
         maxDistance={Math.max(1000, maxDimension * 4)}
         autoRotate={false}
@@ -283,6 +284,12 @@ const Scene = ({
           LEFT: editMode ? 2 : 0,
           MIDDLE: 1,
           RIGHT: 2
+        }}
+        keys={{
+          LEFT: 'ArrowLeft',
+          UP: 'ArrowUp',
+          RIGHT: 'ArrowRight',
+          BOTTOM: 'ArrowDown'
         }}
       />
       
