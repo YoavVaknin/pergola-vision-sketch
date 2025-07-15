@@ -1,14 +1,13 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Grid, PerspectiveCamera, Environment, Html } from '@react-three/drei';
+import { OrbitControls, Grid, PerspectiveCamera, Environment, Html } from '@react-three/drei';
 import { Model3D, Mesh3D } from '@/utils/3dModelGenerator';
 import * as THREE from 'three';
-import { Suspense, useState, useRef, useEffect } from 'react';
+import { Suspense, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Settings, Edit3, Info, MessageSquare, Eye, EyeOff, Camera, Target } from 'lucide-react';
-import { CameraTest } from './CameraTest';
 
 interface Model3DViewerProps {
   model: Model3D | null;
@@ -182,75 +181,6 @@ const CameraCapture = ({ onCameraCapture }: { onCameraCapture: (data: any) => vo
   );
 };
 
-// Manual Camera Control - NO OrbitControls
-const ManualCameraController = ({ editMode }: { editMode: boolean }) => {
-  const { camera, gl } = useThree();
-  const [isPointerDown, setIsPointerDown] = useState(false);
-  const [lastPointer, setLastPointer] = useState({ x: 0, y: 0 });
-  
-  useEffect(() => {
-    const canvas = gl.domElement;
-    
-    const onPointerDown = (e: PointerEvent) => {
-      if (editMode) return;
-      setIsPointerDown(true);
-      setLastPointer({ x: e.clientX, y: e.clientY });
-      canvas.setPointerCapture(e.pointerId);
-    };
-    
-    const onPointerMove = (e: PointerEvent) => {
-      if (!isPointerDown || editMode) return;
-      
-      const deltaX = e.clientX - lastPointer.x;
-      const deltaY = e.clientY - lastPointer.y;
-      
-      // Rotate camera around origin
-      const spherical = new THREE.Spherical();
-      spherical.setFromVector3(camera.position);
-      
-      spherical.theta -= deltaX * 0.01; // Horizontal rotation
-      spherical.phi += deltaY * 0.01;   // Vertical rotation
-      
-      // NO LIMITS - complete freedom
-      camera.position.setFromSpherical(spherical);
-      camera.lookAt(0, 0, 0);
-      
-      setLastPointer({ x: e.clientX, y: e.clientY });
-    };
-    
-    const onPointerUp = (e: PointerEvent) => {
-      setIsPointerDown(false);
-      canvas.releasePointerCapture(e.pointerId);
-    };
-    
-    const onWheel = (e: WheelEvent) => {
-      if (editMode) return;
-      e.preventDefault();
-      
-      const direction = camera.position.clone().normalize();
-      const distance = camera.position.length();
-      const newDistance = Math.max(10, Math.min(1000, distance + e.deltaY * 0.1));
-      
-      camera.position.copy(direction.multiplyScalar(newDistance));
-    };
-    
-    canvas.addEventListener('pointerdown', onPointerDown);
-    canvas.addEventListener('pointermove', onPointerMove);
-    canvas.addEventListener('pointerup', onPointerUp);
-    canvas.addEventListener('wheel', onWheel);
-    
-    return () => {
-      canvas.removeEventListener('pointerdown', onPointerDown);
-      canvas.removeEventListener('pointermove', onPointerMove);
-      canvas.removeEventListener('pointerup', onPointerUp);
-      canvas.removeEventListener('wheel', onWheel);
-    };
-  }, [camera, gl, isPointerDown, lastPointer, editMode]);
-  
-  return null;
-};
-
-
 const Scene = ({
   model,
   editMode,
@@ -271,19 +201,89 @@ const Scene = ({
     return null;
   }
 
-  // Simple pergola center calculation
   const bounds = model.boundingBox;
-  const pergolaCenter: [number, number, number] = [
-    (bounds.min.x + bounds.max.x) / 2,
-    (bounds.min.y + bounds.max.y) / 2, 
-    (bounds.min.z + bounds.max.z) / 2
-  ];
+  const dimensions = model.metadata.dimensions;
+  const maxDimension = Math.max(dimensions.width, dimensions.depth, dimensions.height);
+  
+  // Calculate pergola center for focusing
+  const pergolaCenter = {
+    x: (bounds.min.x + bounds.max.x) / 2,
+    y: (bounds.min.y + bounds.max.y) / 2,
+    z: (bounds.min.z + bounds.max.z) / 2
+  };
+  
+  // Calculate optimal camera distance based on pergola size
+  const cameraDistance = maxDimension * 1.5;
+  
+  // Calculate camera position maintaining the captured angle but adjusting distance
+  const capturedAngle = {
+    x: 294.9438262837038,
+    y: 1052.363681663561,
+    z: 49.67794713824652
+  };
+  
+  // Normalize the captured position to get direction
+  const capturedMagnitude = Math.sqrt(
+    capturedAngle.x * capturedAngle.x + 
+    capturedAngle.y * capturedAngle.y + 
+    capturedAngle.z * capturedAngle.z
+  );
+  
+  const cameraDirection = {
+    x: capturedAngle.x / capturedMagnitude,
+    y: capturedAngle.y / capturedMagnitude,
+    z: capturedAngle.z / capturedMagnitude
+  };
+  
+  // Position camera at calculated distance from pergola center
+  const cameraPosition = {
+    x: pergolaCenter.x + cameraDirection.x * cameraDistance,
+    y: pergolaCenter.y + cameraDirection.y * cameraDistance,
+    z: pergolaCenter.z + cameraDirection.z * cameraDistance
+  };
 
   return (
     <Suspense fallback={<mesh><boxGeometry /><meshBasicMaterial /></mesh>}>
-      {/* Lighting */}
+      {/* Camera positioning - User's captured angle */}
+      <PerspectiveCamera 
+        makeDefault 
+        position={[218.83510221809496, 517.6492693921896, 101.99671122761868]} 
+        rotation={[-1.7220379979463376, -0.001582556906595901, -3.131209173525909]}
+        fov={45} 
+        near={1} 
+        far={5000}
+      />
+      
+      {/* Orbit controls - targeting pergola center */}
+      <OrbitControls 
+        target={[pergolaCenter.x, pergolaCenter.y, pergolaCenter.z]}
+        enableDamping 
+        dampingFactor={0.1}
+        enableZoom 
+        enablePan 
+        enableRotate={editMode ? false : true} // Disable rotation in edit mode
+        maxPolarAngle={Math.PI * 0.95}
+        minPolarAngle={0.05}
+        minDistance={maxDimension * 0.3}
+        maxDistance={maxDimension * 4}
+        autoRotate={false}
+        rotateSpeed={1.0}
+        zoomSpeed={1.2}
+        panSpeed={0.8}
+        mouseButtons={{
+          LEFT: editMode ? 2 : 0, // 0=rotate, 2=pan
+          MIDDLE: 1, // zoom
+          RIGHT: 2 // pan
+        }}
+      />
+      
+      {/* Environment lighting */}
       <Environment preset="city" environmentIntensity={0.6} />
+      
+      {/* Additional lighting */}
       <ambientLight intensity={0.4} />
+      
+      {/* Main directional light */}
       <directionalLight 
         position={[300, 400, 200]} 
         intensity={1.2} 
@@ -296,10 +296,8 @@ const Scene = ({
         shadow-camera-bottom={-300}
       />
       
-      {/* FRESH Manual Camera Control - Completely replacing OrbitControls */}
-      <ManualCameraController editMode={editMode} />
       
-      {/* Render pergola components */}
+      {/* Render all pergola components */}
       {model.meshes && model.meshes.map(mesh => (
         <InteractiveMesh3DComponent 
           key={mesh.id} 
@@ -310,17 +308,20 @@ const Scene = ({
         />
       ))}
       
-      {/* Reference axes at origin */}
+      {/* Reference axes at origin (0,0,0) */}
       {showAxes && (
         <group position={[0, 0, 0]}>
+          {/* X axis - Red */}
           <mesh position={[25, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
             <cylinderGeometry args={[1, 1, 50]} />
             <meshStandardMaterial color="#ff0000" />
           </mesh>
+          {/* Y axis - Green */}
           <mesh position={[0, 25, 0]}>
             <cylinderGeometry args={[1, 1, 50]} />
             <meshStandardMaterial color="#00ff00" />
           </mesh>
+          {/* Z axis - Blue */}
           <mesh position={[0, 0, 25]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[1, 1, 50]} />
             <meshStandardMaterial color="#0000ff" />
@@ -328,7 +329,7 @@ const Scene = ({
         </group>
       )}
       
-      {/* Camera capture button - fresh render */}
+      {/* Camera capture button */}
       <CameraCapture onCameraCapture={onCameraCapture} />
     </Suspense>
   );
@@ -422,9 +423,6 @@ export const Model3DViewer = ({
   
   return (
     <div className="border rounded-lg overflow-hidden bg-white shadow-sm w-full">
-      {/* ISOLATED CAMERA TEST - TEMPORARY */}
-      <CameraTest />
-      
       {/* Header with controls */}
       <div className="bg-gray-50 px-3 py-2 border-b flex items-center justify-between">
         <div>
@@ -463,10 +461,7 @@ export const Model3DViewer = ({
         <div style={{ width: editMode ? width - 300 : width, height }} className="flex-1">
           <Canvas
             shadows
-            camera={{ 
-              position: [218, 517, 102], 
-              fov: 45 
-            }}
+            camera={{ position: [100, 100, 100], fov: 40 }}
             style={{ background: 'linear-gradient(to bottom, #87ceeb, #f0f8ff)' }}
           >
             <Scene 
