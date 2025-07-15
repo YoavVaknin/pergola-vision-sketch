@@ -81,7 +81,7 @@ const calculateBeamLength = (start: Point, end: Point): number => {
   return Math.sqrt(dx * dx + dy * dy);
 };
 
-// Enhanced pergola beam creation with profile support - FIXED INNER POSITIONING
+// Enhanced pergola beam creation with profile support
 const createPergolaBeam = (
   id: string,
   start: Point,
@@ -95,27 +95,8 @@ const createPergolaBeam = (
   const beamLength = calculateBeamLength(start, end);
   const beamLengthCm = pixelToCm(beamLength, pixelsPerCm);
   
-  // Calculate beam direction vector
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const length = Math.sqrt(dx * dx + dy * dy);
-  
-  // Normalize direction vector
-  const dirX = dx / length;
-  const dirY = dy / length;
-  
-  // Calculate perpendicular vector (90 degrees clockwise)
-  const perpX = dy / length;
-  const perpY = -dx / length;
-  
-  // Move beam inward by half the beam width to keep outer edge on the drawn line
-  const inwardOffset = (profile.width / 2) * pixelsPerCm;
-  const offsetX = perpX * inwardOffset;
-  const offsetY = perpY * inwardOffset;
-  
-  // Calculate center position with inward offset
-  const centerX = (start.x + end.x) / 2 + offsetX;
-  const centerY = (start.y + end.y) / 2 + offsetY;
+  const centerX = (start.x + end.x) / 2;
+  const centerY = (start.y + end.y) / 2;
   
   return {
     id,
