@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Grid, PerspectiveCamera, Environment, Html } from '@react-three/drei';
+import { Grid, PerspectiveCamera, Environment, Html } from '@react-three/drei';
 import { Model3D, Mesh3D } from '@/utils/3dModelGenerator';
 import * as THREE from 'three';
 import { Suspense, useState, useRef, useEffect } from 'react';
@@ -419,8 +419,14 @@ export const Model3DViewer = ({
 
   console.log('🎬 Rendering enhanced 3D pergola model with', model.meshes.length, 'components');
   
+  // DEBUG: Import the test component
+  const { CameraTest } = require('./CameraTest');
+  
   return (
     <div className="border rounded-lg overflow-hidden bg-white shadow-sm w-full">
+      {/* ISOLATED CAMERA TEST - TEMPORARY */}
+      <CameraTest />
+      
       {/* Header with controls */}
       <div className="bg-gray-50 px-3 py-2 border-b flex items-center justify-between">
         <div>
