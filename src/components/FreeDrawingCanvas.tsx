@@ -428,16 +428,45 @@ export const FreeDrawingCanvas = () => {
         case 'frame':
           const frame = element as FrameElement;
           if (frame.points.length > 1) {
-            ctx.lineWidth = 3 / canvasTransform.scale;
-            ctx.beginPath();
-            ctx.moveTo(frame.points[0].x, frame.points[0].y);
-            frame.points.slice(1).forEach(point => {
-              ctx.lineTo(point.x, point.y);
-            });
-            if (frame.closed && frame.points.length > 2) {
-              ctx.closePath();
+            // ציור מלבן לכל קטע מסגרת במבט על - רוחב הפרופיל במקום קו
+            const frameWidthPixels = (shadingConfig.frameProfile.width * measurementConfig.pixelsPerCm) / canvasTransform.scale;
+            
+            for (let i = 0; i < frame.points.length; i++) {
+              const nextIndex = frame.closed ? (i + 1) % frame.points.length : i + 1;
+              if (!frame.closed && nextIndex >= frame.points.length) break;
+              
+              const start = frame.points[i];
+              const end = frame.points[nextIndex];
+              
+              // חישוב הכיוון הניצב לקטע
+              const dx = end.x - start.x;
+              const dy = end.y - start.y;
+              const length = Math.sqrt(dx * dx + dy * dy);
+              
+              if (length > 0) {
+                const normalX = (-dy / length) * frameWidthPixels / 2;
+                const normalY = (dx / length) * frameWidthPixels / 2;
+                
+                // ציור מלבן המייצג את הפרופיל במבט על
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.beginPath();
+                ctx.moveTo(start.x + normalX, start.y + normalY);
+                ctx.lineTo(end.x + normalX, end.y + normalY);
+                ctx.lineTo(end.x - normalX, end.y - normalY);
+                ctx.lineTo(start.x - normalX, start.y - normalY);
+                ctx.closePath();
+                ctx.fill();
+                
+                // קו מרכזי עדין להדגשה
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.lineWidth = 1 / canvasTransform.scale;
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.stroke();
+                ctx.strokeStyle = accessoryConfig.frameColor;
+              }
             }
-            ctx.stroke();
             if (measurementConfig.showLengths && frame.measurements) {
               frame.measurements.segmentLengths.forEach((length, index) => {
                 const point1 = frame.points[index];
@@ -490,31 +519,99 @@ export const FreeDrawingCanvas = () => {
           break;
         case 'beam':
           const beam = element as BeamElement;
-          ctx.lineWidth = beam.width / canvasTransform.scale;
-          ctx.beginPath();
-          ctx.moveTo(beam.start.x, beam.start.y);
-          ctx.lineTo(beam.end.x, beam.end.y);
-          ctx.stroke();
+          // ציור מלבן לקורה במבט על - רוחב הפרופיל במקום קו
+          const beamWidthPixels = (beam.width * measurementConfig.pixelsPerCm) / canvasTransform.scale;
+          
+          const dx = beam.end.x - beam.start.x;
+          const dy = beam.end.y - beam.start.y;
+          const length = Math.sqrt(dx * dx + dy * dy);
+          
+          if (length > 0) {
+            const normalX = (-dy / length) * beamWidthPixels / 2;
+            const normalY = (dx / length) * beamWidthPixels / 2;
+            
+            // ציור מלבן המייצג את הפרופיל במבט על
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.beginPath();
+            ctx.moveTo(beam.start.x + normalX, beam.start.y + normalY);
+            ctx.lineTo(beam.end.x + normalX, beam.end.y + normalY);
+            ctx.lineTo(beam.end.x - normalX, beam.end.y - normalY);
+            ctx.lineTo(beam.start.x - normalX, beam.start.y - normalY);
+            ctx.closePath();
+            ctx.fill();
+            
+            // קו מרכזי עדין להדגשה
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1 / canvasTransform.scale;
+            ctx.beginPath();
+            ctx.moveTo(beam.start.x, beam.start.y);
+            ctx.lineTo(beam.end.x, beam.end.y);
+            ctx.stroke();
+          }
           break;
         case 'shading':
           const shading = element as ShadingElement;
-          ctx.strokeStyle = shading.color || '#8b4513';
-          ctx.lineWidth = (shading.width || 2) / canvasTransform.scale;
-          ctx.setLineDash([]);
-          ctx.beginPath();
-          ctx.moveTo(shading.start.x, shading.start.y);
-          ctx.lineTo(shading.end.x, shading.end.y);
-          ctx.stroke();
+          // ציור מלבן לקורת הצללה במבט על - רוחב הפרופיל במקום קו
+          const shadingWidthPixels = (shadingConfig.shadingProfile.width * measurementConfig.pixelsPerCm) / canvasTransform.scale;
+          
+          const shadingDx = shading.end.x - shading.start.x;
+          const shadingDy = shading.end.y - shading.start.y;
+          const shadingLength = Math.sqrt(shadingDx * shadingDx + shadingDy * shadingDy);
+          
+          if (shadingLength > 0) {
+            const normalX = (-shadingDy / shadingLength) * shadingWidthPixels / 2;
+            const normalY = (shadingDx / shadingLength) * shadingWidthPixels / 2;
+            
+            // ציור מלבן המייצג את הפרופיל במבט על
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.beginPath();
+            ctx.moveTo(shading.start.x + normalX, shading.start.y + normalY);
+            ctx.lineTo(shading.end.x + normalX, shading.end.y + normalY);
+            ctx.lineTo(shading.end.x - normalX, shading.end.y - normalY);
+            ctx.lineTo(shading.start.x - normalX, shading.start.y - normalY);
+            ctx.closePath();
+            ctx.fill();
+            
+            // קו מרכזי עדין להדגשה
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1 / canvasTransform.scale;
+            ctx.beginPath();
+            ctx.moveTo(shading.start.x, shading.start.y);
+            ctx.lineTo(shading.end.x, shading.end.y);
+            ctx.stroke();
+          }
           break;
         case 'division':
           const division = element as DivisionElement;
-          ctx.strokeStyle = division.color || '#f97316';
-          ctx.lineWidth = (division.width || 3) / canvasTransform.scale;
-          ctx.setLineDash([]);
-          ctx.beginPath();
-          ctx.moveTo(division.start.x, division.start.y);
-          ctx.lineTo(division.end.x, division.end.y);
-          ctx.stroke();
+          // ציור מלבן לקורת חלוקה במבט על - רוחב הפרופיל במקום קו
+          const divisionWidthPixels = (shadingConfig.divisionProfile.width * measurementConfig.pixelsPerCm) / canvasTransform.scale;
+          
+          const divisionDx = division.end.x - division.start.x;
+          const divisionDy = division.end.y - division.start.y;
+          const divisionLength = Math.sqrt(divisionDx * divisionDx + divisionDy * divisionDy);
+          
+          if (divisionLength > 0) {
+            const normalX = (-divisionDy / divisionLength) * divisionWidthPixels / 2;
+            const normalY = (divisionDx / divisionLength) * divisionWidthPixels / 2;
+            
+            // ציור מלבן המייצג את הפרופיל במבט על
+            ctx.fillStyle = division.color || '#f97316';
+            ctx.beginPath();
+            ctx.moveTo(division.start.x + normalX, division.start.y + normalY);
+            ctx.lineTo(division.end.x + normalX, division.end.y + normalY);
+            ctx.lineTo(division.end.x - normalX, division.end.y - normalY);
+            ctx.lineTo(division.start.x - normalX, division.start.y - normalY);
+            ctx.closePath();
+            ctx.fill();
+            
+            // קו מרכזי עדין להדגשה
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1 / canvasTransform.scale;
+            ctx.beginPath();
+            ctx.moveTo(division.start.x, division.start.y);
+            ctx.lineTo(division.end.x, division.end.y);
+            ctx.stroke();
+          }
           break;
         case 'column':
           const column = element as ColumnElement;
