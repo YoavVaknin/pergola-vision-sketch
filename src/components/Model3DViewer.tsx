@@ -204,26 +204,59 @@ const Scene = ({
   const bounds = model.boundingBox;
   const dimensions = model.metadata.dimensions;
   const maxDimension = Math.max(dimensions.width, dimensions.depth, dimensions.height);
-  const cameraDistance = maxDimension * 1.2;
-
-  // Origin point - intersection of the three axes
-  const origin = { x: 0, y: 0, z: 0 };
+  
+  // Calculate pergola center for focusing
+  const pergolaCenter = {
+    x: (bounds.min.x + bounds.max.x) / 2,
+    y: (bounds.min.y + bounds.max.y) / 2,
+    z: (bounds.min.z + bounds.max.z) / 2
+  };
+  
+  // Calculate optimal camera distance based on pergola size
+  const cameraDistance = maxDimension * 1.5;
+  
+  // Calculate camera position maintaining the captured angle but adjusting distance
+  const capturedAngle = {
+    x: 294.9438262837038,
+    y: 1052.363681663561,
+    z: 49.67794713824652
+  };
+  
+  // Normalize the captured position to get direction
+  const capturedMagnitude = Math.sqrt(
+    capturedAngle.x * capturedAngle.x + 
+    capturedAngle.y * capturedAngle.y + 
+    capturedAngle.z * capturedAngle.z
+  );
+  
+  const cameraDirection = {
+    x: capturedAngle.x / capturedMagnitude,
+    y: capturedAngle.y / capturedMagnitude,
+    z: capturedAngle.z / capturedMagnitude
+  };
+  
+  // Position camera at calculated distance from pergola center
+  const cameraPosition = {
+    x: pergolaCenter.x + cameraDirection.x * cameraDistance,
+    y: pergolaCenter.y + cameraDirection.y * cameraDistance,
+    z: pergolaCenter.z + cameraDirection.z * cameraDistance
+  };
 
   return (
     <Suspense fallback={<mesh><boxGeometry /><meshBasicMaterial /></mesh>}>
-      {/* Camera positioning - User's exact captured view */}
+      {/* Camera positioning - User's captured angle with adaptive distance */}
       <PerspectiveCamera 
         makeDefault 
-        position={[294.9438262837038, 1052.363681663561, 49.67794713824652]} 
+        position={[cameraPosition.x, cameraPosition.y, cameraPosition.z]} 
         rotation={[-1.6417093889712355, 0.00027075727084020383, 3.137780916387363]}
         fov={45} 
         near={1} 
         far={5000}
       />
       
-      {/* Orbit controls - targeting origin */}
+      {/* Orbit controls - targeting pergola center */}
       <OrbitControls 
-        target={[origin.x, origin.y, origin.z]} 
+        target={[pergolaCenter.x, pergolaCenter.y, pergolaCenter.z]}
         enableDamping 
         dampingFactor={0.1}
         enableZoom 
