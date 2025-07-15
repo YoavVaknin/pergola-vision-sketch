@@ -534,15 +534,25 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
   const totalHeight = frameBaseZ + shadingConfig.frameProfile.height + 
                       (shadingConfig.divisionEnabled ? shadingConfig.divisionProfile.height : 0);
   
+  // Calculate bottom-left corner offset to normalize to origin
+  const minXCm = minX === Infinity ? 0 : pixelToCm(minX, pixelsPerCm);
+  const minYCm = minY === Infinity ? 0 : pixelToCm(minY, pixelsPerCm);
+  
+  // Normalize all mesh positions to ensure bottom-left corner is at origin
+  meshes.forEach(mesh => {
+    mesh.position.x -= minXCm;
+    mesh.position.y -= minYCm;
+  });
+  
   const boundingBox = {
     min: {
-      x: minX === Infinity ? 0 : pixelToCm(minX, pixelsPerCm) - shadingConfig.frameProfile.width,
-      y: minY === Infinity ? 0 : pixelToCm(minY, pixelsPerCm) - shadingConfig.frameProfile.width,
+      x: 0, // Always start at origin
+      y: 0, // Always start at origin  
       z: frameBaseZ
     },
     max: {
-      x: maxX === -Infinity ? 100 : pixelToCm(maxX, pixelsPerCm) + shadingConfig.frameProfile.width,
-      y: maxY === -Infinity ? 100 : pixelToCm(maxY, pixelsPerCm) + shadingConfig.frameProfile.width,
+      x: maxX === -Infinity ? 100 : pixelToCm(maxX, pixelsPerCm) - minXCm + shadingConfig.frameProfile.width,
+      y: maxY === -Infinity ? 100 : pixelToCm(maxY, pixelsPerCm) - minYCm + shadingConfig.frameProfile.width,
       z: totalHeight
     }
   };
