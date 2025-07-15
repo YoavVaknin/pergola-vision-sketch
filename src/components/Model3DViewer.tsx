@@ -220,21 +220,6 @@ const Scene = ({
         />
       </mesh>
       
-      {/* Grid Reference - slightly above floor at origin */}
-      <Grid 
-        position={[0, 0, 0]} 
-        args={[dimensions.width * 2, dimensions.depth * 2]} 
-        cellSize={50} 
-        cellThickness={0.3} 
-        sectionSize={200} 
-        sectionThickness={0.8} 
-        sectionColor="#888888" 
-        cellColor="#bbbbbb" 
-        infiniteGrid={false} 
-        fadeDistance={maxDimension * 2} 
-        fadeStrength={0.3} 
-      />
-      
       {/* Render all pergola components */}
       {model.meshes && model.meshes.map(mesh => (
         <InteractiveMesh3DComponent 
