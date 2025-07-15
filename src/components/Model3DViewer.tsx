@@ -1,25 +1,5 @@
 import { Canvas } from '@react-three/fiber';
-import { 
-  OrbitControls, 
-  Grid, 
-  PerspectiveCamera, 
-  Environment,
-  ContactShadows,
-  Lightformer,
-  AccumulativeShadows,
-  RandomizedLight,
-  useTexture,
-  MeshReflectorMaterial,
-  Sky
-} from '@react-three/drei';
-import { 
-  EffectComposer, 
-  Bloom, 
-  ToneMapping, 
-  SSAO,
-  BrightnessContrast,
-  HueSaturation
-} from '@react-three/postprocessing';
+import { OrbitControls, Grid, PerspectiveCamera, Environment } from '@react-three/drei';
 import { Model3D, Mesh3D } from '@/utils/3dModelGenerator';
 import * as THREE from 'three';
 import { Suspense } from 'react';
@@ -30,7 +10,7 @@ interface Model3DViewerProps {
   height?: number;
 }
 
-// Enhanced mesh component with cinema-quality PBR materials
+// Enhanced mesh component with improved materials
 const Mesh3DComponent = ({
   mesh
 }: {
@@ -41,7 +21,6 @@ const Mesh3DComponent = ({
     position,
     rotation,
     color,
-    material,
     type
   } = mesh;
 
@@ -55,61 +34,41 @@ const Mesh3DComponent = ({
 
   // Create different geometries based on mesh type
   const createGeometry = () => {
-    switch (type) {
-      case 'frame_beam':
-        return <boxGeometry args={[geometry.width, geometry.height, geometry.depth]} />;
-      case 'division_beam':
-        return <boxGeometry args={[geometry.width, geometry.height, geometry.depth]} />;
-      case 'shading_slat':
-        return <boxGeometry args={[geometry.width, geometry.height, geometry.depth]} />;
-      case 'column':
-        return <boxGeometry args={[geometry.width, geometry.height, geometry.depth]} />;
-      default:
-        return <boxGeometry args={[geometry.width, geometry.height, geometry.depth]} />;
-    }
+    return <boxGeometry args={[geometry.width, geometry.height, geometry.depth]} />;
   };
 
-  // Cinema-quality PBR materials for different components
+  // Improved materials for different components
   const getMaterialProps = () => {
     const baseColor = new THREE.Color(color);
     
     switch (type) {
       case 'frame_beam':
-        // Premium aluminum/steel frame - reflective with subtle scratches
         return {
           color: baseColor,
-          roughness: 0.15,
-          metalness: 0.9,
-          envMapIntensity: 1.5,
-          clearcoat: 0.3,
-          clearcoatRoughness: 0.1
+          roughness: 0.2,
+          metalness: 0.8,
+          envMapIntensity: 1.0
         };
       case 'column':
-        // Brushed metal columns - directional texture
         return {
           color: baseColor,
-          roughness: 0.25,
-          metalness: 0.8,
-          envMapIntensity: 1.2,
-          clearcoat: 0.1,
-          clearcoatRoughness: 0.3
+          roughness: 0.3,
+          metalness: 0.7,
+          envMapIntensity: 0.8
         };
       case 'shading_slat':
-        // Natural wood slats - warm and organic
         return {
-          color: baseColor.multiplyScalar(0.8), // Slightly darker for realism
-          roughness: 0.8,
-          metalness: 0.0,
-          envMapIntensity: 0.3,
-          transparent: true,
-          opacity: 0.95
+          color: baseColor.multiplyScalar(0.9),
+          roughness: 0.7,
+          metalness: 0.1,
+          envMapIntensity: 0.4
         };
       default:
         return {
           color: baseColor,
-          roughness: 0.4,
+          roughness: 0.5,
           metalness: 0.3,
-          envMapIntensity: 1.0
+          envMapIntensity: 0.6
         };
     }
   };
@@ -117,7 +76,7 @@ const Mesh3DComponent = ({
   return (
     <mesh position={threePosition} rotation={threeRotation} castShadow receiveShadow>
       {createGeometry()}
-      <meshPhysicalMaterial {...getMaterialProps()} />
+      <meshStandardMaterial {...getMaterialProps()} />
     </mesh>
   );
 };
@@ -144,117 +103,75 @@ const Scene = ({
 
   return (
     <Suspense fallback={<mesh><boxGeometry /><meshBasicMaterial /></mesh>}>
-      {/* Cinema-grade camera positioning */}
+      {/* Camera positioning */}
       <PerspectiveCamera 
         makeDefault 
         position={[center.x + cameraDistance * 0.8, center.y + cameraDistance * 0.6, center.z + cameraDistance * 0.8]} 
-        fov={35} 
+        fov={40} 
         near={0.1} 
-        far={10000}
+        far={5000}
       />
       
-      {/* Professional orbit controls */}
+      {/* Orbit controls */}
       <OrbitControls 
         target={[center.x, center.y, center.z]} 
         enableDamping 
-        dampingFactor={0.03}
+        dampingFactor={0.05}
         enableZoom 
         enablePan 
         enableRotate 
         maxPolarAngle={Math.PI}
         minPolarAngle={0}
-        minAzimuthAngle={-Infinity}
-        maxAzimuthAngle={Infinity}
-        minDistance={maxDimension * 0.3}
-        maxDistance={maxDimension * 5}
+        minDistance={maxDimension * 0.5}
+        maxDistance={maxDimension * 3}
         autoRotate={false}
-        rotateSpeed={0.5}
-        zoomSpeed={0.8}
-        panSpeed={0.5}
+        rotateSpeed={0.6}
+        zoomSpeed={1.0}
+        panSpeed={0.6}
       />
       
-      {/* VRay-style HDRI environment lighting */}
-      <Environment
-        preset="city"
-        environmentIntensity={0.8}
-        backgroundIntensity={0.4}
-        background={true}
-      />
+      {/* Environment lighting */}
+      <Environment preset="city" environmentIntensity={0.6} />
       
-      {/* Additional architectural lighting */}
-      <ambientLight intensity={0.2} />
+      {/* Additional lighting */}
+      <ambientLight intensity={0.4} />
       
-      {/* Key light - sun simulation */}
+      {/* Main directional light */}
       <directionalLight 
-        position={[center.x + 500, center.y + 800, center.z + 300]} 
-        intensity={1.5} 
+        position={[center.x + 300, center.y + 400, center.z + 200]} 
+        intensity={1.2} 
         castShadow 
-        shadow-mapSize-width={4096} 
-        shadow-mapSize-height={4096} 
-        shadow-camera-far={2000} 
-        shadow-camera-left={-500} 
-        shadow-camera-right={500} 
-        shadow-camera-top={500} 
-        shadow-camera-bottom={-500}
-        shadow-bias={-0.0001}
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-far={1000} 
+        shadow-camera-left={-300} 
+        shadow-camera-right={300} 
+        shadow-camera-top={300} 
+        shadow-camera-bottom={-300}
       />
       
-      {/* Cinema-quality soft shadows */}
-      <AccumulativeShadows
-        temporal
-        frames={200}
-        color="black"
-        colorBlend={0.5}
-        alphaTest={0.9}
-        opacity={0.8}
-        scale={dimensions.width * 3}
-        position={[center.x, center.y, -2]}
-      >
-        <RandomizedLight
-          amount={8}
-          radius={dimensions.width * 0.5}
-          ambient={0.5}
-          intensity={1}
-          position={[center.x, center.y + 400, center.z + 200]}
-          bias={0.001}
-        />
-      </AccumulativeShadows>
-      
-      {/* Photorealistic ground plane */}
+      {/* Ground plane for shadows */}
       <mesh 
         position={[center.x, center.y, -2]} 
         rotation={[-Math.PI / 2, 0, 0]} 
         receiveShadow
       >
-        <planeGeometry args={[dimensions.width * 4, dimensions.depth * 4]} />
-        <MeshReflectorMaterial
-          blur={[300, 100]}
-          resolution={2048}
-          mixBlur={1}
-          mixStrength={40}
-          roughness={1}
-          depthScale={1.2}
-          minDepthThreshold={0.4}
-          maxDepthThreshold={1.4}
-          color="#ffffff"
-          metalness={0.0}
-          mirror={0.0}
-        />
+        <planeGeometry args={[dimensions.width * 3, dimensions.depth * 3]} />
+        <meshStandardMaterial color="#f0f0f0" roughness={0.8} metalness={0.1} />
       </mesh>
       
-      {/* Professional grid system */}
+      {/* Grid */}
       <Grid 
         position={[center.x, center.y, 0]} 
         args={[dimensions.width * 2, dimensions.depth * 2]} 
         cellSize={50} 
-        cellThickness={0.3} 
+        cellThickness={0.5} 
         sectionSize={200} 
-        sectionThickness={0.8} 
-        sectionColor="#888888" 
-        cellColor="#cccccc" 
+        sectionThickness={1} 
+        sectionColor="#666666" 
+        cellColor="#aaaaaa" 
         infiniteGrid={false} 
-        fadeDistance={maxDimension * 3} 
-        fadeStrength={0.7} 
+        fadeDistance={maxDimension * 2} 
+        fadeStrength={0.5} 
       />
       
       {/* Render all pergola components */}
@@ -262,19 +179,19 @@ const Scene = ({
         <Mesh3DComponent key={mesh.id} mesh={mesh} />
       ))}
       
-      {/* Professional reference axes */}
+      {/* Reference axes */}
       <group position={[bounds.min.x, bounds.min.y, 0]}>
         <mesh position={[25, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[0.8, 0.8, 50]} />
-          <meshStandardMaterial color="#ff4444" roughness={0.2} metalness={0.8} />
+          <meshStandardMaterial color="#ff4444" />
         </mesh>
         <mesh position={[0, 25, 0]}>
           <cylinderGeometry args={[0.8, 0.8, 50]} />
-          <meshStandardMaterial color="#44ff44" roughness={0.2} metalness={0.8} />
+          <meshStandardMaterial color="#44ff44" />
         </mesh>
         <mesh position={[0, 0, 25]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.8, 0.8, 50]} />
-          <meshStandardMaterial color="#4444ff" roughness={0.2} metalness={0.8} />
+          <meshStandardMaterial color="#4444ff" />
         </mesh>
       </group>
     </Suspense>
@@ -295,58 +212,19 @@ export const Model3DViewer = ({
   return (
     <div className="border rounded-lg overflow-hidden bg-white shadow-sm w-full">
       <div className="bg-gray-50 px-3 py-2 border-b">
-        <h4 className="text-sm font-medium text-gray-700">הדמיה תלת-ממדית - פרגולה (VRay Style)</h4>
+        <h4 className="text-sm font-medium text-gray-700">הדמיה תלת-ממדית - פרגולה</h4>
         <p className="text-xs text-gray-500">
-          רנדרינג בסטנדרט VRay/Corona • תאורה HDRI • PBR Materials • צלליות רכות
+          הדמיה משופרת עם תאורה מתקדמת וחומרים מציאותיים
         </p>
       </div>
       
       <div style={{ width, height }} className="w-full">
         <Canvas
           shadows
-          camera={{ position: [100, 100, 100], fov: 35 }}
-          style={{ background: 'transparent' }}
+          camera={{ position: [100, 100, 100], fov: 40 }}
+          style={{ background: 'linear-gradient(to bottom, #87ceeb, #f0f8ff)' }}
         >
           <Scene model={model} />
-          
-          {/* Post-processing effects for cinematic quality */}
-          <EffectComposer>
-            <Bloom
-              intensity={0.3}
-              luminanceThreshold={0.9}
-              luminanceSmoothing={0.4}
-              blendFunction={1}
-            />
-            <ToneMapping
-              adaptive={true}
-              resolution={256}
-              whitePoint={4.0}
-              middleGrey={0.6}
-              minLuminance={0.01}
-              averageLuminance={1.0}
-              adaptationRate={2.0}
-            />
-            <SSAO
-              blendFunction={1}
-              samples={30}
-              rings={4}
-              distanceThreshold={1.0}
-              distanceFalloff={0.0}
-              rangeThreshold={0.5}
-              rangeFalloff={0.1}
-              luminanceInfluence={0.9}
-              radius={20}
-              bias={0.5}
-            />
-            <BrightnessContrast
-              brightness={0.05}
-              contrast={0.1}
-            />
-            <HueSaturation
-              hue={0.0}
-              saturation={0.1}
-            />
-          </EffectComposer>
         </Canvas>
       </div>
       
