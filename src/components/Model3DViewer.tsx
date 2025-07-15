@@ -181,6 +181,22 @@ const CameraCapture = ({ onCameraCapture }: { onCameraCapture: (data: any) => vo
   );
 };
 
+// Safe OrbitControls that waits for camera to be ready
+const SafeOrbitControls = ({ editMode }: { editMode: boolean }) => {
+  const { camera } = useThree();
+  
+  // Only render OrbitControls when camera is available
+  if (!camera || !camera.position) {
+    return null;
+  }
+  
+  return (
+    <OrbitControls 
+      enableRotate={!editMode}
+    />
+  );
+};
+
 
 const Scene = ({
   model,
@@ -227,10 +243,8 @@ const Scene = ({
         shadow-camera-bottom={-300}
       />
       
-      {/* SUPER MINIMAL OrbitControls - NO TARGET */}
-      <OrbitControls 
-        enableRotate={!editMode}
-      />
+      {/* Safe OrbitControls that waits for camera */}
+      <SafeOrbitControls editMode={editMode} />
       
       {/* Render pergola components */}
       {model.meshes && model.meshes.map(mesh => (
