@@ -158,8 +158,8 @@ const Scene = ({
       {/* Camera positioning - SketchUp-like perspective */}
       <PerspectiveCamera 
         makeDefault 
-        position={[cameraDistance * 0.7, -cameraDistance * 0.7, cameraDistance * 0.5]} 
-        fov={50} 
+        position={[cameraDistance * 1.2, -cameraDistance * 0.8, cameraDistance * 0.8]} 
+        fov={45} 
         near={1} 
         far={5000}
       />
