@@ -854,7 +854,7 @@ export const FreeDrawingCanvas = () => {
         </div>
 
         {/* Canvas area */}
-        <div className="flex-1 bg-transparent rounded-lg shadow-sm border overflow-hidden">
+        <div className="flex-1 bg-white rounded-lg shadow-sm border overflow-hidden">
           <div className="h-full flex flex-col">
             {/* Canvas header */}
             <div className="bg-gray-50 border-b p-3 flex items-center justify-between">
@@ -876,7 +876,7 @@ export const FreeDrawingCanvas = () => {
             </div>
             
             {/* Canvas */}
-            <div className="flex-1 relative bg-transparent">
+            <div className="flex-1 relative bg-white">
               <canvas ref={canvasRef} width={800} height={600} className="w-full h-full" onMouseDown={handleMouseDown} onMouseUp={handleMouseUp} onMouseMove={handleMouseMove} onDoubleClick={handleDoubleClick} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} style={{
               cursor: getCursor(),
               touchAction: 'none'
