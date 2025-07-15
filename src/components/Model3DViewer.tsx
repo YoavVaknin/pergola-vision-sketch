@@ -149,9 +149,9 @@ const Scene = ({
         shadow-camera-bottom={-300}
       />
       
-      {/* Ground plane for shadows */}
+      {/* Ground plane for shadows - always at Z=0 */}
       <mesh 
-        position={[center.x, center.y, -2]} 
+        position={[center.x, center.y, 0]} 
         rotation={[-Math.PI / 2, 0, 0]} 
         receiveShadow
       >
@@ -159,7 +159,7 @@ const Scene = ({
         <meshStandardMaterial color="#f0f0f0" roughness={0.8} metalness={0.1} />
       </mesh>
       
-      {/* Grid */}
+      {/* Grid - always at Z=0 */}
       <Grid 
         position={[center.x, center.y, 0]} 
         args={[dimensions.width * 2, dimensions.depth * 2]} 

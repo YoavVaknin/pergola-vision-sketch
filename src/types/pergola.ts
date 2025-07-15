@@ -78,6 +78,7 @@ export interface ShadingConfig {
   divisionEnabled: boolean;
   // New properties for pergola models
   pergolaModel: 'bottom_shading' | 'top_shading' | 't_model';
+  pergolaHeight: number; // גובה הפרגולה מעל הרצפה (cm)
   frameProfile: {
     width: number; // cm
     height: number; // cm

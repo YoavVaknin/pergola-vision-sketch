@@ -65,7 +65,8 @@ const InteractivePergolaCanvas: React.FC<InteractivePergolaCanvasProps> = ({ onD
     divisionProfile: { width: 8, height: 3 },
     frameProfile: { width: 10, height: 5 },
     direction: 0,
-    pergolaModel: 'bottom_shading' as 'bottom_shading' | 'top_shading' | 't_model'
+    pergolaModel: 'bottom_shading' as 'bottom_shading' | 'top_shading' | 't_model',
+    pergolaHeight: 300 // גובה הפרגולה מעל הרצפה (cm)
   });
   const [history, setHistory] = useState<PergolaElementType[][]>([[]]);
   const [historyIndex, setHistoryIndex] = useState(0);

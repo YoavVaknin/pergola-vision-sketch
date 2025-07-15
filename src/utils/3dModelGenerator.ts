@@ -447,16 +447,16 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
   console.log('🚀 Starting enhanced 3D pergola generation - Fixed Bottom Shading Model');
   
   const { elements, pixelsPerCm, frameColor, shadingConfig } = drawingData;
-  const frameHeight = 250; // cm - pergola height
+  const frameHeight = shadingConfig.pergolaHeight || 300; // cm - pergola height from config
   
   const meshes: Mesh3D[] = [];
   let minX = Infinity, maxX = -Infinity;
   let minY = Infinity, maxY = -Infinity;
   
-  console.log(`📊 Processing ${elements.length} elements for bottom shading pergola`);
+  console.log(`📊 Processing ${elements.length} elements for bottom shading pergola at height ${frameHeight}cm`);
 
-  // FIXED: Calculate base Z position for frame (frame sits at bottom)
-  const frameBaseZ = 0;
+  // FIXED: Calculate base Z position for frame (frame sits at pergola height)
+  const frameBaseZ = frameHeight;
 
   elements.forEach((element, index) => {
     console.log(`🔨 Processing element ${index}: ${element.type} (ID: ${element.id})`);

@@ -25,6 +25,7 @@ export const usePergolaDrawing = () => {
     divisionColor: '#f97316',
     divisionEnabled: true,
     pergolaModel: 'bottom_shading',
+    pergolaHeight: 300, // גובה הפרגולה מעל הרצפה (cm)
     frameProfile: {
       width: 20,
       height: 15
