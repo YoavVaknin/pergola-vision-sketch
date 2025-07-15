@@ -251,16 +251,26 @@ const Scene = ({
 
   return (
     <Suspense fallback={<mesh><boxGeometry /><meshBasicMaterial /></mesh>}>
-      {/* Camera positioning - Starting from user's captured angle */}
-      <PerspectiveCamera 
-        makeDefault 
-        position={[218.83510221809496, 517.6492693921896, 101.99671122761868]}
-        fov={45} 
-        near={1} 
-        far={5000}
+      {/* Environment lighting */}
+      <Environment preset="city" environmentIntensity={0.6} />
+      
+      {/* Additional lighting */}
+      <ambientLight intensity={0.4} />
+      
+      {/* Main directional light */}
+      <directionalLight 
+        position={[300, 400, 200]} 
+        intensity={1.2} 
+        castShadow 
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-far={1000} 
+        shadow-camera-left={-300} 
+        shadow-camera-right={300} 
+        shadow-camera-top={300} 
+        shadow-camera-bottom={-300}
       />
       
-      {/* Orbit controls - COMPLETELY UNRESTRICTED rotation */}
+      {/* Orbit controls with default camera - COMPLETELY UNRESTRICTED */}
       <OrbitControls 
         target={[
           pergolaCenter.x || 0, 
@@ -272,7 +282,6 @@ const Scene = ({
         enableZoom 
         enablePan 
         enableRotate={editMode ? false : true}
-        // REMOVE ALL ANGLE RESTRICTIONS - complete freedom
         minDistance={Math.max(10, maxDimension * 0.3)}
         maxDistance={Math.max(1000, maxDimension * 4)}
         autoRotate={false}
@@ -291,25 +300,6 @@ const Scene = ({
           BOTTOM: 'ArrowDown'
         }}
         screenSpacePanning={false}
-      />
-      
-      {/* Environment lighting */}
-      <Environment preset="city" environmentIntensity={0.6} />
-      
-      {/* Additional lighting */}
-      <ambientLight intensity={0.4} />
-      
-      {/* Main directional light */}
-      <directionalLight 
-        position={[300, 400, 200]} 
-        intensity={1.2} 
-        castShadow 
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-far={1000} 
-        shadow-camera-left={-300} 
-        shadow-camera-right={300} 
-        shadow-camera-top={300} 
-        shadow-camera-bottom={-300}
       />
       
       
