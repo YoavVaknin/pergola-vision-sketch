@@ -92,42 +92,45 @@ const Scene = ({
   }
 
   const bounds = model.boundingBox;
-  const center = {
-    x: (bounds.min.x + bounds.max.x) / 2,
-    y: (bounds.min.y + bounds.max.y) / 2,
-    z: bounds.max.z / 2
-  };
   const dimensions = model.metadata.dimensions;
   const maxDimension = Math.max(dimensions.width, dimensions.depth, dimensions.height);
-  const cameraDistance = maxDimension * 1.5;
+  const cameraDistance = maxDimension * 1.2;
+
+  // Origin point - intersection of the three axes
+  const origin = { x: 0, y: 0, z: 0 };
 
   return (
     <Suspense fallback={<mesh><boxGeometry /><meshBasicMaterial /></mesh>}>
-      {/* Camera positioning */}
+      {/* Camera positioning - SketchUp-like perspective */}
       <PerspectiveCamera 
         makeDefault 
-        position={[center.x + cameraDistance * 0.8, center.y + cameraDistance * 0.6, center.z + cameraDistance * 0.8]} 
-        fov={40} 
-        near={0.1} 
+        position={[cameraDistance * 0.7, -cameraDistance * 0.7, cameraDistance * 0.5]} 
+        fov={50} 
+        near={1} 
         far={5000}
       />
       
-      {/* Orbit controls */}
+      {/* Orbit controls - targeting origin */}
       <OrbitControls 
-        target={[center.x, center.y, center.z]} 
+        target={[origin.x, origin.y, origin.z]} 
         enableDamping 
-        dampingFactor={0.05}
+        dampingFactor={0.1}
         enableZoom 
         enablePan 
         enableRotate 
-        maxPolarAngle={Math.PI}
-        minPolarAngle={0}
-        minDistance={maxDimension * 0.5}
-        maxDistance={maxDimension * 3}
+        maxPolarAngle={Math.PI * 0.95}
+        minPolarAngle={0.05}
+        minDistance={maxDimension * 0.3}
+        maxDistance={maxDimension * 4}
         autoRotate={false}
-        rotateSpeed={0.6}
-        zoomSpeed={1.0}
-        panSpeed={0.6}
+        rotateSpeed={1.0}
+        zoomSpeed={1.2}
+        panSpeed={0.8}
+        mouseButtons={{
+          LEFT: 0, // rotate
+          MIDDLE: 1, // zoom
+          RIGHT: 2 // pan
+        }}
       />
       
       {/* Environment lighting */}
@@ -138,7 +141,7 @@ const Scene = ({
       
       {/* Main directional light */}
       <directionalLight 
-        position={[center.x + 300, center.y + 400, center.z + 200]} 
+        position={[300, 400, 200]} 
         intensity={1.2} 
         castShadow 
         shadow-mapSize={[2048, 2048]}
@@ -151,7 +154,7 @@ const Scene = ({
       
       {/* Simple Floor - always at Z=0 */}
       <mesh 
-        position={[center.x, center.y, -1]} 
+        position={[0, 0, -1]} 
         rotation={[-Math.PI / 2, 0, 0]} 
         receiveShadow
       >
@@ -163,9 +166,9 @@ const Scene = ({
         />
       </mesh>
       
-      {/* Grid Reference - slightly above floor */}
+      {/* Grid Reference - slightly above floor at origin */}
       <Grid 
-        position={[center.x, center.y, 0]} 
+        position={[0, 0, 0]} 
         args={[dimensions.width * 2, dimensions.depth * 2]} 
         cellSize={50} 
         cellThickness={0.3} 
@@ -183,19 +186,22 @@ const Scene = ({
         <Mesh3DComponent key={mesh.id} mesh={mesh} />
       ))}
       
-      {/* Reference axes */}
-      <group position={[bounds.min.x, bounds.min.y, 0]}>
+      {/* Reference axes at origin (0,0,0) */}
+      <group position={[0, 0, 0]}>
+        {/* X axis - Red */}
         <mesh position={[25, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.8, 0.8, 50]} />
-          <meshStandardMaterial color="#ff4444" />
+          <cylinderGeometry args={[1, 1, 50]} />
+          <meshStandardMaterial color="#ff0000" />
         </mesh>
+        {/* Y axis - Green */}
         <mesh position={[0, 25, 0]}>
-          <cylinderGeometry args={[0.8, 0.8, 50]} />
-          <meshStandardMaterial color="#44ff44" />
+          <cylinderGeometry args={[1, 1, 50]} />
+          <meshStandardMaterial color="#00ff00" />
         </mesh>
+        {/* Z axis - Blue */}
         <mesh position={[0, 0, 25]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.8, 0.8, 50]} />
-          <meshStandardMaterial color="#4444ff" />
+          <cylinderGeometry args={[1, 1, 50]} />
+          <meshStandardMaterial color="#0000ff" />
         </mesh>
       </group>
     </Suspense>
