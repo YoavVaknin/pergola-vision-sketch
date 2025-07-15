@@ -2,7 +2,10 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid, PerspectiveCamera, Environment } from '@react-three/drei';
 import { Model3D, Mesh3D } from '@/utils/3dModelGenerator';
 import * as THREE from 'three';
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
+import { FeedbackPanel } from '@/components/FeedbackPanel';
+import { Button } from '@/components/ui/button';
+import { MessageCircle, Settings } from 'lucide-react';
 
 interface Model3DViewerProps {
   model: Model3D | null;
@@ -203,6 +206,9 @@ export const Model3DViewer = ({
   width = 800,
   height = 600
 }: Model3DViewerProps) => {
+  const [feedbackPanelOpen, setFeedbackPanelOpen] = useState(false);
+  const [feedbackEnabled, setFeedbackEnabled] = useState(true);
+
   if (!model || !model.meshes || model.meshes.length === 0) {
     return;
   }
@@ -210,30 +216,89 @@ export const Model3DViewer = ({
   console.log('🎬 Rendering enhanced 3D pergola model with', model.meshes.length, 'components');
   
   return (
-    <div className="border rounded-lg overflow-hidden bg-white shadow-sm w-full">
-      <div className="bg-gray-50 px-3 py-2 border-b">
-        <h4 className="text-sm font-medium text-gray-700">הדמיה תלת-ממדית - פרגולה</h4>
-        <p className="text-xs text-gray-500">
-          הדמיה משופרת עם תאורה מתקדמת וחומרים מציאותיים
-        </p>
+    <>
+      <div className="border rounded-lg overflow-hidden bg-white shadow-sm w-full">
+        <div className="bg-gray-50 px-3 py-2 border-b">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-medium text-gray-700">הדמיה תלת-ממדית - פרגולה</h4>
+              <p className="text-xs text-gray-500">
+                הדמיה משופרת עם תאורה מתקדמת וחומרים מציאותיים
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {feedbackEnabled && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFeedbackPanelOpen(true)}
+                  className="flex items-center gap-1"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  פידבק
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFeedbackEnabled(!feedbackEnabled)}
+                className="flex items-center gap-1"
+                title={feedbackEnabled ? "כבה פאנל שיפור הדמיה" : "הפעל פאנל שיפור הדמיה"}
+              >
+                <Settings className="w-4 h-4" />
+                {feedbackEnabled ? "כבה" : "הפעל"}
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        <div style={{ width, height }} className="w-full relative">
+          <Canvas
+            shadows
+            camera={{ position: [100, 100, 100], fov: 40 }}
+            style={{ background: 'linear-gradient(to bottom, #87ceeb, #f0f8ff)' }}
+          >
+            <Scene model={model} />
+          </Canvas>
+          
+          {/* Floating feedback button */}
+          {feedbackEnabled && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setFeedbackPanelOpen(true)}
+              className="absolute bottom-4 right-4 shadow-lg flex items-center gap-2"
+            >
+              <MessageCircle className="w-4 h-4" />
+              פידבק מהיר
+            </Button>
+          )}
+        </div>
+        
+        <div className="bg-gray-50 px-3 py-2 border-t">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-gray-600">
+              רכיבי פרגולה: {model.meshes.filter(m => m.type === 'frame_beam').length} קורות מסגרת | 
+              {model.meshes.filter(m => m.type === 'shading_slat').length} רצועות הצללה | 
+              {model.meshes.filter(m => m.type === 'column').length} עמודים |
+              מימדים: {model.metadata?.dimensions ? `${model.metadata.dimensions.width.toFixed(0)}×${model.metadata.dimensions.depth.toFixed(0)}×${model.metadata.dimensions.height.toFixed(0)} ס"מ` : 'לא זמין'}
+            </div>
+            {feedbackEnabled && (
+              <div className="text-xs text-blue-600">
+                פאנל שיפור הדמיה מופעל
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-      
-      <div style={{ width, height }} className="w-full">
-        <Canvas
-          shadows
-          camera={{ position: [100, 100, 100], fov: 40 }}
-          style={{ background: 'linear-gradient(to bottom, #87ceeb, #f0f8ff)' }}
-        >
-          <Scene model={model} />
-        </Canvas>
-      </div>
-      
-      <div className="bg-gray-50 px-3 py-2 border-t text-xs text-gray-600">
-        רכיבי פרגולה: {model.meshes.filter(m => m.type === 'frame_beam').length} קורות מסגרת | 
-        {model.meshes.filter(m => m.type === 'shading_slat').length} רצועות הצללה | 
-        {model.meshes.filter(m => m.type === 'column').length} עמודים |
-        מימדים: {model.metadata?.dimensions ? `${model.metadata.dimensions.width.toFixed(0)}×${model.metadata.dimensions.depth.toFixed(0)}×${model.metadata.dimensions.height.toFixed(0)} ס"מ` : 'לא זמין'}
-      </div>
-    </div>
+
+      {/* Feedback Panel */}
+      {feedbackEnabled && (
+        <FeedbackPanel
+          isOpen={feedbackPanelOpen}
+          onClose={() => setFeedbackPanelOpen(false)}
+        />
+      )}
+    </>
   );
 };
