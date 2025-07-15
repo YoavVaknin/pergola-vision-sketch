@@ -24,7 +24,7 @@ const CreateVisualization = () => {
     setSaved3DModels(prev => [...prev, `מודל ${prev.length + 1}`]);
     setModel3DOpen(false);
   };
-  return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+  return <div className="min-h-screen bg-background">
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
