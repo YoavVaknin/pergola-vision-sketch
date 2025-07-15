@@ -211,10 +211,11 @@ const Scene = ({
 
   return (
     <Suspense fallback={<mesh><boxGeometry /><meshBasicMaterial /></mesh>}>
-      {/* Camera positioning - User's preferred view */}
+      {/* Camera positioning - User's exact captured view */}
       <PerspectiveCamera 
         makeDefault 
-        position={[295, 1052, 50]} 
+        position={[294.9438262837038, 1052.363681663561, 49.67794713824652]} 
+        rotation={[-1.6417093889712355, 0.00027075727084020383, 3.137780916387363]}
         fov={45} 
         near={1} 
         far={5000}
