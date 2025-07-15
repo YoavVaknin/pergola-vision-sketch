@@ -181,9 +181,9 @@ const Scene = ({
         zoomSpeed={1.2}
         panSpeed={0.8}
         mouseButtons={{
-          LEFT: editMode ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE,
-          MIDDLE: THREE.MOUSE.DOLLY,
-          RIGHT: THREE.MOUSE.PAN
+          LEFT: editMode ? 2 : 0, // 0=rotate, 2=pan
+          MIDDLE: 1, // zoom
+          RIGHT: 2 // pan
         }}
       />
       
