@@ -214,7 +214,17 @@ export const Model3DViewer = ({
   height = 600
 }: Model3DViewerProps) => {
   if (!model || !model.meshes || model.meshes.length === 0) {
-    return;
+    return (
+      <div className="border rounded-lg overflow-hidden bg-white shadow-sm w-full">
+        <div className="bg-gray-50 px-3 py-2 border-b">
+          <h4 className="text-sm font-medium text-gray-700">הדמיה תלת-ממדית - פרגולה</h4>
+          <p className="text-xs text-gray-500">אין מודל זמין להצגה</p>
+        </div>
+        <div style={{ width, height }} className="w-full flex items-center justify-center bg-gray-100">
+          <p className="text-gray-500">יש ליצור מודל תלת-ממדי תחילה</p>
+        </div>
+      </div>
+    );
   }
 
   console.log('🎬 Rendering enhanced 3D pergola model with', model.meshes.length, 'components');
