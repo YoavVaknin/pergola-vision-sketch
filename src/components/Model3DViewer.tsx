@@ -181,20 +181,72 @@ const CameraCapture = ({ onCameraCapture }: { onCameraCapture: (data: any) => vo
   );
 };
 
-// Safe OrbitControls that waits for camera to be ready
-const SafeOrbitControls = ({ editMode }: { editMode: boolean }) => {
-  const { camera } = useThree();
+// Manual Camera Control - NO OrbitControls
+const ManualCameraController = ({ editMode }: { editMode: boolean }) => {
+  const { camera, gl } = useThree();
+  const [isPointerDown, setIsPointerDown] = useState(false);
+  const [lastPointer, setLastPointer] = useState({ x: 0, y: 0 });
   
-  // Only render OrbitControls when camera is available
-  if (!camera || !camera.position) {
-    return null;
-  }
+  useEffect(() => {
+    const canvas = gl.domElement;
+    
+    const onPointerDown = (e: PointerEvent) => {
+      if (editMode) return;
+      setIsPointerDown(true);
+      setLastPointer({ x: e.clientX, y: e.clientY });
+      canvas.setPointerCapture(e.pointerId);
+    };
+    
+    const onPointerMove = (e: PointerEvent) => {
+      if (!isPointerDown || editMode) return;
+      
+      const deltaX = e.clientX - lastPointer.x;
+      const deltaY = e.clientY - lastPointer.y;
+      
+      // Rotate camera around origin
+      const spherical = new THREE.Spherical();
+      spherical.setFromVector3(camera.position);
+      
+      spherical.theta -= deltaX * 0.01; // Horizontal rotation
+      spherical.phi += deltaY * 0.01;   // Vertical rotation
+      
+      // NO LIMITS - complete freedom
+      camera.position.setFromSpherical(spherical);
+      camera.lookAt(0, 0, 0);
+      
+      setLastPointer({ x: e.clientX, y: e.clientY });
+    };
+    
+    const onPointerUp = (e: PointerEvent) => {
+      setIsPointerDown(false);
+      canvas.releasePointerCapture(e.pointerId);
+    };
+    
+    const onWheel = (e: WheelEvent) => {
+      if (editMode) return;
+      e.preventDefault();
+      
+      const direction = camera.position.clone().normalize();
+      const distance = camera.position.length();
+      const newDistance = Math.max(10, Math.min(1000, distance + e.deltaY * 0.1));
+      
+      camera.position.copy(direction.multiplyScalar(newDistance));
+    };
+    
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('wheel', onWheel);
+    
+    return () => {
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('wheel', onWheel);
+    };
+  }, [camera, gl, isPointerDown, lastPointer, editMode]);
   
-  return (
-    <OrbitControls 
-      enableRotate={!editMode}
-    />
-  );
+  return null;
 };
 
 
@@ -243,8 +295,8 @@ const Scene = ({
         shadow-camera-bottom={-300}
       />
       
-      {/* Safe OrbitControls that waits for camera */}
-      <SafeOrbitControls editMode={editMode} />
+      {/* Manual Camera Control - NO OrbitControls! */}
+      <ManualCameraController editMode={editMode} />
       
       {/* Render pergola components */}
       {model.meshes && model.meshes.map(mesh => (
