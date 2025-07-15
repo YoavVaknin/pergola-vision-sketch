@@ -291,7 +291,6 @@ const Scene = ({
           BOTTOM: 'ArrowDown'
         }}
         screenSpacePanning={false}
-        makeDefault
       />
       
       {/* Environment lighting */}
