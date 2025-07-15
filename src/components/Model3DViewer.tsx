@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Grid, PerspectiveCamera, Environment, Html, Line } from '@react-three/drei';
+import { OrbitControls, Grid, PerspectiveCamera, Environment, Html } from '@react-three/drei';
 import { Model3D, Mesh3D } from '@/utils/3dModelGenerator';
 import * as THREE from 'three';
 import { Suspense, useState, useRef } from 'react';
@@ -127,74 +127,57 @@ const InteractiveMesh3DComponent = ({
   );
 };
 
-// Interactive camera position indicator
-const CameraPositionIndicator = ({ 
-  position, 
-  onPositionChange, 
-  pergolaCenter 
-}: { 
-  position: [number, number, number]; 
-  onPositionChange: (pos: [number, number, number]) => void;
-  pergolaCenter: { x: number; y: number; z: number };
-}) => {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const [isDragging, setIsDragging] = useState(false);
+// Component to capture current camera position
+const CameraCapture = ({ onCameraCapture }: { onCameraCapture: (data: any) => void }) => {
+  const { camera, controls } = useThree();
+  
+  const handleCapture = () => {
+    const cameraData = {
+      position: {
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z
+      },
+      rotation: {
+        x: camera.rotation.x,
+        y: camera.rotation.y,
+        z: camera.rotation.z
+      },
+      fov: (camera as any).fov || 50, // Default FOV if not available
+      target: (controls as any)?.target ? {
+        x: (controls as any).target.x,
+        y: (controls as any).target.y,
+        z: (controls as any).target.z
+      } : { x: 0, y: 0, z: 0 },
+      up: {
+        x: camera.up.x,
+        y: camera.up.y,
+        z: camera.up.z
+      },
+      quaternion: {
+        x: camera.quaternion.x,
+        y: camera.quaternion.y,
+        z: camera.quaternion.z,
+        w: camera.quaternion.w
+      }
+    };
+    
+    onCameraCapture(cameraData);
+  };
 
   return (
-    <group>
-      {/* Camera position indicator */}
-      <mesh
-        ref={meshRef}
-        position={position}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          setIsDragging(true);
-          (e.target as any).setPointerCapture(e.pointerId);
-        }}
-        onPointerMove={(e) => {
-          if (!isDragging) return;
-          e.stopPropagation();
-          
-          // Calculate new position based on mouse movement
-          const newPos: [number, number, number] = [
-            position[0] + e.movementX * 5,
-            position[1] + e.movementY * 5,
-            position[2]
-          ];
-          
-          onPositionChange(newPos);
-        }}
-        onPointerUp={(e) => {
-          e.stopPropagation();
-          setIsDragging(false);
-          (e.target as any).releasePointerCapture(e.pointerId);
-        }}
-      >
-        <sphereGeometry args={[15, 16, 16]} />
-        <meshStandardMaterial 
-          color={isDragging ? "#ff6b6b" : "#4ecdc4"}
-          opacity={0.8}
-          transparent
-        />
-      </mesh>
-
-      {/* Camera direction line */}
-      <Line
-        points={[
-          [position[0], position[1], position[2]],
-          [pergolaCenter.x, pergolaCenter.y, pergolaCenter.z]
-        ]}
-        color="#ffeb3b"
-        lineWidth={3}
-      />
-
-      {/* Camera icon */}
-      <Html position={[position[0], position[1], position[2] + 20]}>
-        <div className="text-white bg-black px-2 py-1 rounded text-xs pointer-events-none">
-          📹 גרור אותי
-        </div>
-      </Html>
-    </group>
+    <Html position={[0, 0, 0]} style={{ pointerEvents: 'none' }}>
+      <div style={{ pointerEvents: 'auto' }}>
+        <Button
+          size="sm"
+          onClick={handleCapture}
+          className="bg-blue-500 hover:bg-blue-600 text-white"
+        >
+          <Camera className="w-4 h-4 mr-1" />
+          תפוס זווית נוכחית
+        </Button>
+      </div>
+    </Html>
   );
 };
 
@@ -204,16 +187,14 @@ const Scene = ({
   selectedMesh,
   onMeshSelect,
   showAxes,
-  cameraPosition,
-  onCameraPositionChange
+  onCameraCapture
 }: {
   model: Model3D;
   editMode: boolean;
   selectedMesh: string | null;
   onMeshSelect: (meshId: string) => void;
   showAxes: boolean;
-  cameraPosition: [number, number, number];
-  onCameraPositionChange: (pos: [number, number, number]) => void;
+  onCameraCapture: (data: any) => void;
 }) => {
   if (!model || !model.boundingBox || !model.metadata || !model.metadata.dimensions) {
     console.warn('Invalid model data:', model);
@@ -223,50 +204,26 @@ const Scene = ({
   const bounds = model.boundingBox;
   const dimensions = model.metadata.dimensions;
   const maxDimension = Math.max(dimensions.width, dimensions.depth, dimensions.height);
-  
-  // Calculate pergola center
-  const pergolaCenter = {
-    x: (bounds.min.x + bounds.max.x) / 2,
-    y: (bounds.min.y + bounds.max.y) / 2,
-    z: (bounds.min.z + bounds.max.z) / 2
-  };
+  const cameraDistance = maxDimension * 1.2;
 
-  // Calculate optimal camera distance to show entire pergola
-  const cameraDistance = Math.max(
-    Math.abs(bounds.max.x - bounds.min.x),
-    Math.abs(bounds.max.y - bounds.min.y),
-    Math.abs(bounds.max.z - bounds.min.z)
-  ) * 1.5;
-
-  // Normalize camera position to maintain proper distance
-  const cameraVector = new THREE.Vector3(
-    cameraPosition[0] - pergolaCenter.x,
-    cameraPosition[1] - pergolaCenter.y,
-    cameraPosition[2] - pergolaCenter.z
-  );
-  cameraVector.normalize();
-  cameraVector.multiplyScalar(cameraDistance);
-  
-  const finalCameraPosition: [number, number, number] = [
-    pergolaCenter.x + cameraVector.x,
-    pergolaCenter.y + cameraVector.y,
-    pergolaCenter.z + cameraVector.z
-  ];
+  // Origin point - intersection of the three axes
+  const origin = { x: 0, y: 0, z: 0 };
 
   return (
     <Suspense fallback={<mesh><boxGeometry /><meshBasicMaterial /></mesh>}>
-      {/* Dynamic camera positioning */}
+      {/* Camera positioning - User's exact captured view */}
       <PerspectiveCamera 
         makeDefault 
-        position={finalCameraPosition}
+        position={[294.9438262837038, 1052.363681663561, 49.67794713824652]} 
+        rotation={[-1.6417093889712355, 0.00027075727084020383, 3.137780916387363]}
         fov={45} 
         near={1} 
-        far={10000}
+        far={5000}
       />
       
-      {/* Orbit controls - targeting pergola center */}
+      {/* Orbit controls - targeting origin */}
       <OrbitControls 
-        target={[pergolaCenter.x, pergolaCenter.y, pergolaCenter.z]} 
+        target={[origin.x, origin.y, origin.z]} 
         enableDamping 
         dampingFactor={0.1}
         enableZoom 
@@ -339,12 +296,8 @@ const Scene = ({
         </group>
       )}
       
-      {/* Camera position indicator */}
-      <CameraPositionIndicator 
-        position={cameraPosition}
-        onPositionChange={onCameraPositionChange}
-        pergolaCenter={pergolaCenter}
-      />
+      {/* Camera capture button */}
+      <CameraCapture onCameraCapture={onCameraCapture} />
     </Suspense>
   );
 };
@@ -358,9 +311,38 @@ export const Model3DViewer = ({
   const [selectedMesh, setSelectedMesh] = useState<string | null>(null);
   const [showAxes, setShowAxes] = useState(true);
   const [comment, setComment] = useState('');
-  const [cameraPosition, setCameraPosition] = useState<[number, number, number]>([300, 300, 300]);
 
   const selectedMeshData = selectedMesh ? model?.meshes.find(m => m.id === selectedMesh) : null;
+
+  const handleCameraCapture = (cameraData: any) => {
+    console.log('📸 CAMERA POSITION CAPTURED:', cameraData);
+    console.log('📐 Camera Details:', {
+      position: cameraData.position,
+      rotation: cameraData.rotation,
+      target: cameraData.target,
+      fov: cameraData.fov,
+      up: cameraData.up,
+      quaternion: cameraData.quaternion
+    });
+    
+    const viewDescription = {
+      timestamp: new Date().toISOString(),
+      message: 'הזווית הנוכחית של המצלמה',
+      position: cameraData.position,
+      rotation: cameraData.rotation,
+      target: cameraData.target,
+      fov: cameraData.fov,
+      analysis: {
+        lookingFrom: `נקודת הצפייה: X=${cameraData.position.x.toFixed(1)}, Y=${cameraData.position.y.toFixed(1)}, Z=${cameraData.position.z.toFixed(1)}`,
+        lookingAt: `מסתכל על: X=${cameraData.target.x.toFixed(1)}, Y=${cameraData.target.y.toFixed(1)}, Z=${cameraData.target.z.toFixed(1)}`,
+        orientation: `כיוון: ${cameraData.position.z > 0 ? 'מלמעלה' : 'מלמטה'}, ${cameraData.position.y < 0 ? 'מאחור' : 'מלפנים'}, ${cameraData.position.x > 0 ? 'מימין' : 'משמאל'}`,
+        fieldOfView: `זווית ראיה: ${cameraData.fov}°`
+      }
+    };
+    
+    console.log('🔍 VIEW ANALYSIS:', viewDescription);
+    alert('זווית הראיה נתפסה! אני אראה את הנתונים בקונסול.');
+  };
 
   const handleSendComment = () => {
     if (!comment.trim()) return;
@@ -455,8 +437,7 @@ export const Model3DViewer = ({
               selectedMesh={selectedMesh}
               onMeshSelect={setSelectedMesh}
               showAxes={showAxes}
-              cameraPosition={cameraPosition}
-              onCameraPositionChange={setCameraPosition}
+              onCameraCapture={handleCameraCapture}
             />
           </Canvas>
         </div>
