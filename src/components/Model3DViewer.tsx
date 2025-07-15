@@ -165,6 +165,52 @@ const Scene = ({
         />
       ))}
       
+      {/* Dimension labels overlays */}
+      {/* Width dimension (X axis) */}
+      <Html
+        position={[pergolaCenter.x, bounds.min.y - 20, pergolaCenter.z]}
+        center
+        distanceFactor={maxDimension * 0.05}
+        occlude={false}
+        transform={false}
+        sprite
+      >
+        <div className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg border shadow-sm text-center">
+          <div className="text-xs font-medium text-gray-800">רוחב</div>
+          <div className="text-sm font-bold text-blue-600">{dimensions.width.toFixed(0)} ס"מ</div>
+        </div>
+      </Html>
+      
+      {/* Depth dimension (Y axis) */}
+      <Html
+        position={[bounds.min.x - 20, pergolaCenter.y, pergolaCenter.z]}
+        center
+        distanceFactor={maxDimension * 0.05}
+        occlude={false}
+        transform={false}
+        sprite
+      >
+        <div className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg border shadow-sm text-center">
+          <div className="text-xs font-medium text-gray-800">עומק</div>
+          <div className="text-sm font-bold text-green-600">{dimensions.depth.toFixed(0)} ס"מ</div>
+        </div>
+      </Html>
+      
+      {/* Height dimension (Z axis) */}
+      <Html
+        position={[bounds.max.x + 20, pergolaCenter.y, pergolaCenter.z]}
+        center
+        distanceFactor={maxDimension * 0.05}
+        occlude={false}
+        transform={false}
+        sprite
+      >
+        <div className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg border shadow-sm text-center">
+          <div className="text-xs font-medium text-gray-800">גובה</div>
+          <div className="text-sm font-bold text-purple-600">{dimensions.height.toFixed(0)} ס"מ</div>
+        </div>
+      </Html>
+      
       {/* Reference axes at origin (0,0,0) */}
       {showAxes && (
         <group position={[0, 0, 0]}>
