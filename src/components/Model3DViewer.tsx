@@ -368,36 +368,6 @@ export const Model3DViewer = ({
 
   const selectedMeshData = selectedMesh ? model?.meshes.find(m => m.id === selectedMesh) : null;
 
-  const handleCameraCapture = (cameraData: any) => {
-    console.log('📸 CAMERA POSITION CAPTURED:', cameraData);
-    console.log('📐 Camera Details:', {
-      position: cameraData.position,
-      rotation: cameraData.rotation,
-      target: cameraData.target,
-      fov: cameraData.fov,
-      up: cameraData.up,
-      quaternion: cameraData.quaternion
-    });
-    
-    const viewDescription = {
-      timestamp: new Date().toISOString(),
-      message: 'הזווית הנוכחית של המצלמה',
-      position: cameraData.position,
-      rotation: cameraData.rotation,
-      target: cameraData.target,
-      fov: cameraData.fov,
-      analysis: {
-        lookingFrom: `נקודת הצפייה: X=${cameraData.position.x.toFixed(1)}, Y=${cameraData.position.y.toFixed(1)}, Z=${cameraData.position.z.toFixed(1)}`,
-        lookingAt: `מסתכל על: X=${cameraData.target.x.toFixed(1)}, Y=${cameraData.target.y.toFixed(1)}, Z=${cameraData.target.z.toFixed(1)}`,
-        orientation: `כיוון: ${cameraData.position.z > 0 ? 'מלמעלה' : 'מלמטה'}, ${cameraData.position.y < 0 ? 'מאחור' : 'מלפנים'}, ${cameraData.position.x > 0 ? 'מימין' : 'משמאל'}`,
-        fieldOfView: `זווית ראיה: ${cameraData.fov}°`
-      }
-    };
-    
-    console.log('🔍 VIEW ANALYSIS:', viewDescription);
-    alert('זווית הראיה נתפסה! אני אראה את הנתונים בקונסול.');
-  };
-
   const handleSendComment = () => {
     if (!comment.trim()) return;
     
