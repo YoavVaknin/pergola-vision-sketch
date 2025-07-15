@@ -205,11 +205,14 @@ const Scene = ({
   const dimensions = model.metadata.dimensions;
   const maxDimension = Math.max(dimensions.width, dimensions.depth, dimensions.height);
   
-  // Calculate pergola center for focusing
+  // Calculate pergola center for focusing - with fallback values
   const pergolaCenter = {
-    x: (bounds.min.x + bounds.max.x) / 2,
-    y: (bounds.min.y + bounds.max.y) / 2,
-    z: (bounds.min.z + bounds.max.z) / 2
+    x: bounds?.min?.x !== undefined && bounds?.max?.x !== undefined 
+      ? (bounds.min.x + bounds.max.x) / 2 : 0,
+    y: bounds?.min?.y !== undefined && bounds?.max?.y !== undefined 
+      ? (bounds.min.y + bounds.max.y) / 2 : 0,
+    z: bounds?.min?.z !== undefined && bounds?.max?.z !== undefined 
+      ? (bounds.min.z + bounds.max.z) / 2 : 0
   };
   
   // Calculate optimal camera distance based on pergola size
@@ -242,6 +245,10 @@ const Scene = ({
     z: pergolaCenter.z + cameraDirection.z * cameraDistance
   };
 
+  console.log('📊 Model bounds:', bounds);
+  console.log('📊 Pergola center:', pergolaCenter);
+  console.log('📊 Max dimension:', maxDimension);
+
   return (
     <Suspense fallback={<mesh><boxGeometry /><meshBasicMaterial /></mesh>}>
       {/* Camera positioning - User's captured angle */}
@@ -254,25 +261,28 @@ const Scene = ({
         far={5000}
       />
       
-      {/* Orbit controls - targeting pergola center */}
+      {/* Orbit controls - targeting pergola center with safe values */}
       <OrbitControls 
-        target={[pergolaCenter.x, pergolaCenter.y, pergolaCenter.z]}
+        target={[
+          pergolaCenter.x || 0, 
+          pergolaCenter.y || 0, 
+          pergolaCenter.z || 0
+        ]}
         enableDamping 
         dampingFactor={0.1}
         enableZoom 
         enablePan 
-        enableRotate={editMode ? false : true} // Disable rotation in edit mode
-        // Removed angle limits for full 360° rotation freedom
-        minDistance={maxDimension * 0.3}
-        maxDistance={maxDimension * 4}
+        enableRotate={editMode ? false : true}
+        minDistance={Math.max(10, maxDimension * 0.3)}
+        maxDistance={Math.max(1000, maxDimension * 4)}
         autoRotate={false}
         rotateSpeed={1.0}
         zoomSpeed={1.2}
         panSpeed={0.8}
         mouseButtons={{
-          LEFT: editMode ? 2 : 0, // 0=rotate, 2=pan
-          MIDDLE: 1, // zoom
-          RIGHT: 2 // pan
+          LEFT: editMode ? 2 : 0,
+          MIDDLE: 1,
+          RIGHT: 2
         }}
       />
       
