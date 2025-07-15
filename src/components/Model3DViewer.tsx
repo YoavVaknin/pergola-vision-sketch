@@ -260,7 +260,7 @@ const Scene = ({
         far={5000}
       />
       
-      {/* Orbit controls - targeting pergola center with ZERO restrictions */}
+      {/* Orbit controls - COMPLETELY UNRESTRICTED rotation */}
       <OrbitControls 
         target={[
           pergolaCenter.x || 0, 
@@ -272,11 +272,7 @@ const Scene = ({
         enableZoom 
         enablePan 
         enableRotate={editMode ? false : true}
-        // EXPLICIT angle settings for complete 360° freedom
-        minPolarAngle={0}           // Allow looking straight down from above
-        maxPolarAngle={Math.PI}     // Allow looking straight up from below
-        minAzimuthAngle={-Infinity} // No horizontal rotation limit
-        maxAzimuthAngle={Infinity}  // No horizontal rotation limit
+        // REMOVE ALL ANGLE RESTRICTIONS - complete freedom
         minDistance={Math.max(10, maxDimension * 0.3)}
         maxDistance={Math.max(1000, maxDimension * 4)}
         autoRotate={false}
