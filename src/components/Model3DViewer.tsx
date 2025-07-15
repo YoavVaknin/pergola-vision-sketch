@@ -149,29 +149,60 @@ const Scene = ({
         shadow-camera-bottom={-300}
       />
       
-      {/* Ground plane for shadows - always at Z=0 */}
+      {/* Beautiful Floor - always at Z=0 */}
       <mesh 
-        position={[center.x, center.y, 0]} 
+        position={[center.x, center.y, -1]} 
         rotation={[-Math.PI / 2, 0, 0]} 
         receiveShadow
       >
         <planeGeometry args={[dimensions.width * 3, dimensions.depth * 3]} />
-        <meshStandardMaterial color="#f0f0f0" roughness={0.8} metalness={0.1} />
+        <meshStandardMaterial 
+          color="#d4a574" 
+          roughness={0.9} 
+          metalness={0.05}
+          transparent={true}
+          opacity={0.95}
+        />
       </mesh>
       
-      {/* Grid - always at Z=0 */}
+      {/* Floor Tiles Pattern */}
+      <group position={[center.x, center.y, -0.5]}>
+        {Array.from({ length: Math.ceil(dimensions.width / 100) * 3 }, (_, i) => 
+          Array.from({ length: Math.ceil(dimensions.depth / 100) * 3 }, (_, j) => {
+            const x = (i - Math.floor(dimensions.width / 100 * 1.5)) * 100;
+            const y = (j - Math.floor(dimensions.depth / 100 * 1.5)) * 100;
+            return (
+              <mesh 
+                key={`tile-${i}-${j}`}
+                position={[x, y, 0]} 
+                rotation={[-Math.PI / 2, 0, 0]}
+                receiveShadow
+              >
+                <planeGeometry args={[95, 95]} />
+                <meshStandardMaterial 
+                  color={`hsl(${30 + (i + j) % 3 * 5}, 40%, ${65 + (i + j) % 4 * 3}%)`}
+                  roughness={0.8} 
+                  metalness={0.1}
+                />
+              </mesh>
+            );
+          })
+        ).flat()}
+      </group>
+      
+      {/* Grid Reference - slightly above floor */}
       <Grid 
         position={[center.x, center.y, 0]} 
         args={[dimensions.width * 2, dimensions.depth * 2]} 
         cellSize={50} 
-        cellThickness={0.5} 
+        cellThickness={0.3} 
         sectionSize={200} 
-        sectionThickness={1} 
-        sectionColor="#666666" 
-        cellColor="#aaaaaa" 
+        sectionThickness={0.8} 
+        sectionColor="#888888" 
+        cellColor="#bbbbbb" 
         infiniteGrid={false} 
         fadeDistance={maxDimension * 2} 
-        fadeStrength={0.5} 
+        fadeStrength={0.3} 
       />
       
       {/* Render all pergola components */}
