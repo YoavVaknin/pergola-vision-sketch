@@ -1,26 +1,25 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 
-// Isolated Camera Test Component
+// Completely Fresh Camera Test - No Custom Logic
 export const CameraTest = () => {
   return (
     <div style={{ width: '100%', height: '400px', border: '2px solid red' }}>
-      <h3>🧪 ISOLATED CAMERA TEST</h3>
-      <p>Drag to rotate | Scroll to zoom | Should work in ALL directions</p>
+      <h3>🔥 FRESH START TEST</h3>
+      <p>Drag to rotate | Scroll to zoom | NO LIMITS, NO CUSTOM CODE</p>
       
-      <Canvas
-        shadows
-        camera={{ 
-          position: [200, 400, 200], 
-          fov: 45 
-        }}
-        style={{ background: '#f0f0f0' }}
-      >
-        {/* Simple test geometry */}
+      <Canvas>
+        {/* Minimal setup - just the basics */}
+        <PerspectiveCamera makeDefault position={[200, 400, 200]} fov={45} />
+        
+        {/* OrbitControls with ZERO restrictions */}
+        <OrbitControls />
+        
+        {/* Simple lighting */}
         <ambientLight intensity={0.6} />
         <directionalLight position={[10, 10, 5]} intensity={1} />
         
-        {/* Test cubes */}
+        {/* Test cubes for reference */}
         <mesh position={[0, 0, 0]}>
           <boxGeometry args={[20, 20, 20]} />
           <meshStandardMaterial color="red" />
@@ -40,20 +39,6 @@ export const CameraTest = () => {
           <boxGeometry args={[10, 10, 10]} />
           <meshStandardMaterial color="yellow" />
         </mesh>
-        
-        {/* CLEAN ORBIT CONTROLS - NO LIMITS */}
-        <PerspectiveCamera makeDefault position={[200, 400, 200]} fov={45} />
-        <OrbitControls 
-          enablePan={true}
-          enableZoom={true} 
-          enableRotate={true}
-          maxPolarAngle={Math.PI} // Full 360° vertical rotation
-          minPolarAngle={0}
-          maxAzimuthAngle={Infinity} // Full 360° horizontal rotation  
-          minAzimuthAngle={-Infinity}
-          maxDistance={1000}
-          minDistance={10}
-        />
       </Canvas>
     </div>
   );
