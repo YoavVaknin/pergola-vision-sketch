@@ -262,8 +262,7 @@ const Scene = ({
         enableZoom 
         enablePan 
         enableRotate={editMode ? false : true} // Disable rotation in edit mode
-        maxPolarAngle={Math.PI * 0.95}
-        minPolarAngle={0.05}
+        // Removed angle limits for full 360° rotation freedom
         minDistance={maxDimension * 0.3}
         maxDistance={maxDimension * 4}
         autoRotate={false}
