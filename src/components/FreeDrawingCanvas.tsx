@@ -5,19 +5,16 @@ import { useSmartAlignment, AlignmentGuide } from '@/hooks/useSmartAlignment';
 import { useCornerEditing } from '@/hooks/useCornerEditing';
 import { usePergolaAccessories, AccessoryType, PergolaAccessory } from '@/hooks/usePergolaAccessories';
 import { useCanvasZoom } from '@/hooks/useCanvasZoom';
-import { useFreeDrawing } from '@/hooks/useFreeDrawing';
 import { DrawingToolbar } from './DrawingToolbar';
 import { ShadingConfigComponent } from './ShadingConfig';
 import { AccessoriesMenu } from './AccessoriesMenu';
 import { LengthInput } from './LengthInput';
 import { DimensionEditor } from './DimensionEditor';
 import { getMidpoint, getPolygonCentroid, formatMeasurement, formatArea, calculateRealDistance } from '@/utils/measurementUtils';
-import { generate3DModelFromPaths } from '@/utils/freeDrawingConverter';
-import { Lightbulb, Fan, Box, ZoomIn, ZoomOut, RotateCcw, Pen } from 'lucide-react';
+import { Lightbulb, Fan, Box, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Generate3DButton } from './Generate3DButton';
 import { Model3DViewer } from './Model3DViewer';
 import { Button } from '@/components/ui/button';
-import { use3DModel } from '@/hooks/use3DModel';
 export const FreeDrawingCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -89,33 +86,8 @@ export const FreeDrawingCanvas = () => {
     setHoveredAccessory
   } = usePergolaAccessories();
 
-  // Free drawing functionality
-  const {
-    drawingState: freeDrawingState,
-    startDrawing,
-    addPointToPath,
-    finishPath,
-    clearAllPaths,
-    getFrameOutline
-  } = useFreeDrawing();
-
-  // 3D Model functionality
-  const {
-    currentModel,
-    isGenerating,
-    generationError,
-    generateModel,
-    clearModel
-  } = use3DModel();
-  
-  // State for free drawing 3D model
-  const [freeDrawingModel, setFreeDrawingModel] = useState<any>(null);
-
   // Canvas zoom and pan functionality
   const canvasTransform = useCanvasZoom(canvasRef, 1, 0.1, 10);
-
-  // Drawing mode state
-  const [drawingMode, setDrawingMode] = useState<'parametric' | 'free'>('parametric');
 
   // Calculate accessory counts
   const accessoryCount = accessories.reduce((acc, accessory) => {
@@ -560,42 +532,6 @@ export const FreeDrawingCanvas = () => {
           break;
       }
     });
-    
-    // Draw free drawing paths
-    if (drawingMode === 'free') {
-      // Draw completed paths
-      freeDrawingState.drawnPaths.forEach(path => {
-        if (path.points.length > 1) {
-          ctx.strokeStyle = path.color;
-          ctx.lineWidth = path.strokeWidth / canvasTransform.scale;
-          ctx.setLineDash([]);
-          ctx.beginPath();
-          ctx.moveTo(path.points[0].x, path.points[0].y);
-          path.points.slice(1).forEach(point => {
-            ctx.lineTo(point.x, point.y);
-          });
-          if (path.isClosed && path.points.length > 2) {
-            ctx.closePath();
-          }
-          ctx.stroke();
-        }
-      });
-      
-      // Draw current path being drawn
-      if (freeDrawingState.isDrawing && freeDrawingState.currentPath.length > 1) {
-        ctx.strokeStyle = '#2563eb';
-        ctx.lineWidth = 2 / canvasTransform.scale;
-        ctx.setLineDash([3 / canvasTransform.scale, 3 / canvasTransform.scale]);
-        ctx.beginPath();
-        ctx.moveTo(freeDrawingState.currentPath[0].x, freeDrawingState.currentPath[0].y);
-        freeDrawingState.currentPath.slice(1).forEach(point => {
-          ctx.lineTo(point.x, point.y);
-        });
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    }
-    
     drawAccessories(ctx);
     if (accessorySnapPoint && dragState.isDragging) {
       ctx.strokeStyle = accessorySnapPoint.type === 'corner' ? '#10b981' : accessorySnapPoint.type === 'midpoint' ? '#3b82f6' : '#f59e0b';
@@ -755,13 +691,6 @@ export const FreeDrawingCanvas = () => {
   const handleMouseMove = (e: React.MouseEvent) => {
     const canvasPoint = getCanvasPoint(e.clientX, e.clientY);
     setMousePosition(canvasPoint);
-    
-    // Handle free drawing mode
-    if (drawingMode === 'free' && freeDrawingState.isDrawing && isDragging) {
-      addPointToPath(canvasPoint);
-      return;
-    }
-    
     if (dragState.isDragging) {
       updateDragPosition(canvasPoint, elements);
       return;
@@ -800,16 +729,6 @@ export const FreeDrawingCanvas = () => {
       return;
     }
     const canvasPoint = getCanvasPoint(e.clientX, e.clientY);
-    
-    // Handle free drawing mode
-    if (drawingMode === 'free') {
-      if (!freeDrawingState.isDrawing) {
-        startDrawing(canvasPoint);
-        setIsDragging(true);
-      }
-      return;
-    }
-    
     const accessoryAtPoint = findAccessoryAtPoint(canvasPoint);
     if (accessoryAtPoint) {
       startDragging(accessoryAtPoint.id, canvasPoint, accessoryAtPoint.position);
@@ -860,13 +779,6 @@ export const FreeDrawingCanvas = () => {
     }
   };
   const handleMouseUp = (e: React.MouseEvent) => {
-    // Handle free drawing mode
-    if (drawingMode === 'free' && freeDrawingState.isDrawing && isDragging) {
-      finishPath(false); // Don't close the path automatically
-      setIsDragging(false);
-      return;
-    }
-    
     if (dragState.isDragging) {
       stopDragging();
       return;
@@ -938,56 +850,7 @@ export const FreeDrawingCanvas = () => {
       <div className="flex-[2] flex flex-col gap-4 p-4">
         {/* Toolbar */}
         <div className="bg-white rounded-lg shadow-sm border p-4">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex items-center gap-2">
-              <Button
-                variant={drawingMode === 'parametric' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setDrawingMode('parametric')}
-              >
-                עיצוב פרמטרי
-              </Button>
-              <Button
-                variant={drawingMode === 'free' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setDrawingMode('free')}
-              >
-                <Pen className="w-4 h-4 mr-1" />
-                שרטוט חופשי
-              </Button>
-            </div>
-            <div className="h-6 w-px bg-border"></div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (drawingMode === 'free') {
-                  clearAllPaths();
-                } else {
-                  clearAll();
-                }
-              }}
-            >
-              מחק הכל
-            </Button>
-          </div>
-          
-          {drawingMode === 'parametric' && (
-            <DrawingToolbar 
-              mode={drawingState.mode} 
-              onModeChange={setMode} 
-              onClear={clearAll} 
-              isDrawing={drawingState.tempPoints.length >= 3} 
-              onFinishFrame={finishFrame} 
-            />
-          )}
-          
-          {drawingMode === 'free' && (
-            <div className="text-sm text-muted-foreground">
-              <p>לחץ וגרור כדי לצייר קווים חופשיים</p>
-              <p>הקווים יהפכו לקורות מסגרת בהדמיה התלת-ממדית</p>
-            </div>
-          )}
+          <DrawingToolbar mode={drawingState.mode} onModeChange={setMode} onClear={clearAll} isDrawing={drawingState.tempPoints.length >= 3} onFinishFrame={finishFrame} />
         </div>
 
         {/* Canvas area */}
@@ -1046,47 +909,8 @@ export const FreeDrawingCanvas = () => {
           </h3>
           
           <div className="mb-4">
-            {drawingMode === 'parametric' ? (
-              <Generate3DButton 
-                elements={elements} 
-                pixelsPerCm={measurementConfig.pixelsPerCm} 
-                frameColor={accessoryConfig.frameColor} 
-                shadingConfig={shadingConfig} 
-                disabled={elements.length === 0} 
-              />
-            ) : (
-              <Button
-                onClick={async () => {
-                  try {
-                    const model = generate3DModelFromPaths(
-                      freeDrawingState.drawnPaths,
-                      measurementConfig.pixelsPerCm,
-                      accessoryConfig.frameColor,
-                      shadingConfig
-                    );
-                    setFreeDrawingModel(model);
-                    console.log('Generated 3D model from free drawing paths:', model);
-                  } catch (error) {
-                    console.error('Error generating 3D model from paths:', error);
-                  }
-                }}
-                disabled={freeDrawingState.drawnPaths.length === 0 || isGenerating}
-                className="w-full"
-              >
-                {isGenerating ? 'יוצר מודל...' : 'צור מודל תלת-ממדי מהשרטוט'}
-              </Button>
-            )}
+            <Generate3DButton elements={elements} pixelsPerCm={measurementConfig.pixelsPerCm} frameColor={accessoryConfig.frameColor} shadingConfig={shadingConfig} disabled={elements.length === 0} />
           </div>
-          
-          {(currentModel || freeDrawingModel) && (
-            <div className="mb-4">
-              <Model3DViewer 
-                model={drawingMode === 'free' ? freeDrawingModel : currentModel} 
-                width={320} 
-                height={240} 
-              />
-            </div>
-          )}
           
           
 
