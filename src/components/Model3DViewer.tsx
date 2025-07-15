@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Grid, PerspectiveCamera, Environment, Html } from '@react-three/drei';
+import { OrbitControls, Grid, PerspectiveCamera, Environment, Html, Line } from '@react-three/drei';
 import { Model3D, Mesh3D } from '@/utils/3dModelGenerator';
 import * as THREE from 'three';
 import { Suspense, useState, useRef } from 'react';
@@ -179,20 +179,14 @@ const CameraPositionIndicator = ({
       </mesh>
 
       {/* Camera direction line */}
-      <line>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            array={new Float32Array([
-              position[0], position[1], position[2],
-              pergolaCenter.x, pergolaCenter.y, pergolaCenter.z
-            ])}
-            count={2}
-            itemSize={3}
-          />
-        </bufferGeometry>
-        <lineBasicMaterial color="#ffeb3b" linewidth={3} />
-      </line>
+      <Line
+        points={[
+          [position[0], position[1], position[2]],
+          [pergolaCenter.x, pergolaCenter.y, pergolaCenter.z]
+        ]}
+        color="#ffeb3b"
+        lineWidth={3}
+      />
 
       {/* Camera icon */}
       <Html position={[position[0], position[1], position[2] + 20]}>
