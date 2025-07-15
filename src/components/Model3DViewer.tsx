@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Settings, Edit3, Info, MessageSquare, Eye, EyeOff, Camera, Target } from 'lucide-react';
+import { CameraTest } from './CameraTest';
 
 interface Model3DViewerProps {
   model: Model3D | null;
@@ -418,9 +419,6 @@ export const Model3DViewer = ({
   }
 
   console.log('🎬 Rendering enhanced 3D pergola model with', model.meshes.length, 'components');
-  
-  // DEBUG: Import the test component
-  const { CameraTest } = require('./CameraTest');
   
   return (
     <div className="border rounded-lg overflow-hidden bg-white shadow-sm w-full">
