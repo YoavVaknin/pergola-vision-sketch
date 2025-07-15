@@ -206,19 +206,6 @@ const Scene = ({
         shadow-camera-bottom={-300}
       />
       
-      {/* Simple Floor - always at Z=0 */}
-      <mesh 
-        position={[0, 0, -1]} 
-        rotation={[-Math.PI / 2, 0, 0]} 
-        receiveShadow
-      >
-        <planeGeometry args={[dimensions.width * 3, dimensions.depth * 3]} />
-        <meshStandardMaterial 
-          color="#d4a574" 
-          roughness={0.8} 
-          metalness={0.1}
-        />
-      </mesh>
       
       {/* Render all pergola components */}
       {model.meshes && model.meshes.map(mesh => (
