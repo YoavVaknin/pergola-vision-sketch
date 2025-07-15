@@ -181,17 +181,6 @@ const CameraCapture = ({ onCameraCapture }: { onCameraCapture: (data: any) => vo
   );
 };
 
-// Camera initialization component
-const CameraInitializer = ({ initialPosition }: { initialPosition: [number, number, number] }) => {
-  const { camera } = useThree();
-  
-  useEffect(() => {
-    camera.position.set(...initialPosition);
-    camera.lookAt(0, 0, 0);
-  }, [camera, initialPosition]);
-  
-  return null;
-};
 
 const Scene = ({
   model,
@@ -213,66 +202,19 @@ const Scene = ({
     return null;
   }
 
+  // Simple pergola center calculation
   const bounds = model.boundingBox;
-  const dimensions = model.metadata.dimensions;
-  const maxDimension = Math.max(dimensions.width, dimensions.depth, dimensions.height);
-  
-  // Calculate pergola center for focusing - with fallback values
-  const pergolaCenter = {
-    x: bounds?.min?.x !== undefined && bounds?.max?.x !== undefined 
-      ? (bounds.min.x + bounds.max.x) / 2 : 0,
-    y: bounds?.min?.y !== undefined && bounds?.max?.y !== undefined 
-      ? (bounds.min.y + bounds.max.y) / 2 : 0,
-    z: bounds?.min?.z !== undefined && bounds?.max?.z !== undefined 
-      ? (bounds.min.z + bounds.max.z) / 2 : 0
-  };
-  
-  // Calculate optimal camera distance based on pergola size
-  const cameraDistance = maxDimension * 1.5;
-  
-  // Calculate camera position maintaining the captured angle but adjusting distance
-  const capturedAngle = {
-    x: 294.9438262837038,
-    y: 1052.363681663561,
-    z: 49.67794713824652
-  };
-  
-  // Normalize the captured position to get direction
-  const capturedMagnitude = Math.sqrt(
-    capturedAngle.x * capturedAngle.x + 
-    capturedAngle.y * capturedAngle.y + 
-    capturedAngle.z * capturedAngle.z
-  );
-  
-  const cameraDirection = {
-    x: capturedAngle.x / capturedMagnitude,
-    y: capturedAngle.y / capturedMagnitude,
-    z: capturedAngle.z / capturedMagnitude
-  };
-  
-  // Position camera at calculated distance from pergola center
-  const cameraPosition = {
-    x: pergolaCenter.x + cameraDirection.x * cameraDistance,
-    y: pergolaCenter.y + cameraDirection.y * cameraDistance,
-    z: pergolaCenter.z + cameraDirection.z * cameraDistance
-  };
-
-  console.log('📊 Model bounds:', bounds);
-  console.log('📊 Pergola center:', pergolaCenter);
-  console.log('📊 Max dimension:', maxDimension);
+  const pergolaCenter: [number, number, number] = [
+    (bounds.min.x + bounds.max.x) / 2,
+    (bounds.min.y + bounds.max.y) / 2, 
+    (bounds.min.z + bounds.max.z) / 2
+  ];
 
   return (
     <Suspense fallback={<mesh><boxGeometry /><meshBasicMaterial /></mesh>}>
-      {/* Initialize camera position */}
-      <CameraInitializer initialPosition={[218.83510221809496, 517.6492693921896, 101.99671122761868]} />
-      
-      {/* Environment lighting */}
+      {/* Lighting */}
       <Environment preset="city" environmentIntensity={0.6} />
-      
-      {/* Additional lighting */}
       <ambientLight intensity={0.4} />
-      
-      {/* Main directional light */}
       <directionalLight 
         position={[300, 400, 200]} 
         intensity={1.2} 
@@ -285,41 +227,13 @@ const Scene = ({
         shadow-camera-bottom={-300}
       />
       
-      {/* Orbit controls - COMPLETELY UNRESTRICTED */}
+      {/* COMPLETELY FRESH OrbitControls - minimal setup */}
       <OrbitControls 
-        target={[
-          pergolaCenter.x || 0, 
-          pergolaCenter.y || 0, 
-          pergolaCenter.z || 0
-        ]}
-        enableDamping 
-        dampingFactor={0.05}
-        enableZoom 
-        enablePan 
-        enableRotate={editMode ? false : true}
-        // Minimal distance constraints only
-        minDistance={10}
-        maxDistance={5000}
-        autoRotate={false}
-        rotateSpeed={0.8}
-        zoomSpeed={1.0}
-        panSpeed={0.5}
-        mouseButtons={{
-          LEFT: editMode ? 2 : 0,
-          MIDDLE: 1,
-          RIGHT: 2
-        }}
-        keys={{
-          LEFT: 'ArrowLeft',
-          UP: 'ArrowUp',
-          RIGHT: 'ArrowRight',
-          BOTTOM: 'ArrowDown'
-        }}
-        screenSpacePanning={false}
+        target={pergolaCenter}
+        enableRotate={!editMode}
       />
       
-      
-      {/* Render all pergola components */}
+      {/* Render pergola components */}
       {model.meshes && model.meshes.map(mesh => (
         <InteractiveMesh3DComponent 
           key={mesh.id} 
@@ -330,20 +244,17 @@ const Scene = ({
         />
       ))}
       
-      {/* Reference axes at origin (0,0,0) */}
+      {/* Reference axes at origin */}
       {showAxes && (
         <group position={[0, 0, 0]}>
-          {/* X axis - Red */}
           <mesh position={[25, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
             <cylinderGeometry args={[1, 1, 50]} />
             <meshStandardMaterial color="#ff0000" />
           </mesh>
-          {/* Y axis - Green */}
           <mesh position={[0, 25, 0]}>
             <cylinderGeometry args={[1, 1, 50]} />
             <meshStandardMaterial color="#00ff00" />
           </mesh>
-          {/* Z axis - Blue */}
           <mesh position={[0, 0, 25]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[1, 1, 50]} />
             <meshStandardMaterial color="#0000ff" />
@@ -483,6 +394,10 @@ export const Model3DViewer = ({
         <div style={{ width: editMode ? width - 300 : width, height }} className="flex-1">
           <Canvas
             shadows
+            camera={{ 
+              position: [218.83510221809496, 517.6492693921896, 101.99671122761868],
+              fov: 45
+            }}
             style={{ background: 'linear-gradient(to bottom, #87ceeb, #f0f8ff)' }}
           >
             <Scene 
