@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Settings, Edit3, Info, MessageSquare, Eye, EyeOff } from 'lucide-react';
+import { Settings, Edit3, Info, MessageSquare, Eye, EyeOff, Camera, Target } from 'lucide-react';
 
 interface Model3DViewerProps {
   model: Model3D | null;
@@ -127,18 +127,74 @@ const InteractiveMesh3DComponent = ({
   );
 };
 
+// Component to capture current camera position
+const CameraCapture = ({ onCameraCapture }: { onCameraCapture: (data: any) => void }) => {
+  const { camera, controls } = useThree();
+  
+  const handleCapture = () => {
+    const cameraData = {
+      position: {
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z
+      },
+      rotation: {
+        x: camera.rotation.x,
+        y: camera.rotation.y,
+        z: camera.rotation.z
+      },
+      fov: (camera as any).fov || 50, // Default FOV if not available
+      target: (controls as any)?.target ? {
+        x: (controls as any).target.x,
+        y: (controls as any).target.y,
+        z: (controls as any).target.z
+      } : { x: 0, y: 0, z: 0 },
+      up: {
+        x: camera.up.x,
+        y: camera.up.y,
+        z: camera.up.z
+      },
+      quaternion: {
+        x: camera.quaternion.x,
+        y: camera.quaternion.y,
+        z: camera.quaternion.z,
+        w: camera.quaternion.w
+      }
+    };
+    
+    onCameraCapture(cameraData);
+  };
+
+  return (
+    <Html position={[0, 0, 0]} style={{ pointerEvents: 'none' }}>
+      <div style={{ pointerEvents: 'auto' }}>
+        <Button
+          size="sm"
+          onClick={handleCapture}
+          className="bg-blue-500 hover:bg-blue-600 text-white"
+        >
+          <Camera className="w-4 h-4 mr-1" />
+          תפוס זווית נוכחית
+        </Button>
+      </div>
+    </Html>
+  );
+};
+
 const Scene = ({
   model,
   editMode,
   selectedMesh,
   onMeshSelect,
-  showAxes
+  showAxes,
+  onCameraCapture
 }: {
   model: Model3D;
   editMode: boolean;
   selectedMesh: string | null;
   onMeshSelect: (meshId: string) => void;
   showAxes: boolean;
+  onCameraCapture: (data: any) => void;
 }) => {
   if (!model || !model.boundingBox || !model.metadata || !model.metadata.dimensions) {
     console.warn('Invalid model data:', model);
@@ -238,6 +294,9 @@ const Scene = ({
           </mesh>
         </group>
       )}
+      
+      {/* Camera capture button */}
+      <CameraCapture onCameraCapture={onCameraCapture} />
     </Suspense>
   );
 };
@@ -253,6 +312,36 @@ export const Model3DViewer = ({
   const [comment, setComment] = useState('');
 
   const selectedMeshData = selectedMesh ? model?.meshes.find(m => m.id === selectedMesh) : null;
+
+  const handleCameraCapture = (cameraData: any) => {
+    console.log('📸 CAMERA POSITION CAPTURED:', cameraData);
+    console.log('📐 Camera Details:', {
+      position: cameraData.position,
+      rotation: cameraData.rotation,
+      target: cameraData.target,
+      fov: cameraData.fov,
+      up: cameraData.up,
+      quaternion: cameraData.quaternion
+    });
+    
+    const viewDescription = {
+      timestamp: new Date().toISOString(),
+      message: 'הזווית הנוכחית של המצלמה',
+      position: cameraData.position,
+      rotation: cameraData.rotation,
+      target: cameraData.target,
+      fov: cameraData.fov,
+      analysis: {
+        lookingFrom: `נקודת הצפייה: X=${cameraData.position.x.toFixed(1)}, Y=${cameraData.position.y.toFixed(1)}, Z=${cameraData.position.z.toFixed(1)}`,
+        lookingAt: `מסתכל על: X=${cameraData.target.x.toFixed(1)}, Y=${cameraData.target.y.toFixed(1)}, Z=${cameraData.target.z.toFixed(1)}`,
+        orientation: `כיוון: ${cameraData.position.z > 0 ? 'מלמעלה' : 'מלמטה'}, ${cameraData.position.y < 0 ? 'מאחור' : 'מלפנים'}, ${cameraData.position.x > 0 ? 'מימין' : 'משמאל'}`,
+        fieldOfView: `זווית ראיה: ${cameraData.fov}°`
+      }
+    };
+    
+    console.log('🔍 VIEW ANALYSIS:', viewDescription);
+    alert('זווית הראיה נתפסה! אני אראה את הנתונים בקונסול.');
+  };
 
   const handleSendComment = () => {
     if (!comment.trim()) return;
@@ -347,6 +436,7 @@ export const Model3DViewer = ({
               selectedMesh={selectedMesh}
               onMeshSelect={setSelectedMesh}
               showAxes={showAxes}
+              onCameraCapture={handleCameraCapture}
             />
           </Canvas>
         </div>
