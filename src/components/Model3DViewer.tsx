@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Settings, Edit3, Info, MessageSquare, Eye, EyeOff, Camera, Target } from 'lucide-react';
+import { Settings, Edit3, Eye, EyeOff } from 'lucide-react';
 
 interface Model3DViewerProps {
   model: Model3D | null;
@@ -127,74 +127,19 @@ const InteractiveMesh3DComponent = ({
   );
 };
 
-// Component to capture current camera position
-const CameraCapture = ({ onCameraCapture }: { onCameraCapture: (data: any) => void }) => {
-  const { camera, controls } = useThree();
-  
-  const handleCapture = () => {
-    const cameraData = {
-      position: {
-        x: camera.position.x,
-        y: camera.position.y,
-        z: camera.position.z
-      },
-      rotation: {
-        x: camera.rotation.x,
-        y: camera.rotation.y,
-        z: camera.rotation.z
-      },
-      fov: (camera as any).fov || 50, // Default FOV if not available
-      target: (controls as any)?.target ? {
-        x: (controls as any).target.x,
-        y: (controls as any).target.y,
-        z: (controls as any).target.z
-      } : { x: 0, y: 0, z: 0 },
-      up: {
-        x: camera.up.x,
-        y: camera.up.y,
-        z: camera.up.z
-      },
-      quaternion: {
-        x: camera.quaternion.x,
-        y: camera.quaternion.y,
-        z: camera.quaternion.z,
-        w: camera.quaternion.w
-      }
-    };
-    
-    onCameraCapture(cameraData);
-  };
-
-  return (
-    <Html position={[0, 0, 0]} style={{ pointerEvents: 'none' }}>
-      <div style={{ pointerEvents: 'auto' }}>
-        <Button
-          size="sm"
-          onClick={handleCapture}
-          className="bg-blue-500 hover:bg-blue-600 text-white"
-        >
-          <Camera className="w-4 h-4 mr-1" />
-          תפוס זווית נוכחית
-        </Button>
-      </div>
-    </Html>
-  );
-};
 
 const Scene = ({
   model,
   editMode,
   selectedMesh,
   onMeshSelect,
-  showAxes,
-  onCameraCapture
+  showAxes
 }: {
   model: Model3D;
   editMode: boolean;
   selectedMesh: string | null;
   onMeshSelect: (meshId: string) => void;
   showAxes: boolean;
-  onCameraCapture: (data: any) => void;
 }) => {
   if (!model || !model.boundingBox || !model.metadata || !model.metadata.dimensions) {
     console.warn('Invalid model data:', model);
@@ -211,70 +156,28 @@ const Scene = ({
     y: (bounds.min.y + bounds.max.y) / 2,
     z: (bounds.min.z + bounds.max.z) / 2
   };
-  
-  // Calculate optimal camera distance based on pergola size
-  const cameraDistance = maxDimension * 1.5;
-  
-  // Calculate camera position maintaining the captured angle but adjusting distance
-  const capturedAngle = {
-    x: 294.9438262837038,
-    y: 1052.363681663561,
-    z: 49.67794713824652
-  };
-  
-  // Normalize the captured position to get direction
-  const capturedMagnitude = Math.sqrt(
-    capturedAngle.x * capturedAngle.x + 
-    capturedAngle.y * capturedAngle.y + 
-    capturedAngle.z * capturedAngle.z
-  );
-  
-  const cameraDirection = {
-    x: capturedAngle.x / capturedMagnitude,
-    y: capturedAngle.y / capturedMagnitude,
-    z: capturedAngle.z / capturedMagnitude
-  };
-  
-  // Position camera at calculated distance from pergola center
-  const cameraPosition = {
-    x: pergolaCenter.x + cameraDirection.x * cameraDistance,
-    y: pergolaCenter.y + cameraDirection.y * cameraDistance,
-    z: pergolaCenter.z + cameraDirection.z * cameraDistance
-  };
 
   return (
     <Suspense fallback={<mesh><boxGeometry /><meshBasicMaterial /></mesh>}>
-      {/* Camera positioning - User's captured angle */}
+      {/* Simple camera setup */}
       <PerspectiveCamera 
         makeDefault 
-        position={[218.83510221809496, 517.6492693921896, 101.99671122761868]} 
-        rotation={[-1.7220379979463376, -0.001582556906595901, -3.131209173525909]}
+        position={[maxDimension, maxDimension, maxDimension]} 
         fov={45} 
         near={1} 
         far={5000}
       />
       
-      {/* Orbit controls - targeting pergola center */}
+      {/* Basic orbit controls without restrictions */}
       <OrbitControls 
         target={[pergolaCenter.x, pergolaCenter.y, pergolaCenter.z]}
         enableDamping 
         dampingFactor={0.1}
         enableZoom 
         enablePan 
-        enableRotate={editMode ? false : true} // Disable rotation in edit mode
-        maxPolarAngle={Math.PI * 0.95}
-        minPolarAngle={0.05}
+        enableRotate={true}
         minDistance={maxDimension * 0.3}
         maxDistance={maxDimension * 4}
-        autoRotate={false}
-        rotateSpeed={1.0}
-        zoomSpeed={1.2}
-        panSpeed={0.8}
-        mouseButtons={{
-          LEFT: editMode ? 2 : 0, // 0=rotate, 2=pan
-          MIDDLE: 1, // zoom
-          RIGHT: 2 // pan
-        }}
       />
       
       {/* Environment lighting */}
@@ -328,9 +231,6 @@ const Scene = ({
           </mesh>
         </group>
       )}
-      
-      {/* Camera capture button */}
-      <CameraCapture onCameraCapture={onCameraCapture} />
     </Suspense>
   );
 };
@@ -343,67 +243,10 @@ export const Model3DViewer = ({
   const [editMode, setEditMode] = useState(false);
   const [selectedMesh, setSelectedMesh] = useState<string | null>(null);
   const [showAxes, setShowAxes] = useState(true);
-  const [comment, setComment] = useState('');
+  
 
   const selectedMeshData = selectedMesh ? model?.meshes.find(m => m.id === selectedMesh) : null;
 
-  const handleCameraCapture = (cameraData: any) => {
-    console.log('📸 CAMERA POSITION CAPTURED:', cameraData);
-    console.log('📐 Camera Details:', {
-      position: cameraData.position,
-      rotation: cameraData.rotation,
-      target: cameraData.target,
-      fov: cameraData.fov,
-      up: cameraData.up,
-      quaternion: cameraData.quaternion
-    });
-    
-    const viewDescription = {
-      timestamp: new Date().toISOString(),
-      message: 'הזווית הנוכחית של המצלמה',
-      position: cameraData.position,
-      rotation: cameraData.rotation,
-      target: cameraData.target,
-      fov: cameraData.fov,
-      analysis: {
-        lookingFrom: `נקודת הצפייה: X=${cameraData.position.x.toFixed(1)}, Y=${cameraData.position.y.toFixed(1)}, Z=${cameraData.position.z.toFixed(1)}`,
-        lookingAt: `מסתכל על: X=${cameraData.target.x.toFixed(1)}, Y=${cameraData.target.y.toFixed(1)}, Z=${cameraData.target.z.toFixed(1)}`,
-        orientation: `כיוון: ${cameraData.position.z > 0 ? 'מלמעלה' : 'מלמטה'}, ${cameraData.position.y < 0 ? 'מאחור' : 'מלפנים'}, ${cameraData.position.x > 0 ? 'מימין' : 'משמאל'}`,
-        fieldOfView: `זווית ראיה: ${cameraData.fov}°`
-      }
-    };
-    
-    console.log('🔍 VIEW ANALYSIS:', viewDescription);
-    alert('זווית הראיה נתפסה! אני אראה את הנתונים בקונסול.');
-  };
-
-  const handleSendComment = () => {
-    if (!comment.trim()) return;
-    
-    const commentData = {
-      timestamp: new Date().toISOString(),
-      selectedMesh: selectedMesh,
-      meshData: selectedMeshData,
-      comment: comment.trim(),
-      meshType: selectedMeshData?.type || 'unknown',
-      meshId: selectedMeshData?.id || 'unknown'
-    };
-    
-    console.log('🗨️ USER FEEDBACK:', commentData);
-    console.log('📝 Comment Details:', {
-      comment: comment.trim(),
-      meshType: selectedMeshData?.type,
-      meshId: selectedMeshData?.id,
-      position: selectedMeshData?.position,
-      dimensions: selectedMeshData?.geometry
-    });
-    
-    // Clear comment after sending
-    setComment('');
-    
-    // Show confirmation (you can add a toast here later)
-    alert('ההערה נשלחה בהצלחה! אני אראה אותה בקונסול.');
-  };
 
   if (!model || !model.meshes || model.meshes.length === 0) {
     return (
@@ -470,7 +313,6 @@ export const Model3DViewer = ({
               selectedMesh={selectedMesh}
               onMeshSelect={setSelectedMesh}
               showAxes={showAxes}
-              onCameraCapture={handleCameraCapture}
             />
           </Canvas>
         </div>
@@ -502,29 +344,6 @@ export const Model3DViewer = ({
               <p className="text-sm text-gray-500 mb-4">לחץ על רכיב כדי לבחור אותו</p>
             )}
 
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium mb-2 block">הערות והנחיות לשיפור:</label>
-                <Textarea
-                  placeholder="תאר מה צריך לתקן או לשפר ברכיב הנבחר..."
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  rows={6}
-                  className="text-sm"
-                />
-              </div>
-              
-              <Button 
-                variant="default" 
-                size="sm" 
-                className="w-full"
-                disabled={!comment.trim()}
-                onClick={handleSendComment}
-              >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                שלח הערה
-              </Button>
-            </div>
 
             <div className="mt-4 pt-4 border-t">
               <h6 className="text-sm font-medium mb-2">מידע על המודל</h6>
