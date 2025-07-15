@@ -1,14 +1,36 @@
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid, PerspectiveCamera } from '@react-three/drei';
+import { 
+  OrbitControls, 
+  Grid, 
+  PerspectiveCamera, 
+  Environment,
+  ContactShadows,
+  Lightformer,
+  AccumulativeShadows,
+  RandomizedLight,
+  useTexture,
+  MeshReflectorMaterial,
+  Sky
+} from '@react-three/drei';
+import { 
+  EffectComposer, 
+  Bloom, 
+  ToneMapping, 
+  SSAO,
+  BrightnessContrast,
+  HueSaturation
+} from '@react-three/postprocessing';
 import { Model3D, Mesh3D } from '@/utils/3dModelGenerator';
 import * as THREE from 'three';
+import { Suspense } from 'react';
+
 interface Model3DViewerProps {
   model: Model3D | null;
   width?: number;
   height?: number;
 }
 
-// Enhanced mesh component with better geometry handling
+// Enhanced mesh component with cinema-quality PBR materials
 const Mesh3DComponent = ({
   mesh
 }: {
@@ -23,11 +45,11 @@ const Mesh3DComponent = ({
     type
   } = mesh;
 
-  // Add null checks for geometry
   if (!geometry || typeof geometry.width === 'undefined' || typeof geometry.height === 'undefined' || typeof geometry.depth === 'undefined') {
     console.warn('Invalid geometry data:', geometry);
     return null;
   }
+
   const threeRotation: [number, number, number] = [rotation.x, rotation.y, rotation.z];
   const threePosition: [number, number, number] = [position.x, position.y, position.z];
 
@@ -47,122 +69,218 @@ const Mesh3DComponent = ({
     }
   };
 
-  // Enhanced material properties based on type
+  // Cinema-quality PBR materials for different components
   const getMaterialProps = () => {
-    const baseProps = {
-      color: color,
-      roughness: material.roughness || 0.7,
-      metalness: material.metalness || 0.1
-    };
+    const baseColor = new THREE.Color(color);
+    
     switch (type) {
       case 'frame_beam':
+        // Premium aluminum/steel frame - reflective with subtle scratches
         return {
-          ...baseProps,
-          roughness: 0.6,
-          metalness: 0.2
+          color: baseColor,
+          roughness: 0.15,
+          metalness: 0.9,
+          envMapIntensity: 1.5,
+          clearcoat: 0.3,
+          clearcoatRoughness: 0.1
         };
       case 'column':
+        // Brushed metal columns - directional texture
         return {
-          ...baseProps,
-          roughness: 0.8,
-          metalness: 0.1
+          color: baseColor,
+          roughness: 0.25,
+          metalness: 0.8,
+          envMapIntensity: 1.2,
+          clearcoat: 0.1,
+          clearcoatRoughness: 0.3
         };
       case 'shading_slat':
+        // Natural wood slats - warm and organic
         return {
-          ...baseProps,
-          roughness: 0.9,
-          metalness: 0.0
+          color: baseColor.multiplyScalar(0.8), // Slightly darker for realism
+          roughness: 0.8,
+          metalness: 0.0,
+          envMapIntensity: 0.3,
+          transparent: true,
+          opacity: 0.95
         };
       default:
-        return baseProps;
+        return {
+          color: baseColor,
+          roughness: 0.4,
+          metalness: 0.3,
+          envMapIntensity: 1.0
+        };
     }
   };
-  return <mesh position={threePosition} rotation={threeRotation} castShadow receiveShadow>
+  
+  return (
+    <mesh position={threePosition} rotation={threeRotation} castShadow receiveShadow>
       {createGeometry()}
-      <meshStandardMaterial {...getMaterialProps()} />
-    </mesh>;
+      <meshPhysicalMaterial {...getMaterialProps()} />
+    </mesh>
+  );
 };
+
 const Scene = ({
   model
 }: {
   model: Model3D;
 }) => {
-  // Add null checks for model and its properties
   if (!model || !model.boundingBox || !model.metadata || !model.metadata.dimensions) {
     console.warn('Invalid model data:', model);
     return null;
   }
 
-  // Calculate optimal camera positioning based on model dimensions
   const bounds = model.boundingBox;
   const center = {
     x: (bounds.min.x + bounds.max.x) / 2,
     y: (bounds.min.y + bounds.max.y) / 2,
-    z: bounds.max.z / 2 // Position camera to show full height
+    z: bounds.max.z / 2
   };
   const dimensions = model.metadata.dimensions;
   const maxDimension = Math.max(dimensions.width, dimensions.depth, dimensions.height);
   const cameraDistance = maxDimension * 1.5;
-  return <>
-      {/* Enhanced camera positioning for pergola viewing */}
-      <PerspectiveCamera makeDefault position={[center.x + cameraDistance * 0.8, center.y + cameraDistance * 0.6, center.z + cameraDistance * 0.8]} fov={45} />
+
+  return (
+    <Suspense fallback={<mesh><boxGeometry /><meshBasicMaterial /></mesh>}>
+      {/* Cinema-grade camera positioning */}
+      <PerspectiveCamera 
+        makeDefault 
+        position={[center.x + cameraDistance * 0.8, center.y + cameraDistance * 0.6, center.z + cameraDistance * 0.8]} 
+        fov={35} 
+        near={0.1} 
+        far={10000}
+      />
       
-      {/* Significantly improved orbit controls for complete 360° freedom */}
-      <OrbitControls target={[center.x, center.y, center.z]} enableDamping dampingFactor={0.05} enableZoom enablePan enableRotate maxPolarAngle={Math.PI} // Allow full vertical rotation (including viewing from below)
-    minPolarAngle={0} // Allow viewing from directly above
-    minAzimuthAngle={-Infinity} // Remove horizontal rotation limits
-    maxAzimuthAngle={Infinity} // Remove horizontal rotation limits
-    minDistance={maxDimension * 0.2} // Allow much closer zoom
-    maxDistance={maxDimension * 4} // Allow farther zoom out
-    autoRotate={false} autoRotateSpeed={1} rotateSpeed={0.8} // Slightly faster rotation for better responsiveness
-    zoomSpeed={1.2} // Improved zoom responsiveness
-    panSpeed={0.8} // Improved pan responsiveness
-    />
+      {/* Professional orbit controls */}
+      <OrbitControls 
+        target={[center.x, center.y, center.z]} 
+        enableDamping 
+        dampingFactor={0.03}
+        enableZoom 
+        enablePan 
+        enableRotate 
+        maxPolarAngle={Math.PI}
+        minPolarAngle={0}
+        minAzimuthAngle={-Infinity}
+        maxAzimuthAngle={Infinity}
+        minDistance={maxDimension * 0.3}
+        maxDistance={maxDimension * 5}
+        autoRotate={false}
+        rotateSpeed={0.5}
+        zoomSpeed={0.8}
+        panSpeed={0.5}
+      />
       
-      {/* Enhanced lighting setup for pergola visualization */}
-      <ambientLight intensity={0.6} />
+      {/* VRay-style HDRI environment lighting */}
+      <Environment
+        preset="city"
+        environmentIntensity={0.8}
+        backgroundIntensity={0.4}
+        background={true}
+      />
       
-      {/* Main directional light (sun simulation) */}
-      <directionalLight position={[center.x + 200, center.y + 300, center.z + 200]} intensity={1} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} shadow-camera-far={1000} shadow-camera-left={-300} shadow-camera-right={300} shadow-camera-top={300} shadow-camera-bottom={-300} />
+      {/* Additional architectural lighting */}
+      <ambientLight intensity={0.2} />
       
-      {/* Fill light */}
-      <directionalLight position={[center.x - 100, center.y + 100, center.z - 100]} intensity={0.4} />
+      {/* Key light - sun simulation */}
+      <directionalLight 
+        position={[center.x + 500, center.y + 800, center.z + 300]} 
+        intensity={1.5} 
+        castShadow 
+        shadow-mapSize-width={4096} 
+        shadow-mapSize-height={4096} 
+        shadow-camera-far={2000} 
+        shadow-camera-left={-500} 
+        shadow-camera-right={500} 
+        shadow-camera-top={500} 
+        shadow-camera-bottom={-500}
+        shadow-bias={-0.0001}
+      />
       
-      {/* Rim light for definition */}
-      <directionalLight position={[center.x, center.y - 100, center.z + 200]} intensity={0.3} />
+      {/* Cinema-quality soft shadows */}
+      <AccumulativeShadows
+        temporal
+        frames={200}
+        color="black"
+        colorBlend={0.5}
+        alphaTest={0.9}
+        opacity={0.8}
+        scale={dimensions.width * 3}
+        position={[center.x, center.y, -2]}
+      >
+        <RandomizedLight
+          amount={8}
+          radius={dimensions.width * 0.5}
+          ambient={0.5}
+          intensity={1}
+          position={[center.x, center.y + 400, center.z + 200]}
+          bias={0.001}
+        />
+      </AccumulativeShadows>
       
-      {/* Ground plane for shadows */}
-      <mesh position={[center.x, center.y, -5]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[dimensions.width * 2, dimensions.depth * 2]} />
-        <shadowMaterial opacity={0.3} />
+      {/* Photorealistic ground plane */}
+      <mesh 
+        position={[center.x, center.y, -2]} 
+        rotation={[-Math.PI / 2, 0, 0]} 
+        receiveShadow
+      >
+        <planeGeometry args={[dimensions.width * 4, dimensions.depth * 4]} />
+        <MeshReflectorMaterial
+          blur={[300, 100]}
+          resolution={2048}
+          mixBlur={1}
+          mixStrength={40}
+          roughness={1}
+          depthScale={1.2}
+          minDepthThreshold={0.4}
+          maxDepthThreshold={1.4}
+          color="#ffffff"
+          metalness={0.0}
+          mirror={0.0}
+        />
       </mesh>
       
-      {/* Enhanced ground grid */}
-      <Grid position={[center.x, center.y, 0]} args={[dimensions.width * 1.5, dimensions.depth * 1.5]} cellSize={50} cellThickness={0.5} sectionSize={100} sectionThickness={1} sectionColor="#555555" cellColor="#999999" infiniteGrid={false} fadeDistance={maxDimension * 2} fadeStrength={0.8} />
+      {/* Professional grid system */}
+      <Grid 
+        position={[center.x, center.y, 0]} 
+        args={[dimensions.width * 2, dimensions.depth * 2]} 
+        cellSize={50} 
+        cellThickness={0.3} 
+        sectionSize={200} 
+        sectionThickness={0.8} 
+        sectionColor="#888888" 
+        cellColor="#cccccc" 
+        infiniteGrid={false} 
+        fadeDistance={maxDimension * 3} 
+        fadeStrength={0.7} 
+      />
       
-      {/* Render all pergola components with null checks */}
-      {model.meshes && model.meshes.map(mesh => <Mesh3DComponent key={mesh.id} mesh={mesh} />)}
+      {/* Render all pergola components */}
+      {model.meshes && model.meshes.map(mesh => (
+        <Mesh3DComponent key={mesh.id} mesh={mesh} />
+      ))}
       
-      {/* Enhanced reference axes at origin */}
+      {/* Professional reference axes */}
       <group position={[bounds.min.x, bounds.min.y, 0]}>
-        {/* X axis - Red */}
-        <mesh position={[30, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[1, 1, 60]} />
-          <meshBasicMaterial color="#ff4444" />
+        <mesh position={[25, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.8, 0.8, 50]} />
+          <meshStandardMaterial color="#ff4444" roughness={0.2} metalness={0.8} />
         </mesh>
-        {/* Y axis - Green */}
-        <mesh position={[0, 30, 0]}>
-          <cylinderGeometry args={[1, 1, 60]} />
-          <meshBasicMaterial color="#44ff44" />
+        <mesh position={[0, 25, 0]}>
+          <cylinderGeometry args={[0.8, 0.8, 50]} />
+          <meshStandardMaterial color="#44ff44" roughness={0.2} metalness={0.8} />
         </mesh>
-        {/* Z axis - Blue */}
-        <mesh position={[0, 0, 30]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[1, 1, 60]} />
-          <meshBasicMaterial color="#4444ff" />
+        <mesh position={[0, 0, 25]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.8, 0.8, 50]} />
+          <meshStandardMaterial color="#4444ff" roughness={0.2} metalness={0.8} />
         </mesh>
       </group>
-    </>;
+    </Suspense>
+  );
 };
+
 export const Model3DViewer = ({
   model,
   width = 800,
@@ -171,26 +289,64 @@ export const Model3DViewer = ({
   if (!model || !model.meshes || model.meshes.length === 0) {
     return;
   }
+
   console.log('🎬 Rendering enhanced 3D pergola model with', model.meshes.length, 'components');
-  return <div className="border rounded-lg overflow-hidden bg-white shadow-sm w-full">
+  
+  return (
+    <div className="border rounded-lg overflow-hidden bg-white shadow-sm w-full">
       <div className="bg-gray-50 px-3 py-2 border-b">
-        <h4 className="text-sm font-medium text-gray-700">הדמיה תלת-ממדית - פרגולה</h4>
+        <h4 className="text-sm font-medium text-gray-700">הדמיה תלת-ממדית - פרגולה (VRay Style)</h4>
         <p className="text-xs text-gray-500">
-          עכבר: סיבוב חופשי 360° | גלגל: זום | ימני+גרירה: הזזה | סיבוב מלא לכל כיוון
+          רנדרינג בסטנדרט VRay/Corona • תאורה HDRI • PBR Materials • צלליות רכות
         </p>
       </div>
       
-      <div style={{
-      width,
-      height
-    }} className="w-full">
-        <Canvas shadows camera={{
-        position: [100, 100, 100],
-        fov: 45
-      }} style={{
-        background: 'linear-gradient(to bottom, #87ceeb, #f0f8ff)'
-      }}>
+      <div style={{ width, height }} className="w-full">
+        <Canvas
+          shadows
+          camera={{ position: [100, 100, 100], fov: 35 }}
+          style={{ background: 'transparent' }}
+        >
           <Scene model={model} />
+          
+          {/* Post-processing effects for cinematic quality */}
+          <EffectComposer>
+            <Bloom
+              intensity={0.3}
+              luminanceThreshold={0.9}
+              luminanceSmoothing={0.4}
+              blendFunction={1}
+            />
+            <ToneMapping
+              adaptive={true}
+              resolution={256}
+              whitePoint={4.0}
+              middleGrey={0.6}
+              minLuminance={0.01}
+              averageLuminance={1.0}
+              adaptationRate={2.0}
+            />
+            <SSAO
+              blendFunction={1}
+              samples={30}
+              rings={4}
+              distanceThreshold={1.0}
+              distanceFalloff={0.0}
+              rangeThreshold={0.5}
+              rangeFalloff={0.1}
+              luminanceInfluence={0.9}
+              radius={20}
+              bias={0.5}
+            />
+            <BrightnessContrast
+              brightness={0.05}
+              contrast={0.1}
+            />
+            <HueSaturation
+              hue={0.0}
+              saturation={0.1}
+            />
+          </EffectComposer>
         </Canvas>
       </div>
       
@@ -200,5 +356,6 @@ export const Model3DViewer = ({
         {model.meshes.filter(m => m.type === 'column').length} עמודים |
         מימדים: {model.metadata?.dimensions ? `${model.metadata.dimensions.width.toFixed(0)}×${model.metadata.dimensions.depth.toFixed(0)}×${model.metadata.dimensions.height.toFixed(0)} ס"מ` : 'לא זמין'}
       </div>
-    </div>;
+    </div>
+  );
 };
