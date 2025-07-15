@@ -447,7 +447,7 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
   console.log('🚀 Starting enhanced 3D pergola generation - Fixed Bottom Shading Model');
   
   const { elements, pixelsPerCm, frameColor, shadingConfig } = drawingData;
-  const frameHeight = shadingConfig.pergolaHeight || 300; // cm - pergola height from config
+  const frameHeight = 0; // cm - pergola height fixed at ground level (0 cm)
   
   const meshes: Mesh3D[] = [];
   let minX = Infinity, maxX = -Infinity;
