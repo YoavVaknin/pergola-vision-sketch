@@ -243,7 +243,11 @@ export const Model3DViewer = ({
         <Canvas
           shadows
           camera={{ position: [100, 100, 100], fov: 40 }}
-          style={{ background: 'linear-gradient(to bottom, #87ceeb, #f0f8ff)' }}
+          style={{ background: '#ffffff' }}
+          gl={{ antialias: true, alpha: false }}
+          onCreated={(state) => {
+            state.scene.background = new THREE.Color('#ffffff');
+          }}
         >
           <Scene 
             model={model}
