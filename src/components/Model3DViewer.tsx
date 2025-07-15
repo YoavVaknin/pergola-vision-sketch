@@ -227,9 +227,8 @@ const Scene = ({
         shadow-camera-bottom={-300}
       />
       
-      {/* COMPLETELY FRESH OrbitControls - minimal setup */}
+      {/* SUPER MINIMAL OrbitControls - NO TARGET */}
       <OrbitControls 
-        target={pergolaCenter}
         enableRotate={!editMode}
       />
       
@@ -394,10 +393,6 @@ export const Model3DViewer = ({
         <div style={{ width: editMode ? width - 300 : width, height }} className="flex-1">
           <Canvas
             shadows
-            camera={{ 
-              position: [218.83510221809496, 517.6492693921896, 101.99671122761868],
-              fov: 45
-            }}
             style={{ background: 'linear-gradient(to bottom, #87ceeb, #f0f8ff)' }}
           >
             <Scene 
