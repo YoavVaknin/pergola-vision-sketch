@@ -170,14 +170,14 @@ const Scene = ({
       <Html
         position={[pergolaCenter.x, bounds.min.y - 20, pergolaCenter.z]}
         center
-        distanceFactor={maxDimension * 0.05}
+        distanceFactor={maxDimension * 0.15}
         occlude={false}
         transform={false}
         sprite
       >
-        <div className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg border shadow-sm text-center">
-          <div className="text-xs font-medium text-gray-800">רוחב</div>
-          <div className="text-sm font-bold text-blue-600">{dimensions.width.toFixed(0)} ס"מ</div>
+        <div className="bg-white/95 backdrop-blur-sm px-4 py-2 rounded-lg border-2 shadow-lg text-center border-blue-200">
+          <div className="text-sm font-medium text-gray-800">רוחב</div>
+          <div className="text-xl font-bold text-blue-600">{dimensions.width.toFixed(0)} ס"מ</div>
         </div>
       </Html>
       
@@ -185,14 +185,14 @@ const Scene = ({
       <Html
         position={[bounds.min.x - 20, pergolaCenter.y, pergolaCenter.z]}
         center
-        distanceFactor={maxDimension * 0.05}
+        distanceFactor={maxDimension * 0.15}
         occlude={false}
         transform={false}
         sprite
       >
-        <div className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg border shadow-sm text-center">
-          <div className="text-xs font-medium text-gray-800">עומק</div>
-          <div className="text-sm font-bold text-green-600">{dimensions.depth.toFixed(0)} ס"מ</div>
+        <div className="bg-white/95 backdrop-blur-sm px-4 py-2 rounded-lg border-2 shadow-lg text-center border-green-200">
+          <div className="text-sm font-medium text-gray-800">עומק</div>
+          <div className="text-xl font-bold text-green-600">{dimensions.depth.toFixed(0)} ס"מ</div>
         </div>
       </Html>
       
@@ -200,14 +200,14 @@ const Scene = ({
       <Html
         position={[bounds.max.x + 20, pergolaCenter.y, pergolaCenter.z]}
         center
-        distanceFactor={maxDimension * 0.05}
+        distanceFactor={maxDimension * 0.15}
         occlude={false}
         transform={false}
         sprite
       >
-        <div className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg border shadow-sm text-center">
-          <div className="text-xs font-medium text-gray-800">גובה</div>
-          <div className="text-sm font-bold text-purple-600">{dimensions.height.toFixed(0)} ס"מ</div>
+        <div className="bg-white/95 backdrop-blur-sm px-4 py-2 rounded-lg border-2 shadow-lg text-center border-purple-200">
+          <div className="text-sm font-medium text-gray-800">גובה</div>
+          <div className="text-xl font-bold text-purple-600">{dimensions.height.toFixed(0)} ס"מ</div>
         </div>
       </Html>
       
