@@ -149,7 +149,7 @@ const Scene = ({
         shadow-camera-bottom={-300}
       />
       
-      {/* Beautiful Floor - always at Z=0 */}
+      {/* Simple Floor - always at Z=0 */}
       <mesh 
         position={[center.x, center.y, -1]} 
         rotation={[-Math.PI / 2, 0, 0]} 
@@ -158,37 +158,10 @@ const Scene = ({
         <planeGeometry args={[dimensions.width * 3, dimensions.depth * 3]} />
         <meshStandardMaterial 
           color="#d4a574" 
-          roughness={0.9} 
-          metalness={0.05}
-          transparent={true}
-          opacity={0.95}
+          roughness={0.8} 
+          metalness={0.1}
         />
       </mesh>
-      
-      {/* Floor Tiles Pattern */}
-      <group position={[center.x, center.y, -0.5]}>
-        {Array.from({ length: Math.ceil(dimensions.width / 100) * 3 }, (_, i) => 
-          Array.from({ length: Math.ceil(dimensions.depth / 100) * 3 }, (_, j) => {
-            const x = (i - Math.floor(dimensions.width / 100 * 1.5)) * 100;
-            const y = (j - Math.floor(dimensions.depth / 100 * 1.5)) * 100;
-            return (
-              <mesh 
-                key={`tile-${i}-${j}`}
-                position={[x, y, 0]} 
-                rotation={[-Math.PI / 2, 0, 0]}
-                receiveShadow
-              >
-                <planeGeometry args={[95, 95]} />
-                <meshStandardMaterial 
-                  color={`hsl(${30 + (i + j) % 3 * 5}, 40%, ${65 + (i + j) % 4 * 3}%)`}
-                  roughness={0.8} 
-                  metalness={0.1}
-                />
-              </mesh>
-            );
-          })
-        ).flat()}
-      </group>
       
       {/* Grid Reference - slightly above floor */}
       <Grid 
