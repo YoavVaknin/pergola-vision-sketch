@@ -251,17 +251,16 @@ const Scene = ({
 
   return (
     <Suspense fallback={<mesh><boxGeometry /><meshBasicMaterial /></mesh>}>
-      {/* Camera positioning - User's captured angle */}
+      {/* Camera positioning - Starting from user's captured angle */}
       <PerspectiveCamera 
         makeDefault 
-        position={[218.83510221809496, 517.6492693921896, 101.99671122761868]} 
-        rotation={[-1.7220379979463376, -0.001582556906595901, -3.131209173525909]}
+        position={[218.83510221809496, 517.6492693921896, 101.99671122761868]}
         fov={45} 
         near={1} 
         far={5000}
       />
       
-      {/* Orbit controls - targeting pergola center with safe values */}
+      {/* Orbit controls - targeting pergola center with ZERO restrictions */}
       <OrbitControls 
         target={[
           pergolaCenter.x || 0, 
@@ -273,11 +272,7 @@ const Scene = ({
         enableZoom 
         enablePan 
         enableRotate={editMode ? false : true}
-        // Complete removal of angle restrictions for full 360° rotation
-        maxPolarAngle={Math.PI} // Allow full vertical rotation
-        minPolarAngle={0} // Allow full vertical rotation
-        maxAzimuthAngle={Infinity} // Allow unlimited horizontal rotation
-        minAzimuthAngle={-Infinity} // Allow unlimited horizontal rotation
+        // NO ANGLE RESTRICTIONS WHATSOEVER
         minDistance={Math.max(10, maxDimension * 0.3)}
         maxDistance={Math.max(1000, maxDimension * 4)}
         autoRotate={false}
@@ -295,6 +290,8 @@ const Scene = ({
           RIGHT: 'ArrowRight',
           BOTTOM: 'ArrowDown'
         }}
+        screenSpacePanning={false}
+        makeDefault
       />
       
       {/* Environment lighting */}
