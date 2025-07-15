@@ -273,7 +273,11 @@ const Scene = ({
         enableZoom 
         enablePan 
         enableRotate={editMode ? false : true}
-        // No angle restrictions for full 360° rotation
+        // Complete removal of angle restrictions for full 360° rotation
+        maxPolarAngle={Math.PI} // Allow full vertical rotation
+        minPolarAngle={0} // Allow full vertical rotation
+        maxAzimuthAngle={Infinity} // Allow unlimited horizontal rotation
+        minAzimuthAngle={-Infinity} // Allow unlimited horizontal rotation
         minDistance={Math.max(10, maxDimension * 0.3)}
         maxDistance={Math.max(1000, maxDimension * 4)}
         autoRotate={false}
