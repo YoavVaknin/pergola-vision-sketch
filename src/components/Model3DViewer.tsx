@@ -262,7 +262,7 @@ const Scene = ({
         </group>
       )}
       
-      {/* Camera capture button */}
+      {/* Camera capture button - fresh render */}
       <CameraCapture onCameraCapture={onCameraCapture} />
     </Suspense>
   );
