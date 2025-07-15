@@ -77,14 +77,14 @@ export const ClickableFeedbackPanel = ({
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <Target className="w-5 h-5" />
-              הערה על רכיב
+              Developer Feedback - תיקון קוד
             </CardTitle>
             <Button variant="ghost" size="sm" onClick={onClose}>
               <X className="w-4 h-4" />
             </Button>
           </div>
           <CardDescription>
-            הוסף הערה ספציפית על הרכיב שבחרת
+            הסבר לAI מה צריך לתקן ברכיב הזה - זה ישפיע על הקוד
           </CardDescription>
         </CardHeader>
 
@@ -115,17 +115,17 @@ export const ClickableFeedbackPanel = ({
           {/* Comment Input */}
           <div className="space-y-2">
             <label className="text-sm font-medium">
-              {existingComment ? 'עדכן הערה:' : 'הוסף הערה:'}
+              {existingComment ? 'עדכן הערה לAI:' : 'הסבר לAI מה לתקן:'}
             </label>
             <Textarea
-              placeholder="מה צריך לתקן ברכיב הזה? איך לעשות אותו יותר מציאותי?"
+              placeholder="דוגמאות: 'הקורה הזו צריכה להיות יותר מבריקה', 'העמוד הזה נראה לא יציב', 'הצבע לא מציאותי', 'הצללה חלשה מדי'"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               className="min-h-[100px] resize-none"
               maxLength={300}
             />
             <p className="text-xs text-gray-500 text-left">
-              {comment.length}/300 תווים
+              {comment.length}/300 תווים • הערה זו תעזור לAI לתקן את הקוד
             </p>
           </div>
 
@@ -136,7 +136,7 @@ export const ClickableFeedbackPanel = ({
             disabled={!comment.trim()}
           >
             <Send className="w-4 h-4" />
-            {existingComment ? 'עדכן הערה' : 'שמור הערה'}
+            {existingComment ? 'עדכן הערה לAI' : 'שלח הערה לAI'}
           </Button>
         </CardContent>
       </Card>

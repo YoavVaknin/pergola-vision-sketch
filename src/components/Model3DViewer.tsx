@@ -321,9 +321,9 @@ export const Model3DViewer = ({
         <div className="bg-gray-50 px-3 py-2 border-b">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-sm font-medium text-gray-700">הדמיה תלת-ממדית - פרגולה (לחץ על רכיבים)</h4>
+              <h4 className="text-sm font-medium text-gray-700">הדמיה תלת-ממדית - Developer Tools</h4>
               <p className="text-xs text-gray-500">
-                {feedbackEnabled ? 'לחץ על רכיבים בהדמיה להוספת הערות ספציפיות' : 'פאנל שיפור הדמיה מושבת'}
+                {feedbackEnabled ? 'לחץ על רכיבים בהדמיה לתיאור בעיות לAI - הקוד יתעדכן בהתאם' : 'כלי פיתוח מושבת'}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -375,7 +375,7 @@ export const Model3DViewer = ({
                 <Target className="w-4 h-4" />
                 <span>{getMeshTypeName(hoveredMesh.type)}</span>
               </div>
-              <p className="text-xs opacity-75">לחץ להוספת הערה</p>
+              <p className="text-xs opacity-75">לחץ להערה לAI</p>
             </div>
           )}
           
@@ -388,7 +388,7 @@ export const Model3DViewer = ({
                 <div className="w-3 h-3 bg-teal-500 rounded-full"></div>
                 <span>עם הערה</span>
               </div>
-              <p className="text-xs text-gray-600">לחץ על רכיבים להוספת הערות</p>
+              <p className="text-xs text-gray-600">לחץ על רכיבים לפידבק לAI</p>
             </div>
           )}
         </div>
@@ -404,7 +404,7 @@ export const Model3DViewer = ({
             {feedbackEnabled && (
               <div className="text-xs text-green-600 flex items-center gap-1">
                 <Target className="w-3 h-3" />
-                פאנל שיפור הדמיה מופעל
+                כלי פיתוח AI מופעל
               </div>
             )}
           </div>
