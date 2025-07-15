@@ -1,11 +1,11 @@
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, PerspectiveCamera, Environment } from '@react-three/drei';
 import { Model3D, Mesh3D } from '@/utils/3dModelGenerator';
 import * as THREE from 'three';
 import { Suspense, useState } from 'react';
-import { FeedbackPanel } from '@/components/FeedbackPanel';
+import { ClickableFeedbackPanel, FeedbackSummary } from '@/components/ClickableFeedbackPanel';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, Settings } from 'lucide-react';
+import { MessageCircle, Settings, List, Target } from 'lucide-react';
 
 interface Model3DViewerProps {
   model: Model3D | null;
@@ -13,11 +13,21 @@ interface Model3DViewerProps {
   height?: number;
 }
 
-// Enhanced mesh component with improved materials
-const Mesh3DComponent = ({
-  mesh
+// Enhanced clickable mesh component
+const ClickableMesh3DComponent = ({
+  mesh,
+  isSelected,
+  hasComment,
+  onMeshClick,
+  onMeshHover,
+  onMeshLeave
 }: {
   mesh: Mesh3D;
+  isSelected: boolean;
+  hasComment: boolean;
+  onMeshClick: (mesh: Mesh3D) => void;
+  onMeshHover: (mesh: Mesh3D) => void;
+  onMeshLeave: () => void;
 }) => {
   const {
     geometry,
@@ -40,44 +50,79 @@ const Mesh3DComponent = ({
     return <boxGeometry args={[geometry.width, geometry.height, geometry.depth]} />;
   };
 
-  // Improved materials for different components
+  // Improved materials for different components with interaction states
   const getMaterialProps = () => {
     const baseColor = new THREE.Color(color);
+    
+    // Modify color based on state
+    let finalColor = baseColor;
+    if (isSelected) {
+      finalColor = new THREE.Color('#ff6b6b'); // Red for selected
+    } else if (hasComment) {
+      finalColor = new THREE.Color('#4ecdc4'); // Teal for commented
+    }
     
     switch (type) {
       case 'frame_beam':
         return {
-          color: baseColor,
+          color: finalColor,
           roughness: 0.2,
           metalness: 0.8,
-          envMapIntensity: 1.0
+          envMapIntensity: 1.0,
+          transparent: isSelected,
+          opacity: isSelected ? 0.8 : 1.0
         };
       case 'column':
         return {
-          color: baseColor,
+          color: finalColor,
           roughness: 0.3,
           metalness: 0.7,
-          envMapIntensity: 0.8
+          envMapIntensity: 0.8,
+          transparent: isSelected,
+          opacity: isSelected ? 0.8 : 1.0
         };
       case 'shading_slat':
         return {
-          color: baseColor.multiplyScalar(0.9),
+          color: finalColor.multiplyScalar(0.9),
           roughness: 0.7,
           metalness: 0.1,
-          envMapIntensity: 0.4
+          envMapIntensity: 0.4,
+          transparent: isSelected,
+          opacity: isSelected ? 0.8 : 1.0
         };
       default:
         return {
-          color: baseColor,
+          color: finalColor,
           roughness: 0.5,
           metalness: 0.3,
-          envMapIntensity: 0.6
+          envMapIntensity: 0.6,
+          transparent: isSelected,
+          opacity: isSelected ? 0.8 : 1.0
         };
     }
   };
   
   return (
-    <mesh position={threePosition} rotation={threeRotation} castShadow receiveShadow>
+    <mesh 
+      position={threePosition} 
+      rotation={threeRotation} 
+      castShadow 
+      receiveShadow
+      onClick={(e) => {
+        e.stopPropagation();
+        onMeshClick(mesh);
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        document.body.style.cursor = 'pointer';
+        onMeshHover(mesh);
+      }}
+      onPointerOut={(e) => {
+        e.stopPropagation();
+        document.body.style.cursor = 'default';
+        onMeshLeave();
+      }}
+    >
       {createGeometry()}
       <meshStandardMaterial {...getMaterialProps()} />
     </mesh>
@@ -85,9 +130,19 @@ const Mesh3DComponent = ({
 };
 
 const Scene = ({
-  model
+  model,
+  selectedMesh,
+  comments,
+  onMeshClick,
+  onMeshHover,
+  onMeshLeave
 }: {
   model: Model3D;
+  selectedMesh: Mesh3D | null;
+  comments: Record<string, string>;
+  onMeshClick: (mesh: Mesh3D) => void;
+  onMeshHover: (mesh: Mesh3D) => void;
+  onMeshLeave: () => void;
 }) => {
   if (!model || !model.boundingBox || !model.metadata || !model.metadata.dimensions) {
     console.warn('Invalid model data:', model);
@@ -177,9 +232,17 @@ const Scene = ({
         fadeStrength={0.5} 
       />
       
-      {/* Render all pergola components */}
+      {/* Render all clickable pergola components */}
       {model.meshes && model.meshes.map(mesh => (
-        <Mesh3DComponent key={mesh.id} mesh={mesh} />
+        <ClickableMesh3DComponent 
+          key={mesh.id} 
+          mesh={mesh}
+          isSelected={selectedMesh?.id === mesh.id}
+          hasComment={!!comments[mesh.id]}
+          onMeshClick={onMeshClick}
+          onMeshHover={onMeshHover}
+          onMeshLeave={onMeshLeave}
+        />
       ))}
       
       {/* Reference axes */}
@@ -206,14 +269,51 @@ export const Model3DViewer = ({
   width = 800,
   height = 600
 }: Model3DViewerProps) => {
-  const [feedbackPanelOpen, setFeedbackPanelOpen] = useState(false);
   const [feedbackEnabled, setFeedbackEnabled] = useState(true);
+  const [selectedMesh, setSelectedMesh] = useState<Mesh3D | null>(null);
+  const [hoveredMesh, setHoveredMesh] = useState<Mesh3D | null>(null);
+  const [comments, setComments] = useState<Record<string, string>>({});
+  const [feedbackPanelOpen, setFeedbackPanelOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
 
   if (!model || !model.meshes || model.meshes.length === 0) {
     return;
   }
 
-  console.log('🎬 Rendering enhanced 3D pergola model with', model.meshes.length, 'components');
+  const handleMeshClick = (mesh: Mesh3D) => {
+    if (!feedbackEnabled) return;
+    setSelectedMesh(mesh);
+    setFeedbackPanelOpen(true);
+  };
+
+  const handleMeshHover = (mesh: Mesh3D) => {
+    if (!feedbackEnabled) return;
+    setHoveredMesh(mesh);
+  };
+
+  const handleMeshLeave = () => {
+    setHoveredMesh(null);
+  };
+
+  const handleCommentSubmit = (meshId: string, comment: string) => {
+    setComments(prev => ({
+      ...prev,
+      [meshId]: comment
+    }));
+    console.log('💬 Comment added:', { meshId, comment });
+  };
+
+  const getMeshTypeName = (type: string) => {
+    switch (type) {
+      case 'frame_beam': return 'קורת מסגרת';
+      case 'shading_slat': return 'רצועת הצללה';
+      case 'column': return 'עמוד';
+      case 'division_beam': return 'קורת חלוקה';
+      default: return 'רכיב';
+    }
+  };
+
+  console.log('🎬 Rendering clickable 3D pergola model with', model.meshes.length, 'components');
   
   return (
     <>
@@ -221,21 +321,21 @@ export const Model3DViewer = ({
         <div className="bg-gray-50 px-3 py-2 border-b">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-sm font-medium text-gray-700">הדמיה תלת-ממדית - פרגולה</h4>
+              <h4 className="text-sm font-medium text-gray-700">הדמיה תלת-ממדית - פרגולה (לחץ על רכיבים)</h4>
               <p className="text-xs text-gray-500">
-                הדמיה משופרת עם תאורה מתקדמת וחומרים מציאותיים
+                {feedbackEnabled ? 'לחץ על רכיבים בהדמיה להוספת הערות ספציפיות' : 'פאנל שיפור הדמיה מושבת'}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {feedbackEnabled && (
+              {feedbackEnabled && Object.keys(comments).length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setFeedbackPanelOpen(true)}
+                  onClick={() => setSummaryOpen(true)}
                   className="flex items-center gap-1"
                 >
-                  <MessageCircle className="w-4 h-4" />
-                  פידבק
+                  <List className="w-4 h-4" />
+                  הערות ({Object.keys(comments).length})
                 </Button>
               )}
               <Button
@@ -258,20 +358,38 @@ export const Model3DViewer = ({
             camera={{ position: [100, 100, 100], fov: 40 }}
             style={{ background: 'linear-gradient(to bottom, #87ceeb, #f0f8ff)' }}
           >
-            <Scene model={model} />
+            <Scene 
+              model={model} 
+              selectedMesh={selectedMesh}
+              comments={comments}
+              onMeshClick={handleMeshClick}
+              onMeshHover={handleMeshHover}
+              onMeshLeave={handleMeshLeave}
+            />
           </Canvas>
           
-          {/* Floating feedback button */}
+          {/* Hover info */}
+          {feedbackEnabled && hoveredMesh && (
+            <div className="absolute top-4 left-4 bg-black/80 text-white px-3 py-2 rounded text-sm z-10">
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4" />
+                <span>{getMeshTypeName(hoveredMesh.type)}</span>
+              </div>
+              <p className="text-xs opacity-75">לחץ להוספת הערה</p>
+            </div>
+          )}
+          
+          {/* Instructions */}
           {feedbackEnabled && (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setFeedbackPanelOpen(true)}
-              className="absolute bottom-4 right-4 shadow-lg flex items-center gap-2"
-            >
-              <MessageCircle className="w-4 h-4" />
-              פידבק מהיר
-            </Button>
+            <div className="absolute bottom-4 left-4 bg-white/90 px-3 py-2 rounded shadow-lg text-sm">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <span>נבחר</span>
+                <div className="w-3 h-3 bg-teal-500 rounded-full"></div>
+                <span>עם הערה</span>
+              </div>
+              <p className="text-xs text-gray-600">לחץ על רכיבים להוספת הערות</p>
+            </div>
           )}
         </div>
         
@@ -284,7 +402,8 @@ export const Model3DViewer = ({
               מימדים: {model.metadata?.dimensions ? `${model.metadata.dimensions.width.toFixed(0)}×${model.metadata.dimensions.depth.toFixed(0)}×${model.metadata.dimensions.height.toFixed(0)} ס"מ` : 'לא זמין'}
             </div>
             {feedbackEnabled && (
-              <div className="text-xs text-blue-600">
+              <div className="text-xs text-green-600 flex items-center gap-1">
+                <Target className="w-3 h-3" />
                 פאנל שיפור הדמיה מופעל
               </div>
             )}
@@ -292,11 +411,27 @@ export const Model3DViewer = ({
         </div>
       </div>
 
-      {/* Feedback Panel */}
+      {/* Clickable Feedback Panel */}
       {feedbackEnabled && (
-        <FeedbackPanel
+        <ClickableFeedbackPanel
+          selectedMesh={selectedMesh}
           isOpen={feedbackPanelOpen}
-          onClose={() => setFeedbackPanelOpen(false)}
+          onClose={() => {
+            setFeedbackPanelOpen(false);
+            setSelectedMesh(null);
+          }}
+          onSubmitComment={handleCommentSubmit}
+          existingComments={comments}
+        />
+      )}
+
+      {/* Feedback Summary */}
+      {feedbackEnabled && (
+        <FeedbackSummary
+          comments={comments}
+          meshes={model.meshes}
+          isOpen={summaryOpen}
+          onClose={() => setSummaryOpen(false)}
         />
       )}
     </>
