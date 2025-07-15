@@ -2,7 +2,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, PerspectiveCamera, Environment, Html } from '@react-three/drei';
 import { Model3D, Mesh3D } from '@/utils/3dModelGenerator';
 import * as THREE from 'three';
-import { Suspense, useState, useRef } from 'react';
+import { Suspense, useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -181,6 +181,18 @@ const CameraCapture = ({ onCameraCapture }: { onCameraCapture: (data: any) => vo
   );
 };
 
+// Camera initialization component
+const CameraInitializer = ({ initialPosition }: { initialPosition: [number, number, number] }) => {
+  const { camera } = useThree();
+  
+  useEffect(() => {
+    camera.position.set(...initialPosition);
+    camera.lookAt(0, 0, 0);
+  }, [camera, initialPosition]);
+  
+  return null;
+};
+
 const Scene = ({
   model,
   editMode,
@@ -251,6 +263,9 @@ const Scene = ({
 
   return (
     <Suspense fallback={<mesh><boxGeometry /><meshBasicMaterial /></mesh>}>
+      {/* Initialize camera position */}
+      <CameraInitializer initialPosition={[218.83510221809496, 517.6492693921896, 101.99671122761868]} />
+      
       {/* Environment lighting */}
       <Environment preset="city" environmentIntensity={0.6} />
       
@@ -270,7 +285,7 @@ const Scene = ({
         shadow-camera-bottom={-300}
       />
       
-      {/* Orbit controls with default camera - COMPLETELY UNRESTRICTED */}
+      {/* Orbit controls - COMPLETELY UNRESTRICTED */}
       <OrbitControls 
         target={[
           pergolaCenter.x || 0, 
@@ -278,16 +293,17 @@ const Scene = ({
           pergolaCenter.z || 0
         ]}
         enableDamping 
-        dampingFactor={0.1}
+        dampingFactor={0.05}
         enableZoom 
         enablePan 
         enableRotate={editMode ? false : true}
-        minDistance={Math.max(10, maxDimension * 0.3)}
-        maxDistance={Math.max(1000, maxDimension * 4)}
+        // Minimal distance constraints only
+        minDistance={10}
+        maxDistance={5000}
         autoRotate={false}
-        rotateSpeed={1.0}
-        zoomSpeed={1.2}
-        panSpeed={0.8}
+        rotateSpeed={0.8}
+        zoomSpeed={1.0}
+        panSpeed={0.5}
         mouseButtons={{
           LEFT: editMode ? 2 : 0,
           MIDDLE: 1,
@@ -467,7 +483,6 @@ export const Model3DViewer = ({
         <div style={{ width: editMode ? width - 300 : width, height }} className="flex-1">
           <Canvas
             shadows
-            camera={{ position: [100, 100, 100], fov: 40 }}
             style={{ background: 'linear-gradient(to bottom, #87ceeb, #f0f8ff)' }}
           >
             <Scene 
