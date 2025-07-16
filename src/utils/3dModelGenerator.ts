@@ -74,6 +74,78 @@ const calculateBeamRotation = (start: Point, end: Point): Vector3D => {
   };
 };
 
+// Calculate the inner polygon by offsetting the frame inward by the frame profile width
+const calculateInnerFramePolygon = (framePoints: Point[], frameProfileWidth: number, pixelsPerCm: number): Point[] => {
+  if (framePoints.length < 3) return framePoints;
+  
+  const offsetPixels = frameProfileWidth * pixelsPerCm / 2; // Half the profile width in pixels
+  const innerPoints: Point[] = [];
+  
+  for (let i = 0; i < framePoints.length; i++) {
+    const prevIndex = (i - 1 + framePoints.length) % framePoints.length;
+    const nextIndex = (i + 1) % framePoints.length;
+    
+    const prevPoint = framePoints[prevIndex];
+    const currentPoint = framePoints[i];
+    const nextPoint = framePoints[nextIndex];
+    
+    // Calculate vectors from current point to neighbors
+    const toPrev = { 
+      x: prevPoint.x - currentPoint.x, 
+      y: prevPoint.y - currentPoint.y 
+    };
+    const toNext = { 
+      x: nextPoint.x - currentPoint.x, 
+      y: nextPoint.y - currentPoint.y 
+    };
+    
+    // Normalize vectors
+    const prevLength = Math.sqrt(toPrev.x * toPrev.x + toPrev.y * toPrev.y);
+    const nextLength = Math.sqrt(toNext.x * toNext.x + toNext.y * toNext.y);
+    
+    if (prevLength === 0 || nextLength === 0) {
+      innerPoints.push(currentPoint);
+      continue;
+    }
+    
+    const prevNorm = { x: toPrev.x / prevLength, y: toPrev.y / prevLength };
+    const nextNorm = { x: toNext.x / nextLength, y: toNext.y / nextLength };
+    
+    // Calculate bisector direction (inward)
+    const bisector = {
+      x: (prevNorm.x + nextNorm.x) / 2,
+      y: (prevNorm.y + nextNorm.y) / 2
+    };
+    
+    // Normalize bisector
+    const bisectorLength = Math.sqrt(bisector.x * bisector.x + bisector.y * bisector.y);
+    if (bisectorLength === 0) {
+      innerPoints.push(currentPoint);
+      continue;
+    }
+    
+    const bisectorNorm = { 
+      x: bisector.x / bisectorLength, 
+      y: bisector.y / bisectorLength 
+    };
+    
+    // Calculate angle between edges to determine offset distance
+    const cosAngle = Math.max(-1, Math.min(1, prevNorm.x * nextNorm.x + prevNorm.y * nextNorm.y));
+    const sinHalfAngle = Math.sqrt((1 - cosAngle) / 2);
+    const offsetDistance = sinHalfAngle === 0 ? offsetPixels : offsetPixels / sinHalfAngle;
+    
+    // Move point inward
+    const innerPoint = {
+      x: currentPoint.x + bisectorNorm.x * offsetDistance,
+      y: currentPoint.y + bisectorNorm.y * offsetDistance
+    };
+    
+    innerPoints.push(innerPoint);
+  }
+  
+  return innerPoints;
+};
+
 // Calculate beam length in pixels
 const calculateBeamLength = (start: Point, end: Point): number => {
   const dx = end.x - start.x;
@@ -98,14 +170,20 @@ const createPergolaBeam = (
   const centerX = (start.x + end.x) / 2;
   const centerY = (start.y + end.y) / 2;
   
+  // For frame beams, the width represents the cross-section visible from above
+  // The geometry should reflect the actual dimensions where:
+  // - width = the length of the beam along its direction
+  // - depth = the visible width from above (profile.width)
+  // - height = the actual height of the beam
+  
   return {
     id,
     type,
     geometry: {
       type: 'box',
-      width: beamLengthCm,
-      height: profile.height,
-      depth: profile.width
+      width: beamLengthCm,        // Length along the beam direction
+      height: profile.height,     // Vertical height
+      depth: profile.width        // Width visible from above (cross-section)
     },
     position: {
       x: pixelToCm(centerX, pixelsPerCm),
@@ -157,11 +235,14 @@ const createBottomShadingSlats = (
 
   const slats: Mesh3D[] = [];
   
-  // Calculate bounding box of frame
-  const minX = Math.min(...framePoints.map(p => p.x));
-  const maxX = Math.max(...framePoints.map(p => p.x));
-  const minY = Math.min(...framePoints.map(p => p.y));
-  const maxY = Math.max(...framePoints.map(p => p.y));
+  // Calculate inner frame polygon - where shading slats should be constrained
+  const innerFramePoints = calculateInnerFramePolygon(framePoints, config.frameProfile.width, pixelsPerCm);
+  
+  // Calculate bounding box of inner frame
+  const minX = Math.min(...innerFramePoints.map(p => p.x));
+  const maxX = Math.max(...innerFramePoints.map(p => p.x));
+  const minY = Math.min(...innerFramePoints.map(p => p.y));
+  const maxY = Math.max(...innerFramePoints.map(p => p.y));
 
   console.log('Creating bottom shading slats:', {
     direction: config.shadingDirection,
@@ -178,10 +259,10 @@ const createBottomShadingSlats = (
     for (let x = minX + config.spacing; x < maxX; x += config.spacing) {
       const intersections: { y: number; }[] = [];
       
-      // Find intersections with frame edges
-      for (let i = 0; i < framePoints.length; i++) {
-        const p1 = framePoints[i];
-        const p2 = framePoints[(i + 1) % framePoints.length];
+      // Find intersections with inner frame edges (where shading slats should be constrained)
+      for (let i = 0; i < innerFramePoints.length; i++) {
+        const p1 = innerFramePoints[i];
+        const p2 = innerFramePoints[(i + 1) % innerFramePoints.length];
         
         const minEdgeX = Math.min(p1.x, p2.x);
         const maxEdgeX = Math.max(p1.x, p2.x);
@@ -235,10 +316,10 @@ const createBottomShadingSlats = (
     for (let y = minY + config.spacing; y < maxY; y += config.spacing) {
       const intersections: { x: number; }[] = [];
       
-      // Find intersections with frame edges
-      for (let i = 0; i < framePoints.length; i++) {
-        const p1 = framePoints[i];
-        const p2 = framePoints[(i + 1) % framePoints.length];
+      // Find intersections with inner frame edges (where shading slats should be constrained)
+      for (let i = 0; i < innerFramePoints.length; i++) {
+        const p1 = innerFramePoints[i];
+        const p2 = innerFramePoints[(i + 1) % innerFramePoints.length];
         
         const minEdgeY = Math.min(p1.y, p2.y);
         const maxEdgeY = Math.max(p1.y, p2.y);
@@ -308,11 +389,14 @@ const createDivisionBeams = (
 
   const beams: Mesh3D[] = [];
   
-  // Calculate bounding box
-  const minX = Math.min(...framePoints.map(p => p.x));
-  const maxX = Math.max(...framePoints.map(p => p.x));
-  const minY = Math.min(...framePoints.map(p => p.y));
-  const maxY = Math.max(...framePoints.map(p => p.y));
+  // Calculate inner frame polygon - where division beams should be constrained
+  const innerFramePoints = calculateInnerFramePolygon(framePoints, config.frameProfile.width, pixelsPerCm);
+  
+  // Calculate bounding box of inner frame
+  const minX = Math.min(...innerFramePoints.map(p => p.x));
+  const maxX = Math.max(...innerFramePoints.map(p => p.x));
+  const minY = Math.min(...innerFramePoints.map(p => p.y));
+  const maxY = Math.max(...innerFramePoints.map(p => p.y));
 
   console.log('Creating division beams:', {
     direction: config.divisionDirection,
@@ -329,9 +413,9 @@ const createDivisionBeams = (
     for (let x = minX + config.divisionSpacing; x < maxX; x += config.divisionSpacing) {
       const intersections: { y: number; }[] = [];
       
-      for (let i = 0; i < framePoints.length; i++) {
-        const p1 = framePoints[i];
-        const p2 = framePoints[(i + 1) % framePoints.length];
+      for (let i = 0; i < innerFramePoints.length; i++) {
+        const p1 = innerFramePoints[i];
+        const p2 = innerFramePoints[(i + 1) % innerFramePoints.length];
         
         const minEdgeX = Math.min(p1.x, p2.x);
         const maxEdgeX = Math.max(p1.x, p2.x);
@@ -370,9 +454,9 @@ const createDivisionBeams = (
     for (let y = minY + config.divisionSpacing; y < maxY; y += config.divisionSpacing) {
       const intersections: { x: number; }[] = [];
       
-      for (let i = 0; i < framePoints.length; i++) {
-        const p1 = framePoints[i];
-        const p2 = framePoints[(i + 1) % framePoints.length];
+      for (let i = 0; i < innerFramePoints.length; i++) {
+        const p1 = innerFramePoints[i];
+        const p2 = innerFramePoints[(i + 1) % innerFramePoints.length];
         
         const minEdgeY = Math.min(p1.y, p2.y);
         const maxEdgeY = Math.max(p1.y, p2.y);
@@ -467,6 +551,7 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
         console.log(`📐 Frame with ${frame.points.length} points:`, frame.points);
         
         // Create main structural beams for each segment
+        // Frame beams are positioned so their outer edge aligns with the drawn line
         for (let i = 0; i < frame.points.length; i++) {
           const nextIndex = frame.closed ? (i + 1) % frame.points.length : i + 1;
           if (!frame.closed && nextIndex >= frame.points.length) break;
@@ -474,13 +559,14 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
           const start = frame.points[i];
           const end = frame.points[nextIndex];
           
-          // Update bounding box
+          // Update bounding box using drawn points (outer boundary)
           minX = Math.min(minX, start.x, end.x);
           maxX = Math.max(maxX, start.x, end.x);
           minY = Math.min(minY, start.y, end.y);
           maxY = Math.max(maxY, start.y, end.y);
           
-          // FIXED: Create main structural beam at base Z position
+          // Create frame beam - the beam is positioned exactly on the drawn line
+          // The physical width of the beam extends inward from this line
           const beam = createPergolaBeam(
             `${element.id}_beam_${i}`,
             start,
