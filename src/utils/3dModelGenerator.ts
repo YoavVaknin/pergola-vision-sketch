@@ -75,10 +75,11 @@ const calculateBeamRotation = (start: Point, end: Point): Vector3D => {
 };
 
 // Calculate the inner polygon by offsetting the frame inward by the frame profile width
+// This represents the available inner space after placing frame beams
 const calculateInnerFramePolygon = (framePoints: Point[], frameProfileWidth: number, pixelsPerCm: number): Point[] => {
   if (framePoints.length < 3) return framePoints;
   
-  const offsetPixels = frameProfileWidth * pixelsPerCm / 2; // Half the profile width in pixels
+  const offsetPixels = frameProfileWidth * pixelsPerCm; // Full profile width in pixels
   const innerPoints: Point[] = [];
   
   for (let i = 0; i < framePoints.length; i++) {
@@ -111,10 +112,14 @@ const calculateInnerFramePolygon = (framePoints: Point[], frameProfileWidth: num
     const prevNorm = { x: toPrev.x / prevLength, y: toPrev.y / prevLength };
     const nextNorm = { x: toNext.x / nextLength, y: toNext.y / nextLength };
     
-    // Calculate bisector direction (inward)
+    // Calculate inward perpendicular vectors for each edge
+    const prevPerp = { x: prevNorm.y, y: -prevNorm.x }; // Perpendicular pointing inward
+    const nextPerp = { x: -nextNorm.y, y: nextNorm.x }; // Perpendicular pointing inward
+    
+    // Calculate bisector direction (average of perpendiculars)
     const bisector = {
-      x: (prevNorm.x + nextNorm.x) / 2,
-      y: (prevNorm.y + nextNorm.y) / 2
+      x: (prevPerp.x + nextPerp.x) / 2,
+      y: (prevPerp.y + nextPerp.y) / 2
     };
     
     // Normalize bisector
@@ -130,7 +135,7 @@ const calculateInnerFramePolygon = (framePoints: Point[], frameProfileWidth: num
     };
     
     // Calculate angle between edges to determine offset distance
-    const cosAngle = Math.max(-1, Math.min(1, prevNorm.x * nextNorm.x + prevNorm.y * nextNorm.y));
+    const cosAngle = Math.max(-1, Math.min(1, -(prevNorm.x * nextNorm.x + prevNorm.y * nextNorm.y)));
     const sinHalfAngle = Math.sqrt((1 - cosAngle) / 2);
     const offsetDistance = sinHalfAngle === 0 ? offsetPixels : offsetPixels / sinHalfAngle;
     
@@ -144,6 +149,53 @@ const calculateInnerFramePolygon = (framePoints: Point[], frameProfileWidth: num
   }
   
   return innerPoints;
+};
+
+// Position frame beams so they sit inside the drawn boundary
+const calculateFrameBeamPositions = (
+  start: Point, 
+  end: Point, 
+  frameProfileWidth: number, 
+  pixelsPerCm: number
+): { innerStart: Point; innerEnd: Point } => {
+  const frameWidthPixels = frameProfileWidth * pixelsPerCm;
+  
+  // Calculate beam direction vector
+  const beamVector = { 
+    x: end.x - start.x, 
+    y: end.y - start.y 
+  };
+  const beamLength = Math.sqrt(beamVector.x * beamVector.x + beamVector.y * beamVector.y);
+  
+  if (beamLength === 0) {
+    return { innerStart: start, innerEnd: end };
+  }
+  
+  // Normalize beam vector
+  const beamNorm = { 
+    x: beamVector.x / beamLength, 
+    y: beamVector.y / beamLength 
+  };
+  
+  // Calculate perpendicular vector pointing inward (to the right of the beam direction for clockwise polygon)
+  const inwardVector = { 
+    x: beamNorm.y, 
+    y: -beamNorm.x 
+  };
+  
+  // Position frame beam inward by half the frame width
+  const inwardOffset = frameWidthPixels / 2;
+  
+  return {
+    innerStart: {
+      x: start.x + inwardVector.x * inwardOffset,
+      y: start.y + inwardVector.y * inwardOffset
+    },
+    innerEnd: {
+      x: end.x + inwardVector.x * inwardOffset,
+      y: end.y + inwardVector.y * inwardOffset
+    }
+  };
 };
 
 // Calculate beam length in pixels
@@ -551,26 +603,33 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
         console.log(`📐 Frame with ${frame.points.length} points:`, frame.points);
         
         // Create main structural beams for each segment
-        // Frame beams are positioned so their outer edge aligns with the drawn line
+        // Frame beams are positioned inside the drawn boundary (inward from outer edge)
         for (let i = 0; i < frame.points.length; i++) {
           const nextIndex = frame.closed ? (i + 1) % frame.points.length : i + 1;
           if (!frame.closed && nextIndex >= frame.points.length) break;
           
-          const start = frame.points[i];
-          const end = frame.points[nextIndex];
+          const outerStart = frame.points[i];
+          const outerEnd = frame.points[nextIndex];
           
-          // Update bounding box using drawn points (outer boundary)
-          minX = Math.min(minX, start.x, end.x);
-          maxX = Math.max(maxX, start.x, end.x);
-          minY = Math.min(minY, start.y, end.y);
-          maxY = Math.max(maxY, start.y, end.y);
+          // Calculate the inner position for frame beams (positioned inside the drawn boundary)
+          const { innerStart, innerEnd } = calculateFrameBeamPositions(
+            outerStart, 
+            outerEnd, 
+            shadingConfig.frameProfile.width, 
+            pixelsPerCm
+          );
           
-          // Create frame beam - the beam is positioned exactly on the drawn line
-          // The physical width of the beam extends inward from this line
+          // Update bounding box using outer drawn points (the full boundary)
+          minX = Math.min(minX, outerStart.x, outerEnd.x);
+          maxX = Math.max(maxX, outerStart.x, outerEnd.x);
+          minY = Math.min(minY, outerStart.y, outerEnd.y);
+          maxY = Math.max(maxY, outerStart.y, outerEnd.y);
+          
+          // Create frame beam positioned inward from the boundary
           const beam = createPergolaBeam(
             `${element.id}_beam_${i}`,
-            start,
-            end,
+            innerStart,
+            innerEnd,
             pixelsPerCm,
             frameBaseZ,
             shadingConfig.frameProfile,
@@ -579,7 +638,7 @@ export const generate3DModelFromDrawing = (drawingData: DrawingData): Model3D =>
           );
           
           meshes.push(beam);
-          console.log(`✅ Added frame beam segment ${i} at Z=${frameBaseZ}`);
+          console.log(`✅ Added frame beam segment ${i} at Z=${frameBaseZ} (positioned inward from boundary)`);
         }
 
         // Generate shading slats and division beams for closed frames only
