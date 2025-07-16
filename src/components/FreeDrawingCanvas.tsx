@@ -428,7 +428,7 @@ export const FreeDrawingCanvas = () => {
         case 'frame':
           const frame = element as FrameElement;
           if (frame.points.length > 1) {
-            // ציור מלבן לכל קטע מסגרת במבט על - רוחב הפרופיל במקום קו
+            // ציור מלבן לכל קטע מסגרת במבט על - רוחב הפרופיל האמיתי במקום קו
             const frameWidthPixels = (shadingConfig.frameProfile.width * measurementConfig.pixelsPerCm) / canvasTransform.scale;
             
             for (let i = 0; i < frame.points.length; i++) {
@@ -438,17 +438,19 @@ export const FreeDrawingCanvas = () => {
               const start = frame.points[i];
               const end = frame.points[nextIndex];
               
-              // חישוב הכיוון הניצב לקטע
+              // חישוב הכיוון הניצב לקטע לציור המלבן
               const dx = end.x - start.x;
               const dy = end.y - start.y;
               const length = Math.sqrt(dx * dx + dy * dy);
               
               if (length > 0) {
+                // וקטור מנורמל (ניצב) לכיוון הקטע
                 const normalX = (-dy / length) * frameWidthPixels / 2;
                 const normalY = (dx / length) * frameWidthPixels / 2;
                 
-                // ציור מלבן המייצג את הפרופיל במבט על
-                ctx.fillStyle = ctx.strokeStyle;
+                // ציור מלבן מלא המייצג את הפרופיל במבט על
+                ctx.fillStyle = accessoryConfig.frameColor;
+                ctx.globalAlpha = 0.8; // שקיפות קלה כדי לראות חפיפות
                 ctx.beginPath();
                 ctx.moveTo(start.x + normalX, start.y + normalY);
                 ctx.lineTo(end.x + normalX, end.y + normalY);
@@ -457,14 +459,21 @@ export const FreeDrawingCanvas = () => {
                 ctx.closePath();
                 ctx.fill();
                 
-                // קו מרכזי עדין להדגשה
-                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                // מסגרת דקה להדגשת הקווים החיצוניים
+                ctx.globalAlpha = 1;
+                ctx.strokeStyle = '#2d4a2b';
                 ctx.lineWidth = 1 / canvasTransform.scale;
+                ctx.stroke();
+                
+                // קו מרכזי עדין להדגשה ולניווט
+                ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                ctx.lineWidth = 0.5 / canvasTransform.scale;
+                ctx.setLineDash([2 / canvasTransform.scale, 2 / canvasTransform.scale]);
                 ctx.beginPath();
                 ctx.moveTo(start.x, start.y);
                 ctx.lineTo(end.x, end.y);
                 ctx.stroke();
-                ctx.strokeStyle = accessoryConfig.frameColor;
+                ctx.setLineDash([]);
               }
             }
             if (measurementConfig.showLengths && frame.measurements) {
@@ -519,7 +528,7 @@ export const FreeDrawingCanvas = () => {
           break;
         case 'beam':
           const beam = element as BeamElement;
-          // ציור מלבן לקורה במבט על - רוחב הפרופיל במקום קו
+          // ציור מלבן לקורה במבט על - רוחב הפרופיל האמיתי במקום קו
           const beamWidthPixels = (beam.width * measurementConfig.pixelsPerCm) / canvasTransform.scale;
           
           const dx = beam.end.x - beam.start.x;
@@ -530,8 +539,9 @@ export const FreeDrawingCanvas = () => {
             const normalX = (-dy / length) * beamWidthPixels / 2;
             const normalY = (dx / length) * beamWidthPixels / 2;
             
-            // ציור מלבן המייצג את הפרופיל במבט על
-            ctx.fillStyle = ctx.strokeStyle;
+            // ציור מלבן מלא המייצג את הפרופיל במבט על
+            ctx.fillStyle = beam.color || '#8b5cf6';
+            ctx.globalAlpha = 0.7; // שקיפות קלה כדי לראות חפיפות
             ctx.beginPath();
             ctx.moveTo(beam.start.x + normalX, beam.start.y + normalY);
             ctx.lineTo(beam.end.x + normalX, beam.end.y + normalY);
@@ -540,18 +550,26 @@ export const FreeDrawingCanvas = () => {
             ctx.closePath();
             ctx.fill();
             
-            // קו מרכזי עדין להדגשה
-            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            // מסגרת להדגשה
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = beam.color || '#8b5cf6';
             ctx.lineWidth = 1 / canvasTransform.scale;
+            ctx.stroke();
+            
+            // קו מרכזי עדין להדגשה ולניווט
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.lineWidth = 0.5 / canvasTransform.scale;
+            ctx.setLineDash([1 / canvasTransform.scale, 1 / canvasTransform.scale]);
             ctx.beginPath();
             ctx.moveTo(beam.start.x, beam.start.y);
             ctx.lineTo(beam.end.x, beam.end.y);
             ctx.stroke();
+            ctx.setLineDash([]);
           }
           break;
         case 'shading':
           const shading = element as ShadingElement;
-          // ציור מלבן לקורת הצללה במבט על - רוחב הפרופיל במקום קו
+          // ציור מלבן לקורת הצללה במבט על - רוחב הפרופיל האמיתי במקום קו
           const shadingWidthPixels = (shadingConfig.shadingProfile.width * measurementConfig.pixelsPerCm) / canvasTransform.scale;
           
           const shadingDx = shading.end.x - shading.start.x;
@@ -562,8 +580,9 @@ export const FreeDrawingCanvas = () => {
             const normalX = (-shadingDy / shadingLength) * shadingWidthPixels / 2;
             const normalY = (shadingDx / shadingLength) * shadingWidthPixels / 2;
             
-            // ציור מלבן המייצג את הפרופיל במבט על
-            ctx.fillStyle = ctx.strokeStyle;
+            // ציור מלבן מלא המייצג את פרופיל ההצללה במבט על
+            ctx.fillStyle = shadingConfig.color;
+            ctx.globalAlpha = 0.7; // שקיפות קלה כדי לראות חפיפות עם מסגרת
             ctx.beginPath();
             ctx.moveTo(shading.start.x + normalX, shading.start.y + normalY);
             ctx.lineTo(shading.end.x + normalX, shading.end.y + normalY);
@@ -572,18 +591,26 @@ export const FreeDrawingCanvas = () => {
             ctx.closePath();
             ctx.fill();
             
-            // קו מרכזי עדין להדגשה
-            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            // מסגרת להדגשה
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = shadingConfig.color;
             ctx.lineWidth = 1 / canvasTransform.scale;
+            ctx.stroke();
+            
+            // קו מרכזי עדין להדגשה ולניווט
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.lineWidth = 0.5 / canvasTransform.scale;
+            ctx.setLineDash([1 / canvasTransform.scale, 1 / canvasTransform.scale]);
             ctx.beginPath();
             ctx.moveTo(shading.start.x, shading.start.y);
             ctx.lineTo(shading.end.x, shading.end.y);
             ctx.stroke();
+            ctx.setLineDash([]);
           }
           break;
         case 'division':
           const division = element as DivisionElement;
-          // ציור מלבן לקורת חלוקה במבט על - רוחב הפרופיל במקום קו
+          // ציור מלבן לקורת חלוקה במבט על - רוחב הפרופיל האמיתי במקום קו
           const divisionWidthPixels = (shadingConfig.divisionProfile.width * measurementConfig.pixelsPerCm) / canvasTransform.scale;
           
           const divisionDx = division.end.x - division.start.x;
@@ -594,8 +621,9 @@ export const FreeDrawingCanvas = () => {
             const normalX = (-divisionDy / divisionLength) * divisionWidthPixels / 2;
             const normalY = (divisionDx / divisionLength) * divisionWidthPixels / 2;
             
-            // ציור מלבן המייצג את הפרופיל במבט על
-            ctx.fillStyle = division.color || '#f97316';
+            // ציור מלבן מלא המייצג את פרופיל החלוקה במבט על
+            ctx.fillStyle = shadingConfig.divisionColor;
+            ctx.globalAlpha = 0.7; // שקיפות קלה כדי לראות חפיפות עם מסגרת
             ctx.beginPath();
             ctx.moveTo(division.start.x + normalX, division.start.y + normalY);
             ctx.lineTo(division.end.x + normalX, division.end.y + normalY);
@@ -604,13 +632,21 @@ export const FreeDrawingCanvas = () => {
             ctx.closePath();
             ctx.fill();
             
-            // קו מרכזי עדין להדגשה
-            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            // מסגרת להדגשה
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = shadingConfig.divisionColor;
             ctx.lineWidth = 1 / canvasTransform.scale;
+            ctx.stroke();
+            
+            // קו מרכזי עדין להדגשה ולניווט
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.lineWidth = 0.5 / canvasTransform.scale;
+            ctx.setLineDash([1 / canvasTransform.scale, 1 / canvasTransform.scale]);
             ctx.beginPath();
             ctx.moveTo(division.start.x, division.start.y);
             ctx.lineTo(division.end.x, division.end.y);
             ctx.stroke();
+            ctx.setLineDash([]);
           }
           break;
         case 'column':
