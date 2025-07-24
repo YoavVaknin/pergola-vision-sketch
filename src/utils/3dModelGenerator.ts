@@ -91,7 +91,7 @@ const calculateDistance = (p1: Point, p2: Point): number => {
   return Math.sqrt(dx * dx + dy * dy);
 };
 
-// Create frame structure from drawing outline
+// Create frame structure INSIDE the drawing outline
 const createFrameStructure = (
   frameElement: FrameElement,
   pixelsPerCm: number,
@@ -105,8 +105,11 @@ const createFrameStructure = (
   const elements: Model3DElement[] = [];
   const points = frameElement.points;
   
-  // Create frame beams along the perimeter
-  // Each beam represents the actual width of the frame profile
+  // Frame dimensions: 5cm width × 15cm height
+  const FRAME_WIDTH = 5;  // cm
+  const FRAME_HEIGHT = 15; // cm
+  
+  // Create frame beams along the perimeter - INSIDE the boundary
   for (let i = 0; i < points.length; i++) {
     const currentPoint = points[i];
     const nextPoint = points[(i + 1) % points.length];
@@ -116,29 +119,38 @@ const createFrameStructure = (
     
     if (beamLengthCm < 1) continue; // Skip very short segments
     
-    // Calculate beam center position
-    const centerX = (currentPoint.x + nextPoint.x) / 2;
-    const centerY = (currentPoint.y + nextPoint.y) / 2;
+    // Calculate beam direction vector
+    const dx = nextPoint.x - currentPoint.x;
+    const dy = nextPoint.y - currentPoint.y;
+    const length = Math.sqrt(dx * dx + dy * dy);
+    const dirX = dx / length;
+    const dirY = dy / length;
+    
+    // Calculate perpendicular vector (inward normal)
+    const normalX = -dirY; // Perpendicular to direction
+    const normalY = dirX;
+    
+    // Move beam center INWARD by half frame width
+    const offsetPixels = (FRAME_WIDTH / 2) * pixelsPerCm;
+    const centerX = (currentPoint.x + nextPoint.x) / 2 + normalX * offsetPixels;
+    const centerY = (currentPoint.y + nextPoint.y) / 2 + normalY * offsetPixels;
     
     // Calculate rotation angle
-    const angle = Math.atan2(nextPoint.y - currentPoint.y, nextPoint.x - currentPoint.x);
-    
-    // קבע כיוון הקורה
-    const isHorizontal = Math.abs(angle) < Math.PI / 4 || Math.abs(angle) > 3 * Math.PI / 4;
+    const angle = Math.atan2(dy, dx);
     
     elements.push({
       id: `frame_beam_${i}`,
       type: 'frame_beam',
       geometry: {
         type: 'box',
-        width: isHorizontal ? beamLengthCm : 5,  // רוחב 5 ס"מ או אורך הקורה
-        height: 15,                              // גובה 15 ס"מ (ציר Z)
-        depth: isHorizontal ? 5 : beamLengthCm   // עומק 5 ס"מ או אורך הקורה
+        width: beamLengthCm,  // Length along the beam direction
+        height: FRAME_HEIGHT, // 15cm height (Z-axis)
+        depth: FRAME_WIDTH    // 5cm width (perpendicular to beam)
       },
       position: {
         x: pixelToCm(centerX, pixelsPerCm),
         y: pixelToCm(centerY, pixelsPerCm),
-        z: shadingConfig.pergolaHeight + 15 / 2  // קבוע לגובה 15 ס"מ
+        z: shadingConfig.pergolaHeight + FRAME_HEIGHT / 2
       },
       rotation: {
         x: 0,
@@ -157,23 +169,22 @@ const createFrameStructure = (
   return elements;
 };
 
-// Calculate the inner boundary of the frame (accounting for frame width)
+// Calculate the inner boundary after placing frame beams
 const calculateInnerBoundary = (
   framePoints: Point[],
   frameWidth: number,
   pixelsPerCm: number
 ): Point[] => {
-  // For simplicity, we'll create an inner rectangle that's smaller by the frame width
-  // In a real implementation, this would need proper polygon offsetting
+  // The inner boundary is the original boundary shrunk inward by the frame width
   const frameWidthPixels = frameWidth * pixelsPerCm;
   
-  // Find bounding box
+  // Find bounding box of original frame
   const minX = Math.min(...framePoints.map(p => p.x));
   const maxX = Math.max(...framePoints.map(p => p.x));
   const minY = Math.min(...framePoints.map(p => p.y));
   const maxY = Math.max(...framePoints.map(p => p.y));
   
-  // Create inner boundary (simplified rectangular)
+  // Create inner boundary (rectangular, shrunk by frame width on all sides)
   return [
     { x: minX + frameWidthPixels, y: minY + frameWidthPixels },
     { x: maxX - frameWidthPixels, y: minY + frameWidthPixels },
@@ -182,7 +193,7 @@ const calculateInnerBoundary = (
   ];
 };
 
-// Create division beams within the inner boundary
+// Create division beams ONLY within the inner boundary
 const createDivisionBeams = (
   innerBoundary: Point[],
   pixelsPerCm: number,
@@ -191,6 +202,10 @@ const createDivisionBeams = (
   if (!shadingConfig.divisionEnabled) return [];
   
   const elements: Model3DElement[] = [];
+  
+  // Division dimensions: 4cm width × 10cm height
+  const DIVISION_WIDTH = 4;
+  const DIVISION_HEIGHT = 10;
   
   // Find inner boundary dimensions
   const minX = Math.min(...innerBoundary.map(p => p.x));
@@ -202,13 +217,15 @@ const createDivisionBeams = (
   const innerHeightPixels = maxY - minY;
   const divisionSpacingPixels = shadingConfig.divisionSpacing * pixelsPerCm;
   
-  // Create division beams based on direction
+  // Create division beams based on direction - ONLY in inner area
   if (shadingConfig.divisionDirection === 'width' || shadingConfig.divisionDirection === 'both') {
-    // Division beams along width (vertical beams)
+    // Vertical division beams (running along Y direction)
     const numBeams = Math.floor(innerWidthPixels / divisionSpacingPixels);
     
     for (let i = 1; i < numBeams; i++) {
       const x = minX + (i * divisionSpacingPixels);
+      if (x >= maxX - DIVISION_WIDTH * pixelsPerCm / 2) break; // Stop before hitting frame
+      
       const beamLengthCm = pixelToCm(innerHeightPixels, pixelsPerCm);
       
       elements.push({
@@ -216,19 +233,19 @@ const createDivisionBeams = (
         type: 'division_beam',
         geometry: {
           type: 'box',
-          width: 4,          // רוחב 4 ס"מ
-          height: 10,        // גובה 10 ס"מ (ציר Z)
-          depth: beamLengthCm // אורך הקורה (ציר Y)
+          width: DIVISION_WIDTH,  // 4cm width (X-axis)
+          height: DIVISION_HEIGHT, // 10cm height (Z-axis)
+          depth: beamLengthCm     // Length along Y direction
         },
         position: {
           x: pixelToCm(x, pixelsPerCm),
           y: pixelToCm((minY + maxY) / 2, pixelsPerCm),
-          z: shadingConfig.pergolaHeight + 10 / 2  // קבוע לגובה 10 ס"מ
+          z: shadingConfig.pergolaHeight + DIVISION_HEIGHT / 2
         },
         rotation: {
           x: 0,
           y: 0,
-          z: 0 // ללא סיבוב - מיושר עם ציר Y
+          z: 0 // No rotation - aligned with Y axis
         },
         color: shadingConfig.divisionColor,
         material: {
@@ -241,11 +258,13 @@ const createDivisionBeams = (
   }
   
   if (shadingConfig.divisionDirection === 'length' || shadingConfig.divisionDirection === 'both') {
-    // Division beams along length (horizontal beams)
+    // Horizontal division beams (running along X direction)
     const numBeams = Math.floor(innerHeightPixels / divisionSpacingPixels);
     
     for (let i = 1; i < numBeams; i++) {
       const y = minY + (i * divisionSpacingPixels);
+      if (y >= maxY - DIVISION_WIDTH * pixelsPerCm / 2) break; // Stop before hitting frame
+      
       const beamLengthCm = pixelToCm(innerWidthPixels, pixelsPerCm);
       
       elements.push({
@@ -253,19 +272,19 @@ const createDivisionBeams = (
         type: 'division_beam',
         geometry: {
           type: 'box',
-          width: beamLengthCm, // אורך הקורה (ציר X)
-          height: 10,          // גובה 10 ס"מ (ציר Z)
-          depth: 4             // רוחב 4 ס"מ (ציר Y)
+          width: beamLengthCm,    // Length along X direction
+          height: DIVISION_HEIGHT, // 10cm height (Z-axis)
+          depth: DIVISION_WIDTH   // 4cm width (Y-axis)
         },
         position: {
           x: pixelToCm((minX + maxX) / 2, pixelsPerCm),
           y: pixelToCm(y, pixelsPerCm),
-          z: shadingConfig.pergolaHeight + 10 / 2  // קבוע לגובה 10 ס"מ
+          z: shadingConfig.pergolaHeight + DIVISION_HEIGHT / 2
         },
         rotation: {
           x: 0,
           y: 0,
-          z: 0 // ללא סיבוב - מיושר עם ציר X
+          z: 0 // No rotation - aligned with X axis
         },
         color: shadingConfig.divisionColor,
         material: {
@@ -280,7 +299,7 @@ const createDivisionBeams = (
   return elements;
 };
 
-// Create shading slats within the inner boundary
+// Create shading slats ONLY within the inner boundary
 const createShadingSlats = (
   innerBoundary: Point[],
   pixelsPerCm: number,
@@ -289,6 +308,10 @@ const createShadingSlats = (
   if (!shadingConfig.enabled) return [];
   
   const elements: Model3DElement[] = [];
+  
+  // Shading dimensions: 7cm width × 2cm height
+  const SHADING_WIDTH = 7;
+  const SHADING_HEIGHT = 2;
   
   // Find inner boundary dimensions
   const minX = Math.min(...innerBoundary.map(p => p.x));
@@ -300,16 +323,16 @@ const createShadingSlats = (
   const innerHeightPixels = maxY - minY;
   const shadingSpacingPixels = shadingConfig.spacing * pixelsPerCm;
   
-  // Shading slats are positioned at the bottom of the pergola
-  const slatZPosition = shadingConfig.pergolaHeight - shadingConfig.shadingProfile.height / 2;
+  // Shading slats are positioned at the BOTTOM (Z = SHADING_HEIGHT/2)
+  const slatZPosition = SHADING_HEIGHT / 2;
   
   if (shadingConfig.shadingDirection === 'width') {
-    // Shading slats along width direction (vertical slats)
+    // Shading slats along width direction (running along Y axis)
     const numSlats = Math.floor(innerWidthPixels / shadingSpacingPixels);
     
     for (let i = 0; i <= numSlats; i++) {
       const x = minX + (i * shadingSpacingPixels);
-      if (x > maxX) break;
+      if (x > maxX - SHADING_WIDTH * pixelsPerCm / 2) break; // Stop before hitting frame
       
       const slatLengthCm = pixelToCm(innerHeightPixels, pixelsPerCm);
       
@@ -318,19 +341,19 @@ const createShadingSlats = (
         type: 'shading_slat',
         geometry: {
           type: 'box',
-          width: 7,            // רוחב 7 ס"מ (ציר X)
-          height: 2,           // גובה 2 ס"מ (ציר Z)
-          depth: slatLengthCm  // אורך הפרופיל (ציר Y)
+          width: SHADING_WIDTH,   // 7cm width (X-axis)
+          height: SHADING_HEIGHT, // 2cm height (Z-axis)
+          depth: slatLengthCm     // Length along Y direction
         },
         position: {
           x: pixelToCm(x, pixelsPerCm),
           y: pixelToCm((minY + maxY) / 2, pixelsPerCm),
-          z: 2 / 2  // ממוקם בתחתית - גובה חצי הפרופיל
+          z: slatZPosition
         },
         rotation: {
           x: 0,
           y: 0,
-          z: 0 // ללא סיבוב - מיושר עם ציר Y
+          z: 0 // No rotation - aligned with Y axis
         },
         color: shadingConfig.color,
         material: {
@@ -341,12 +364,12 @@ const createShadingSlats = (
       });
     }
   } else if (shadingConfig.shadingDirection === 'length') {
-    // Shading slats along length direction (horizontal slats)
+    // Shading slats along length direction (running along X axis)
     const numSlats = Math.floor(innerHeightPixels / shadingSpacingPixels);
     
     for (let i = 0; i <= numSlats; i++) {
       const y = minY + (i * shadingSpacingPixels);
-      if (y > maxY) break;
+      if (y > maxY - SHADING_WIDTH * pixelsPerCm / 2) break; // Stop before hitting frame
       
       const slatLengthCm = pixelToCm(innerWidthPixels, pixelsPerCm);
       
@@ -355,19 +378,19 @@ const createShadingSlats = (
         type: 'shading_slat',
         geometry: {
           type: 'box',
-          width: slatLengthCm, // אורך הפרופיל (ציר X)
-          height: 2,           // גובה 2 ס"מ (ציר Z)
-          depth: 7             // רוחב 7 ס"מ (ציר Y)
+          width: slatLengthCm,    // Length along X direction
+          height: SHADING_HEIGHT, // 2cm height (Z-axis)
+          depth: SHADING_WIDTH    // 7cm width (Y-axis)
         },
         position: {
           x: pixelToCm((minX + maxX) / 2, pixelsPerCm),
           y: pixelToCm(y, pixelsPerCm),
-          z: 2 / 2  // ממוקם בתחתית - גובה חצי הפרופיל
+          z: slatZPosition
         },
         rotation: {
           x: 0,
           y: 0,
-          z: 0 // ללא סיבוב - מיושר עם ציר X
+          z: 0 // No rotation - aligned with X axis
         },
         color: shadingConfig.color,
         material: {
@@ -405,10 +428,11 @@ export const generate3DModelFromDrawing = async (
   const frameElements = createFrameStructure(frameElement, pixelsPerCm, frameColor, shadingConfig);
   model3DElements.push(...frameElements);
   
-  // 2. Calculate inner boundary (frame outer boundary minus frame width)
+  // 2. Calculate inner boundary (AFTER frame placement - frame width inward)
+  const FRAME_WIDTH = 5; // Use constant frame width
   const innerBoundary = calculateInnerBoundary(
     frameElement.points,
-    shadingConfig.frameProfile.width,
+    FRAME_WIDTH,
     pixelsPerCm
   );
   
