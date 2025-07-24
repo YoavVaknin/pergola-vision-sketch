@@ -217,7 +217,7 @@ const InteractivePergolaCanvas: React.FC<InteractivePergolaCanvasProps> = ({ onD
       shadingConfig: shadingConfig
     };
     onDrawingChange(drawingData);
-    setModel3D(generate3DModelFromDrawing(drawingData));
+    generate3DModelFromDrawing(drawing, pixelsPerCm, frameColor, shadingConfig).then(setModel3D);
   }, [drawing, pixelsPerCm, frameColor, shadingConfig, onDrawingChange]);
 
   const handleReset = () => {

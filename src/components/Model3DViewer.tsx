@@ -54,7 +54,7 @@ const Mesh3DComponent = ({
           metalness: 0.8,
           envMapIntensity: 1.0
         };
-      case 'column':
+      case 'division_beam':
         return {
           color: baseColor,
           roughness: 0.3,
@@ -260,7 +260,7 @@ export const Model3DViewer = ({
       <div className="bg-gray-50 px-3 py-2 border-t text-xs text-gray-600">
         רכיבי פרגולה: {model.meshes.filter(m => m.type === 'frame_beam').length} קורות מסגרת | 
         {model.meshes.filter(m => m.type === 'shading_slat').length} רצועות הצללה | 
-        {model.meshes.filter(m => m.type === 'column').length} עמודים |
+        {model.meshes.filter(m => m.type === 'division_beam').length} קורות חלוקה |
         מימדים: {model.metadata?.dimensions ? `${model.metadata.dimensions.width.toFixed(0)}×${model.metadata.dimensions.depth.toFixed(0)}×${model.metadata.dimensions.height.toFixed(0)} ס"מ` : 'לא זמין'}
       </div>
     </div>

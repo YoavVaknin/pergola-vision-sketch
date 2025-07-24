@@ -157,10 +157,9 @@ export const Generate3DButton: React.FC<Generate3DButtonProps> = ({
                     <BarChart3 className="w-3 h-3" />
                     <span className="font-medium">סטטיסטיקות:</span>
                   </div>
-                  <p>קורות מסגרת: {statistics.meshCounts.frameBeams}</p>
-                  <p>קורות חלוקה: {statistics.meshCounts.divisionBeams}</p>
-                  <p>רצועות הצללה: {statistics.meshCounts.shadingSlats}</p>
-                  <p>עמודים: {statistics.meshCounts.columns}</p>
+                   <p>קורות מסגרת: {statistics.meshCounts.frame_beam}</p>
+                   <p>קורות חלוקה: {statistics.meshCounts.division_beam}</p>
+                   <p>רצועות הצללה: {statistics.meshCounts.shading_slat}</p>
                   <p>סה"כ רכיבים: {statistics.meshCounts.total}</p>
                   <p>מימדים: {statistics.dimensions.width.toFixed(1)}×{statistics.dimensions.depth.toFixed(1)}×{statistics.dimensions.height.toFixed(1)} ס"מ</p>
                 </div>

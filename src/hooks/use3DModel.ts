@@ -40,7 +40,7 @@ export const use3DModel = () => {
         shadingConfig
       };
       
-      const model = generate3DModelFromDrawing(drawingData);
+      const model = await generate3DModelFromDrawing(elements, pixelsPerCm, frameColor, shadingConfig);
       setCurrentModel(model);
       
       const stats = getModelStatistics(model);
