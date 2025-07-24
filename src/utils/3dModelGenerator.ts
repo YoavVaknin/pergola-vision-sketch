@@ -123,19 +123,22 @@ const createFrameStructure = (
     // Calculate rotation angle
     const angle = Math.atan2(nextPoint.y - currentPoint.y, nextPoint.x - currentPoint.x);
     
+    // קבע כיוון הקורה
+    const isHorizontal = Math.abs(angle) < Math.PI / 4 || Math.abs(angle) > 3 * Math.PI / 4;
+    
     elements.push({
       id: `frame_beam_${i}`,
       type: 'frame_beam',
       geometry: {
         type: 'box',
-        width: beamLengthCm,                    // Length along beam direction
-        height: shadingConfig.frameProfile.height, // Z-axis (12cm)
-        depth: shadingConfig.frameProfile.width    // Y-axis (4cm)
+        width: isHorizontal ? beamLengthCm : 5,  // רוחב 5 ס"מ או אורך הקורה
+        height: 15,                              // גובה 15 ס"מ (ציר Z)
+        depth: isHorizontal ? 5 : beamLengthCm   // עומק 5 ס"מ או אורך הקורה
       },
       position: {
         x: pixelToCm(centerX, pixelsPerCm),
         y: pixelToCm(centerY, pixelsPerCm),
-        z: shadingConfig.pergolaHeight + shadingConfig.frameProfile.height / 2
+        z: shadingConfig.pergolaHeight + 15 / 2  // קבוע לגובה 15 ס"מ
       },
       rotation: {
         x: 0,
@@ -213,19 +216,19 @@ const createDivisionBeams = (
         type: 'division_beam',
         geometry: {
           type: 'box',
-          width: beamLengthCm,                           // Length along beam
-          height: shadingConfig.divisionProfile.height, // Z-axis (10cm)
-          depth: shadingConfig.divisionProfile.width    // Y-axis (4cm)
+          width: 4,          // רוחב 4 ס"מ
+          height: 10,        // גובה 10 ס"מ (ציר Z)
+          depth: beamLengthCm // אורך הקורה (ציר Y)
         },
         position: {
           x: pixelToCm(x, pixelsPerCm),
           y: pixelToCm((minY + maxY) / 2, pixelsPerCm),
-          z: shadingConfig.pergolaHeight + shadingConfig.divisionProfile.height / 2
+          z: shadingConfig.pergolaHeight + 10 / 2  // קבוע לגובה 10 ס"מ
         },
         rotation: {
           x: 0,
           y: 0,
-          z: Math.PI / 2 // Rotated 90 degrees
+          z: 0 // ללא סיבוב - מיושר עם ציר Y
         },
         color: shadingConfig.divisionColor,
         material: {
@@ -250,19 +253,19 @@ const createDivisionBeams = (
         type: 'division_beam',
         geometry: {
           type: 'box',
-          width: beamLengthCm,                           // Length along beam
-          height: shadingConfig.divisionProfile.height, // Z-axis (10cm)
-          depth: shadingConfig.divisionProfile.width    // Y-axis (4cm)
+          width: beamLengthCm, // אורך הקורה (ציר X)
+          height: 10,          // גובה 10 ס"מ (ציר Z)
+          depth: 4             // רוחב 4 ס"מ (ציר Y)
         },
         position: {
           x: pixelToCm((minX + maxX) / 2, pixelsPerCm),
           y: pixelToCm(y, pixelsPerCm),
-          z: shadingConfig.pergolaHeight + shadingConfig.divisionProfile.height / 2
+          z: shadingConfig.pergolaHeight + 10 / 2  // קבוע לגובה 10 ס"מ
         },
         rotation: {
           x: 0,
           y: 0,
-          z: 0 // No rotation
+          z: 0 // ללא סיבוב - מיושר עם ציר X
         },
         color: shadingConfig.divisionColor,
         material: {
@@ -315,19 +318,19 @@ const createShadingSlats = (
         type: 'shading_slat',
         geometry: {
           type: 'box',
-          width: shadingConfig.shadingProfile.width,  // Cross-section width (7cm)
-          height: shadingConfig.shadingProfile.height, // Z-axis thickness (2cm)
-          depth: slatLengthCm                          // Length along span
+          width: 7,            // רוחב 7 ס"מ (ציר X)
+          height: 2,           // גובה 2 ס"מ (ציר Z)
+          depth: slatLengthCm  // אורך הפרופיל (ציר Y)
         },
         position: {
           x: pixelToCm(x, pixelsPerCm),
           y: pixelToCm((minY + maxY) / 2, pixelsPerCm),
-          z: slatZPosition
+          z: 2 / 2  // ממוקם בתחתית - גובה חצי הפרופיל
         },
         rotation: {
           x: 0,
           y: 0,
-          z: Math.PI / 2 // Rotated 90 degrees
+          z: 0 // ללא סיבוב - מיושר עם ציר Y
         },
         color: shadingConfig.color,
         material: {
@@ -352,19 +355,19 @@ const createShadingSlats = (
         type: 'shading_slat',
         geometry: {
           type: 'box',
-          width: slatLengthCm,                         // Length along span
-          height: shadingConfig.shadingProfile.height, // Z-axis thickness (2cm)
-          depth: shadingConfig.shadingProfile.width    // Cross-section width (7cm)
+          width: slatLengthCm, // אורך הפרופיל (ציר X)
+          height: 2,           // גובה 2 ס"מ (ציר Z)
+          depth: 7             // רוחב 7 ס"מ (ציר Y)
         },
         position: {
           x: pixelToCm((minX + maxX) / 2, pixelsPerCm),
           y: pixelToCm(y, pixelsPerCm),
-          z: slatZPosition
+          z: 2 / 2  // ממוקם בתחתית - גובה חצי הפרופיל
         },
         rotation: {
           x: 0,
           y: 0,
-          z: 0 // No rotation
+          z: 0 // ללא סיבוב - מיושר עם ציר X
         },
         color: shadingConfig.color,
         material: {
