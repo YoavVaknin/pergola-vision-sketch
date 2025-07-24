@@ -205,7 +205,7 @@ const calculateBeamLength = (start: Point, end: Point): number => {
   return Math.sqrt(dx * dx + dy * dy);
 };
 
-// Enhanced pergola beam creation with profile support
+// Enhanced pergola beam creation with profile support - FIXED DIMENSIONS
 const createPergolaBeam = (
   id: string,
   start: Point,
@@ -222,20 +222,19 @@ const createPergolaBeam = (
   const centerX = (start.x + end.x) / 2;
   const centerY = (start.y + end.y) / 2;
   
-  // For frame beams, the width represents the cross-section visible from above
-  // The geometry should reflect the actual dimensions where:
-  // - width = the length of the beam along its direction
-  // - depth = the visible width from above (profile.width)
-  // - height = the actual height of the beam
+  // FIXED: Correct mapping of dimensions
+  // - width (Three.js X) = length along the beam direction
+  // - depth (Three.js Z) = profile width (cross-section width visible from above)  
+  // - height (Three.js Y) = profile height (vertical dimension)
   
   return {
     id,
     type,
     geometry: {
       type: 'box',
-      width: beamLengthCm,        // Length along the beam direction
-      height: profile.height,     // Vertical height
-      depth: profile.width        // Width visible from above (cross-section)
+      width: beamLengthCm,        // X: Length along the beam direction
+      height: profile.height,     // Y: Vertical height (profile.height)
+      depth: profile.width        // Z: Cross-section width (profile.width)
     },
     position: {
       x: pixelToCm(centerX, pixelsPerCm),
@@ -342,16 +341,20 @@ const createBottomShadingSlats = (
               type: 'shading_slat',
               geometry: {
                 type: 'box',
-                width: pixelToCm(slatLength, pixelsPerCm),
-                height: config.shadingProfile.height,
-                depth: config.shadingProfile.width
+                // FIXED: For shading slats along width (vertical orientation)
+                // - width = the profile width (7 cm cross-section)
+                // - height = the profile height (2 cm thickness)  
+                // - depth = length of the slat (span distance)
+                width: config.shadingProfile.width,     // 7 cm cross-section width
+                height: config.shadingProfile.height,   // 2 cm thickness
+                depth: pixelToCm(slatLength, pixelsPerCm)  // Length along span
               },
               position: {
                 x: pixelToCm(x, pixelsPerCm),
                 y: pixelToCm(centerY, pixelsPerCm),
                 z: slatZPosition + config.shadingProfile.height / 2
               },
-              rotation: { x: 0, y: 0, z: Math.PI / 2 },
+              rotation: { x: 0, y: 0, z: Math.PI / 2 },  // Rotated 90° for width direction
               color: config.color,
               material: {
                 type: 'standard',
@@ -399,16 +402,20 @@ const createBottomShadingSlats = (
               type: 'shading_slat',
               geometry: {
                 type: 'box',
-                width: pixelToCm(slatLength, pixelsPerCm),
-                height: config.shadingProfile.height,
-                depth: config.shadingProfile.width
+                // FIXED: For shading slats along length (horizontal orientation)
+                // - width = length of the slat (span distance)
+                // - height = the profile height (2 cm thickness)
+                // - depth = the profile width (7 cm cross-section)
+                width: pixelToCm(slatLength, pixelsPerCm),  // Length along span
+                height: config.shadingProfile.height,       // 2 cm thickness  
+                depth: config.shadingProfile.width          // 7 cm cross-section width
               },
               position: {
                 x: pixelToCm(centerX, pixelsPerCm),
                 y: pixelToCm(y, pixelsPerCm),
                 z: slatZPosition + config.shadingProfile.height / 2
               },
-              rotation: { x: 0, y: 0, z: 0 },
+              rotation: { x: 0, y: 0, z: 0 },  // No rotation for length direction
               color: config.color,
               material: {
                 type: 'standard',
